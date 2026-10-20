@@ -43,9 +43,9 @@
 #define CUR_SHOW  "\033[?25h"
 #define CLEAR_LINE "\033[2K\r"
 
-/* Default wordlist paths — MANDATORY, no random fallback */
-#define DEFAULT_WORDLIST         "/home/paifern/n0kovo_subdomains/n0kovo_subdomains_huge.txt"
-#define DEFAULT_NXDOMAIN_WORDLIST "/home/paifern/n0kovo_subdomains/n0kovo_subdomains_large.txt"
+/* Default wordlist paths — pass via -w flag, no default baked in */
+#define DEFAULT_WORDLIST         NULL
+#define DEFAULT_NXDOMAIN_WORDLIST NULL
 #define MAX_WORDLIST_ENTRIES 3000000
 #define MAX_WORD_LEN         128
 

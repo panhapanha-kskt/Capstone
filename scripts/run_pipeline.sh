@@ -35,13 +35,14 @@ banner() {
   printf "${NC}"
 }
 
-# ── HARDCODED PATHS ────────────────────────────────────────
+# ── PATHS (resolved from project root) ─────────────────────
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-BASE_DIR="/home/paifern/DNS-_raffic-_Anomaly_Detection"
-DATA_DIR="$BASE_DIR/data"
-LOG_DIR="$BASE_DIR/logs"
-MODEL_MEMORY_DIR="$BASE_DIR/model_memory"
-DNS_LOG_DIR="$BASE_DIR/technitium-dns/data/dns_logs"
+PROJECT_ROOT="$(dirname "$SCRIPT_DIR")"
+DATA_DIR="$PROJECT_ROOT/data/processed"
+LOG_DIR="$PROJECT_ROOT/logs"
+MODELS_DIR="$PROJECT_ROOT/models"
+DNS_LOG_DIR="$PROJECT_ROOT/data/raw"
+export PYTHONPATH="$PROJECT_ROOT/src${PYTHONPATH:+:$PYTHONPATH}"
 
 # ── DEFAULTS ───────────────────────────────────────────────
 WEEK3_ONLY=false
@@ -89,26 +90,26 @@ WEEK3_WITH_ML="$DATA_DIR/week3_features_with_ml.json"
 WEEK4_ALERTS="$DATA_DIR/week4_unified_alerts.json"
 PIPELINE_LOG="$LOG_DIR/pipeline_$(date +%Y%m%d_%H%M%S).log"
 
-# Model memory paths
-MEM_RF="$MODEL_MEMORY_DIR/dns_tunnel_rf.pkl"
-MEM_TF="$MODEL_MEMORY_DIR/dns_tunnel_transformer.keras"
-MEM_SCALER="$MODEL_MEMORY_DIR/dns_scaler.pkl"
-MEM_THRESHOLD="$MODEL_MEMORY_DIR/dns_threshold.json"
-MEM_PATH_B="$MODEL_MEMORY_DIR/${PATH_B_MODEL}.h5"
-MEM_PATH_B_THRESHOLD="$MODEL_MEMORY_DIR/${PATH_B_MODEL}_threshold.json"
-MEM_PATH_B_NORM="$MODEL_MEMORY_DIR/${PATH_B_MODEL}_norm.json"
-MEM_METADATA="$MODEL_MEMORY_DIR/training_metadata.json"
+# Model paths (single canonical location)
+MEM_RF="$MODELS_DIR/dns_tunnel_rf.pkl"
+MEM_TF="$MODELS_DIR/dns_tunnel_transformer.keras"
+MEM_SCALER="$MODELS_DIR/dns_scaler.pkl"
+MEM_THRESHOLD="$MODELS_DIR/dns_threshold.json"
+MEM_PATH_B="$MODELS_DIR/${PATH_B_MODEL}.h5"
+MEM_PATH_B_THRESHOLD="$MODELS_DIR/${PATH_B_MODEL}_threshold.json"
+MEM_PATH_B_NORM="$MODELS_DIR/${PATH_B_MODEL}_norm.json"
+MEM_METADATA="$MODELS_DIR/training_metadata.json"
 
 # ── SETUP ──────────────────────────────────────────────────
 banner
-mkdir -p "$DATA_DIR" "$LOG_DIR" "$SCRIPT_DIR/model"
-cd "$SCRIPT_DIR"
+mkdir -p "$DATA_DIR" "$LOG_DIR"
+cd "$PROJECT_ROOT"
 
 echo "" | tee -a "$PIPELINE_LOG"
-info "Script dir : $SCRIPT_DIR"         | tee -a "$PIPELINE_LOG"
-info "Data dir   : $DATA_DIR"           | tee -a "$PIPELINE_LOG"
-info "Model mem  : $MODEL_MEMORY_DIR"   | tee -a "$PIPELINE_LOG"
-info "Log file   : $PIPELINE_LOG"       | tee -a "$PIPELINE_LOG"
+info "Project root : $PROJECT_ROOT"     | tee -a "$PIPELINE_LOG"
+info "Data dir     : $DATA_DIR"         | tee -a "$PIPELINE_LOG"
+info "Models dir   : $MODELS_DIR"       | tee -a "$PIPELINE_LOG"
+info "Log file     : $PIPELINE_LOG"     | tee -a "$PIPELINE_LOG"
 
 START_TIME=$(date +%s)
 
@@ -130,7 +131,7 @@ except:
 " 2>/dev/null || echo "unknown")
   ok "Path A models ready (trained: $TRAINED_A)"
 else
-  warn "Path A models NOT found in model_memory/"
+  warn "Path A models NOT found in models/"
 fi
 
 if [[ -f "$MEM_PATH_B" && -f "$MEM_PATH_B_THRESHOLD" && -f "$MEM_PATH_B_NORM" ]]; then
@@ -145,7 +146,7 @@ except:
 " 2>/dev/null || echo "unknown")
   ok "Path B model ready (trained: $TRAINED_B)"
 else
-  warn "Path B model NOT found in model_memory/"
+  warn "Path B model NOT found in models/"
 fi
 
 # If no models at all — tell user to train first
@@ -164,21 +165,12 @@ if [[ "$PATH_A_READY" == false && "$PATH_B_READY" == false && "$WEEK3_ONLY" == f
   exit 1
 fi
 
-# Restore models from memory into scripts/model/ so Python can find them
+# Models are loaded directly from models/ by the Python package — no copy needed
 if [[ "$PATH_A_READY" == true ]]; then
-  cp "$MEM_RF"        "$SCRIPT_DIR/dns_tunnel_rf.pkl"
-  cp "$MEM_TF"        "$SCRIPT_DIR/dns_tunnel_transformer.keras"
-  cp "$MEM_SCALER"    "$SCRIPT_DIR/dns_scaler.pkl"
-  cp "$MEM_THRESHOLD" "$SCRIPT_DIR/dns_threshold.json"
-  info "Path A models loaded from memory" | tee -a "$PIPELINE_LOG"
+  info "Path A models: $MODELS_DIR" | tee -a "$PIPELINE_LOG"
 fi
-
 if [[ "$PATH_B_READY" == true ]]; then
-  mkdir -p "$SCRIPT_DIR/model"
-  cp "$MEM_PATH_B"           "$SCRIPT_DIR/model/${PATH_B_MODEL}.h5"
-  cp "$MEM_PATH_B_THRESHOLD" "$SCRIPT_DIR/model/${PATH_B_MODEL}_threshold.json"
-  cp "$MEM_PATH_B_NORM"      "$SCRIPT_DIR/model/${PATH_B_MODEL}_norm.json"
-  info "Path B model loaded from memory"  | tee -a "$PIPELINE_LOG"
+  info "Path B model: $MODELS_DIR"  | tee -a "$PIPELINE_LOG"
 fi
 
 # Show training metadata
@@ -204,19 +196,10 @@ step "Preflight checks"
 python3 --version &>/dev/null || fail "python3 not found"
 ok "python3: $(python3 --version)"
 
-REQUIRED_SCRIPTS=(
-  "DNS_feature_extractor.py"
-  "dns_parser.py"
-  "Model.py"
-  "Train.py"
-  "Predict.py"
-  "Ml_bridge.py"
-  "Week4_detection_engine.py"
-)
-for f in "${REQUIRED_SCRIPTS[@]}"; do
-  [[ -f "$SCRIPT_DIR/$f" ]] || fail "Missing script: $SCRIPT_DIR/$f"
-done
-ok "All script files present"
+# Verify Python package is importable
+python3 -c "from dns_detect.config import settings" 2>/dev/null || \
+  fail "dns_detect package not importable (check PYTHONPATH and src/dns_detect/)"
+ok "dns_detect package ready"
 
 # Check DNS logs
 SKIP_WEEK3=false
@@ -258,8 +241,8 @@ if [[ "$DETECT_ONLY" == false && "$SKIP_WEEK3" == false ]]; then
   step "STEP 1 — Week 3: Feature Extraction (new traffic)"
   info "Parsing new DNS logs from: $DNS_LOG_DIR" | tee -a "$PIPELINE_LOG"
 
-  python3 DNS_feature_extractor.py 2>&1 | tee -a "$PIPELINE_LOG"
-  [[ $? -eq 0 && -f "$WEEK3_FEATURES" ]] || fail "DNS_feature_extractor.py failed"
+  python3 -m dns_detect.features.extractor 2>&1 | tee -a "$PIPELINE_LOG"
+  [[ $? -eq 0 && -f "$WEEK3_FEATURES" ]] || fail "Feature extraction failed"
 
   RECORD_COUNT=$(python3 -c "import json; d=json.load(open('$WEEK3_FEATURES')); print(len(d))" 2>/dev/null || echo "?")
   ok "Week 3 complete — $RECORD_COUNT records extracted"
@@ -305,8 +288,8 @@ if [[ "$PATH_A_READY" == false ]]; then
   warn "Path A: inactive (models not trained — run ./Train_Models.sh)"
 fi
 
-python3 Ml_bridge.py "${BRIDGE_ARGS[@]}" 2>&1 | tee -a "$PIPELINE_LOG"
-[[ $? -eq 0 && -f "$WEEK3_WITH_ML" ]] || fail "Ml_bridge.py failed"
+python3 -m dns_detect.fusion.bridge "${BRIDGE_ARGS[@]}" 2>&1 | tee -a "$PIPELINE_LOG"
+[[ $? -eq 0 && -f "$WEEK3_WITH_ML" ]] || fail "ML bridge failed"
 
 ok "ML bridge complete — new traffic scored against trained models"
 
@@ -314,13 +297,13 @@ ok "ML bridge complete — new traffic scored against trained models"
 step "STEP 3 — Week 4: Detection Engine"
 info "Running 6 detection rules (4 Sentinel + Z-score + 2 ML rules)" | tee -a "$PIPELINE_LOG"
 
-python3 Week4_detection_engine.py \
+python3 -m dns_detect.detection.engine \
   --input  "$WEEK3_WITH_ML" \
   --output "$WEEK4_ALERTS" \
   --zscore "$ZSCORE_THRESHOLD" \
   --csv 2>&1 | tee -a "$PIPELINE_LOG"
 
-[[ $? -eq 0 && -f "$WEEK4_ALERTS" ]] || fail "Week4_detection_engine.py failed"
+[[ $? -eq 0 && -f "$WEEK4_ALERTS" ]] || fail "Detection engine failed"
 
 ALERT_COUNT=$(python3 -c "
 import json
@@ -385,8 +368,8 @@ except:
     pass
 PYEOF
 
-echo -e "${BOLD}Model memory used:${NC}"
-echo -e "  Stored in: ${CYAN}$MODEL_MEMORY_DIR${NC}"
+echo -e "${BOLD}Models used:${NC}"
+echo -e "  Stored in: ${CYAN}$MODELS_DIR${NC}"
 if [[ -f "$MEM_METADATA" ]]; then
   python3 -c "
 import json

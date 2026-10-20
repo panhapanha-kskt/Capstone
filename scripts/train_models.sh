@@ -93,13 +93,14 @@ new_data_found_banner() {
   printf "\n"
 }
 
-# ── HARDCODED PATHS ─────────────────────────────────────────
+# ── PATHS (resolved from project root) ──────────────────────
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-BASE_DIR="/home/paifern/DNS-_raffic-_Anomaly_Detection"
-DATA_DIR="$BASE_DIR/data"
-LOG_DIR="$BASE_DIR/logs"
-MODEL_MEMORY_DIR="$BASE_DIR/model_memory"
-DNS_LOG_DIR="$BASE_DIR/technitium-dns/data/dns_logs"
+PROJECT_ROOT="$(dirname "$SCRIPT_DIR")"
+DATA_DIR="$PROJECT_ROOT/data/processed"
+LOG_DIR="$PROJECT_ROOT/logs"
+MODELS_DIR="$PROJECT_ROOT/models"
+DNS_LOG_DIR="$PROJECT_ROOT/data/raw"
+export PYTHONPATH="$PROJECT_ROOT/src${PYTHONPATH:+:$PYTHONPATH}"
 
 # ── DEFAULTS ───────────────────────────────────────────────
 RETRAIN=false
@@ -182,29 +183,29 @@ done
 # ── FILE PATHS ─────────────────────────────────────────────
 MERGED_FEATURES="$DATA_DIR/merged_features_all.json"
 MERGED_LABELED="$DATA_DIR/merged_features_labeled.json"
-TRAINED_FILES_REGISTRY="$MODEL_MEMORY_DIR/trained_files_registry.json"
+TRAINED_FILES_REGISTRY="$MODELS_DIR/trained_files_registry.json"
 
-MEM_RF="$MODEL_MEMORY_DIR/dns_tunnel_rf.pkl"
-MEM_TF="$MODEL_MEMORY_DIR/dns_tunnel_transformer.keras"
-MEM_SCALER="$MODEL_MEMORY_DIR/dns_scaler.pkl"
-MEM_THRESHOLD="$MODEL_MEMORY_DIR/dns_threshold.json"
-MEM_PATH_B="$MODEL_MEMORY_DIR/${PATH_B_MODEL}.h5"
-MEM_PATH_B_THRESHOLD="$MODEL_MEMORY_DIR/${PATH_B_MODEL}_threshold.json"
-MEM_PATH_B_NORM="$MODEL_MEMORY_DIR/${PATH_B_MODEL}_norm.json"
-MEM_METADATA="$MODEL_MEMORY_DIR/training_metadata.json"
-MEM_PROVENANCE="$MODEL_MEMORY_DIR/training_provenance.json"
+MEM_RF="$MODELS_DIR/dns_tunnel_rf.pkl"
+MEM_TF="$MODELS_DIR/dns_tunnel_transformer.keras"
+MEM_SCALER="$MODELS_DIR/dns_scaler.pkl"
+MEM_THRESHOLD="$MODELS_DIR/dns_threshold.json"
+MEM_PATH_B="$MODELS_DIR/${PATH_B_MODEL}.h5"
+MEM_PATH_B_THRESHOLD="$MODELS_DIR/${PATH_B_MODEL}_threshold.json"
+MEM_PATH_B_NORM="$MODELS_DIR/${PATH_B_MODEL}_norm.json"
+MEM_METADATA="$MODELS_DIR/training_metadata.json"
+MEM_PROVENANCE="$MODELS_DIR/training_provenance.json"
 
 TRAIN_LOG="$LOG_DIR/training_$(date +%Y%m%d_%H%M%S).log"
 
 # ── SETUP ──────────────────────────────────────────────────
 banner
-mkdir -p "$DATA_DIR" "$LOG_DIR" "$MODEL_MEMORY_DIR" "$SCRIPT_DIR/model"
-cd "$SCRIPT_DIR"
+mkdir -p "$DATA_DIR" "$LOG_DIR" "$MODELS_DIR"
+cd "$PROJECT_ROOT"
 
 START_TIME=$(date +%s)
 echo "" | tee -a "$TRAIN_LOG"
 info "Script dir    : $SCRIPT_DIR"        | tee -a "$TRAIN_LOG"
-info "Model memory  : $MODEL_MEMORY_DIR"  | tee -a "$TRAIN_LOG"
+info "Model memory  : $MODELS_DIR"  | tee -a "$TRAIN_LOG"
 info "Data dir      : $DATA_DIR"          | tee -a "$TRAIN_LOG"
 info "Log file      : $TRAIN_LOG"         | tee -a "$TRAIN_LOG"
 
@@ -352,7 +353,7 @@ if [[ "$TRAIN_PATH_A" == false && "$TRAIN_PATH_B" == false ]]; then
   echo -e "${BOLD}${GREEN}  ✅  All models already trained. Nothing to do.${NC}"
   echo -e "${BOLD}${GREEN}══════════════════════════════════════════════════════${NC}"
   echo ""
-  echo -e "  Models stored in : ${BOLD}$MODEL_MEMORY_DIR${NC}"
+  echo -e "  Models stored in : ${BOLD}$MODELS_DIR${NC}"
   echo -e "  Trained on       : $(python3 -c "import json; d=json.load(open('$MEM_PROVENANCE')); print(str(len(d.get('source_files',[]))) + ' source files')" 2>/dev/null || echo "see $MEM_METADATA")"
   echo -e "  Smart retrain    : ${BOLD}./Train_Models.sh --retrain${NC}  (new files only)"
   echo -e "  Force retrain    : ${BOLD}./Train_Models.sh --force-retrain${NC}  (all data)"
@@ -378,11 +379,9 @@ else
   warn "tshark not found — PCAP files will be skipped (install: sudo apt install tshark)"
 fi
 
-REQUIRED_SCRIPTS=("DNS_feature_extractor.py" "dns_parser.py" "Model.py" "Train.py" "Ml_bridge.py")
-for f in "${REQUIRED_SCRIPTS[@]}"; do
-  [[ -f "$SCRIPT_DIR/$f" ]] || fail "Missing script: $SCRIPT_DIR/$f"
-done
-ok "All required scripts present"
+python3 -c "from dns_detect.config import settings" 2>/dev/null || \
+  fail "dns_detect package not importable (check PYTHONPATH and src/dns_detect/)"
+ok "dns_detect package ready"
 
 MISSING_PKGS=()
 python3 -c "import pandas"     2>/dev/null || MISSING_PKGS+=("pandas")
@@ -506,7 +505,7 @@ if [[ ${#SRC_LOG[@]} -gt 0 ]]; then
     base=$(basename "$log_file" .log)
     out_json="$DATA_DIR/extracted_${base}_$(date +%s).json"
     detail "Extracting: $log_file → $out_json"
-    python3 DNS_feature_extractor.py \
+    python3 -m dns_detect.features.extractor \
       --input  "$log_file" \
       --output "$out_json" 2>&1 | tee -a "$TRAIN_LOG" || {
         warn "Extraction failed for $log_file — skipping"
@@ -700,7 +699,7 @@ ok "Merged dataset: $RECORD_COUNT records → $MERGED_FEATURES"
 # ══════════════════════════════════════════════════════════════
 step "STEP 1 — Generate labels from merged dataset"
 
-python3 Ml_bridge.py \
+python3 -m dns_detect.fusion.bridge \
   --week3  "$MERGED_FEATURES" \
   --output "$MERGED_LABELED" \
   --label-only 2>&1 | tee -a "$TRAIN_LOG"
@@ -733,31 +732,22 @@ if [[ "$TRAIN_PATH_A" == true ]]; then
   info "Learns WHICH patterns are attacks vs benign (supervised)"
   info "Dataset : $MERGED_LABELED ($TOTAL_COUNT records)"
 
-  python3 Model.py \
+  python3 -m dns_detect.models.path_a \
     --train     "$MERGED_LABELED" \
     --rf-weight "$RF_WEIGHT" \
     --tf-weight "$TF_WEIGHT" 2>&1 | tee -a "$TRAIN_LOG"
 
   [[ $? -eq 0 ]] || fail "Path A training failed"
 
-  [[ -f "$SCRIPT_DIR/dns_tunnel_rf.pkl" ]]            || fail "dns_tunnel_rf.pkl not saved"
-  [[ -f "$SCRIPT_DIR/dns_tunnel_transformer.keras" ]] || fail "dns_tunnel_transformer.keras not saved"
-  [[ -f "$SCRIPT_DIR/dns_scaler.pkl" ]]               || fail "dns_scaler.pkl not saved"
-  [[ -f "$SCRIPT_DIR/dns_threshold.json" ]]           || fail "dns_threshold.json not saved"
+  [[ -f "$MEM_RF" ]]        || fail "dns_tunnel_rf.pkl not saved"
+  [[ -f "$MEM_TF" ]]        || fail "dns_tunnel_transformer.keras not saved"
+  [[ -f "$MEM_SCALER" ]]    || fail "dns_scaler.pkl not saved"
+  [[ -f "$MEM_THRESHOLD" ]] || fail "dns_threshold.json not saved"
 
-  cp "$SCRIPT_DIR/dns_tunnel_rf.pkl"            "$MEM_RF"
-  cp "$SCRIPT_DIR/dns_tunnel_transformer.keras" "$MEM_TF"
-  cp "$SCRIPT_DIR/dns_scaler.pkl"               "$MEM_SCALER"
-  cp "$SCRIPT_DIR/dns_threshold.json"           "$MEM_THRESHOLD"
-
-  ok "Path A trained and saved to model_memory/"
+  ok "Path A trained and saved to models/"
 else
-  step "STEP 2 — Path A SKIPPED (restoring saved models)"
-  cp "$MEM_RF"        "$SCRIPT_DIR/dns_tunnel_rf.pkl"
-  cp "$MEM_TF"        "$SCRIPT_DIR/dns_tunnel_transformer.keras"
-  cp "$MEM_SCALER"    "$SCRIPT_DIR/dns_scaler.pkl"
-  cp "$MEM_THRESHOLD" "$SCRIPT_DIR/dns_threshold.json"
-  ok "Path A models restored from memory"
+  step "STEP 2 — Path A SKIPPED (using existing models)"
+  ok "Path A models already in models/"
 fi
 
 # ══════════════════════════════════════════════════════════════
@@ -768,28 +758,19 @@ if [[ "$TRAIN_PATH_B" == true ]]; then
   info "Learns WHAT normal traffic looks like (unsupervised)"
   info "Window size: $N_DAYS timesteps"
 
-  mkdir -p "$SCRIPT_DIR/model"
-  python3 Train.py \
+  python3 -m dns_detect.models.path_b_train \
     --filename  "$MERGED_FEATURES" \
     --n_days    "$N_DAYS" \
     --save_name "$PATH_B_MODEL" \
     --data_dir  "/" 2>&1 | tee -a "$TRAIN_LOG"
 
   [[ $? -eq 0 ]] || fail "Path B training failed"
-  [[ -f "$SCRIPT_DIR/model/${PATH_B_MODEL}.h5" ]] || fail "Path B model not saved"
+  [[ -f "$MEM_PATH_B" ]] || fail "Path B model not saved"
 
-  cp "$SCRIPT_DIR/model/${PATH_B_MODEL}.h5"             "$MEM_PATH_B"
-  cp "$SCRIPT_DIR/model/${PATH_B_MODEL}_threshold.json" "$MEM_PATH_B_THRESHOLD"
-  cp "$SCRIPT_DIR/model/${PATH_B_MODEL}_norm.json"      "$MEM_PATH_B_NORM"
-
-  ok "Path B trained and saved to model_memory/"
+  ok "Path B trained and saved to models/"
 else
-  step "STEP 3 — Path B SKIPPED (restoring saved model)"
-  mkdir -p "$SCRIPT_DIR/model"
-  cp "$MEM_PATH_B"           "$SCRIPT_DIR/model/${PATH_B_MODEL}.h5"
-  cp "$MEM_PATH_B_THRESHOLD" "$SCRIPT_DIR/model/${PATH_B_MODEL}_threshold.json"
-  cp "$MEM_PATH_B_NORM"      "$SCRIPT_DIR/model/${PATH_B_MODEL}_norm.json"
-  ok "Path B model restored from memory"
+  step "STEP 3 — Path B SKIPPED (using existing model)"
+  ok "Path B model already in models/"
 fi
 
 # ══════════════════════════════════════════════════════════════
@@ -908,7 +889,7 @@ ok "Training memory saved"
 # ══════════════════════════════════════════════════════════════
 step "Generating pipeline awareness check script"
 
-cat > "$MODEL_MEMORY_DIR/pipeline_awareness_check.sh" << 'AWARENESS_EOF'
+cat > "$MODELS_DIR/pipeline_awareness_check.sh" << 'AWARENESS_EOF'
 #!/bin/bash
 CYAN='\033[0;36m'; YELLOW='\033[1;33m'; RED='\033[0;31m'
 GREEN='\033[0;32m'; BOLD='\033[1m'; NC='\033[0m'
@@ -1026,13 +1007,13 @@ PYEOF
 pipeline_print_training_context
 AWARENESS_EOF
 
-chmod +x "$MODEL_MEMORY_DIR/pipeline_awareness_check.sh"
-ok "Pipeline awareness check → $MODEL_MEMORY_DIR/pipeline_awareness_check.sh"
+chmod +x "$MODELS_DIR/pipeline_awareness_check.sh"
+ok "Pipeline awareness check → $MODELS_DIR/pipeline_awareness_check.sh"
 
-RUN_PIPELINE="$SCRIPT_DIR/../Run_Pipeline.sh"
+RUN_PIPELINE="$SCRIPT_DIR/run_pipeline.sh"
 if [[ -f "$RUN_PIPELINE" ]]; then
   if ! grep -q "pipeline_awareness_check.sh" "$RUN_PIPELINE"; then
-    sed -i '2s|^|# ── Training context (auto-inserted by Train_Models.sh) ──\nsource "'"$MODEL_MEMORY_DIR"'/pipeline_awareness_check.sh" || true\n\n|' "$RUN_PIPELINE"
+    sed -i '2s|^|# ── Training context (auto-inserted by Train_Models.sh) ──\nsource "'"$MODELS_DIR"'/pipeline_awareness_check.sh" || true\n\n|' "$RUN_PIPELINE"
     ok "Patched Run_Pipeline.sh to load training context on startup"
   else
     ok "Run_Pipeline.sh already has awareness check — no patch needed"
@@ -1065,7 +1046,7 @@ echo "  Attack samples  : $ATTACK_COUNT"
 echo "  Benign samples  : $BENIGN_COUNT"
 echo "  Attack types    : $ATTACK_TYPES"
 echo ""
-echo -e "${BOLD}Model memory saved to:${NC}  $MODEL_MEMORY_DIR"
+echo -e "${BOLD}Model memory saved to:${NC}  $MODELS_DIR"
 [[ -f "$MEM_RF" ]]               && echo "  Random Forest          : dns_tunnel_rf.pkl"
 [[ -f "$MEM_TF" ]]               && echo "  Transformer            : dns_tunnel_transformer.keras"
 [[ -f "$MEM_SCALER" ]]           && echo "  Scaler                 : dns_scaler.pkl"

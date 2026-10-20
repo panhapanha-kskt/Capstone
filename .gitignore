@@ -1,0 +1,44 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.egg-info/
+dist/
+build/
+
+# Models (large binary artifacts)
+models/*.pkl
+models/*.h5
+models/*.keras
+models/*.json
+!models/.gitkeep
+
+# Data outputs
+data/processed/
+!data/processed/.gitkeep
+
+# Outputs
+outputs/
+!outputs/.gitkeep
+
+# Logs
+logs/
+!logs/.gitkeep
+*.log
+
+# Environment
+.env
+*.key
+
+# IDE
+.vscode/
+.idea/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Compiled binaries
+attacks/attack
+*.o
+*.exe

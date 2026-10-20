@@ -20,15 +20,9 @@ Usage:
 """
 
 import os
-import sys
 
 os.environ["CUDA_DEVICE_ORDER"]    = "PCI_BUS_ID"
 os.environ["CUDA_VISIBLE_DEVICES"] = "0"
-
-# ── FIX: add scripts directory to path so Python finds Model.py (capital M)
-SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
-if SCRIPT_DIR not in sys.path:
-    sys.path.insert(0, SCRIPT_DIR)
 
 import json
 import argparse
@@ -37,13 +31,9 @@ import tensorflow as tf
 from pathlib import Path
 from sklearn.model_selection import train_test_split
 
-# Import shared parser
-from dns_parser import load_as_array
-
-# ── FIX: use importlib to load Model.py (capital M) — Linux is case-sensitive
-import importlib
-_model_module = importlib.import_module("Model")
-transformer_encoder = _model_module.transformer_encoder
+from dns_detect.parsing.dns_parser import load_as_array
+from dns_detect.models.path_a import transformer_encoder
+from dns_detect.utils.paths import PROJECT_ROOT
 
 
 # ─────────────────────────────────────────────
@@ -168,8 +158,9 @@ Examples:
     data_norm  = (data.astype(np.float32) - data_min) / data_range
 
     # Save normalization params alongside model
-    os.makedirs("model", exist_ok=True)
-    norm_path = f"model/{SAVE_NAME}_norm.json"
+    _models_dir = str(PROJECT_ROOT / "models")
+    os.makedirs(_models_dir, exist_ok=True)
+    norm_path = os.path.join(_models_dir, f"{SAVE_NAME}_norm.json")
     with open(norm_path, "w") as f:
         json.dump({"min": data_min, "max": data_max, "range": data_range}, f)
     print(f"[*] Normalization params saved → {norm_path}")
@@ -198,7 +189,7 @@ Examples:
         monitor="val_loss", patience=10, restore_best_weights=True
     )
     checkpoint = tf.keras.callbacks.ModelCheckpoint(
-        f"model/{SAVE_NAME}.h5",
+        os.path.join(_models_dir, f"{SAVE_NAME}.h5"),
         monitor="val_loss", verbose=1, save_best_only=True, mode="min",
     )
 
@@ -209,7 +200,7 @@ Examples:
         validation_data=(x_valid, y_valid),
         callbacks=[early_stop, checkpoint],
     )
-    print(f"\n[+] Model saved → model/{SAVE_NAME}.h5")
+    print(f"\n[+] Model saved → {_models_dir}/{SAVE_NAME}.h5")
 
     # Compute reconstruction errors on validation set to set anomaly threshold
     print("\n── Calibrating Anomaly Threshold ─────────────────────────────")
@@ -217,7 +208,7 @@ Examples:
     errors = np.mean(np.square(x_valid - reconstructed), axis=(1, 2))
     threshold = compute_threshold_from_errors(errors, multiplier=args.multiplier)
 
-    threshold_path = f"model/{SAVE_NAME}_threshold.json"
+    threshold_path = os.path.join(_models_dir, f"{SAVE_NAME}_threshold.json")
     with open(threshold_path, "w") as f:
         json.dump({
             "threshold":   threshold,

@@ -33,7 +33,6 @@ Usage:
 """
 
 import os
-import sys
 import json
 import argparse
 import numpy as np
@@ -42,39 +41,21 @@ import joblib
 from pathlib import Path
 from datetime import datetime
 
-# ── FIX: add scripts directory to path so Python finds Model.py / Predict.py
-SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
-if SCRIPT_DIR not in sys.path:
-    sys.path.insert(0, SCRIPT_DIR)
-
 from tensorflow import keras
 
-# Import shared parser (dns_parser.py — lowercase, symlink exists)
-from dns_parser import (
+from dns_detect.parsing.dns_parser import (
     load_as_dataframe, load_as_array, FEATURES_8,
     _load_json_records, week3_record_to_length
 )
-
-# ── FIX: import from Model (capital M, matches your actual filename)
-# All of these functions/constants exist in Model.py — verified from source
-import importlib
-_model_module = importlib.import_module("Model")
-
-build_sequences_unlabeled = _model_module.build_sequences_unlabeled
-ensemble_predict          = _model_module.ensemble_predict
-load_threshold            = _model_module.load_threshold
-SEQUENCE_LENGTH           = _model_module.SEQUENCE_LENGTH
-MODEL_RF                  = _model_module.MODEL_RF
-MODEL_TF                  = _model_module.MODEL_TF
-MODEL_SCALER              = _model_module.MODEL_SCALER
-
-# ── FIX: import from Predict (capital P, matches your actual filename)
-_predict_module = importlib.import_module("Predict")
-
-load_model_artifacts         = _predict_module.load_model_artifacts
-build_windows                = _predict_module.build_windows
-compute_reconstruction_errors = _predict_module.compute_reconstruction_errors
-normalize_scores             = _predict_module.normalize_scores
+from dns_detect.models.path_a import (
+    build_sequences_unlabeled, ensemble_predict, load_threshold,
+    SEQUENCE_LENGTH, MODEL_RF, MODEL_TF, MODEL_SCALER
+)
+from dns_detect.models.path_b_predict import (
+    load_model_artifacts, build_windows,
+    compute_reconstruction_errors, normalize_scores
+)
+from dns_detect.utils.paths import PROJECT_ROOT
 
 
 # ─────────────────────────────────────────────
@@ -185,7 +166,9 @@ def run_path_a(week3_json_path: str) -> pd.DataFrame:
 # ─────────────────────────────────────────────
 
 def run_path_b(week3_json_path: str, save_name: str,
-               model_dir: str = "model"):
+               model_dir: str = None):
+    if model_dir is None:
+        model_dir = str(PROJECT_ROOT / "models")
     """
     Run Path B (Trafficformer) on Week 3 features JSON.
     Returns (Series ml_score_B, Series ml_label_B).
@@ -295,7 +278,7 @@ def ensure_week4_compatible(df: pd.DataFrame) -> pd.DataFrame:
 
 def run_bridge(week3_path: str, output_path: str,
                path_b_model: str = None,
-               model_dir: str = "model",
+               model_dir: str = None,
                weight_a: float = 0.6,
                weight_b: float = 0.4,
                label_only: bool = False,
@@ -436,7 +419,7 @@ Workflow:
     parser.add_argument("--week3",        type=str, required=True)
     parser.add_argument("--output",       type=str, required=True)
     parser.add_argument("--path-b-model", type=str, default=None)
-    parser.add_argument("--model-dir",    type=str, default="model")
+    parser.add_argument("--model-dir",    type=str, default=None)
     parser.add_argument("--weight-a",     type=float, default=0.6)
     parser.add_argument("--weight-b",     type=float, default=0.4)
     parser.add_argument("--label-only",   action="store_true")

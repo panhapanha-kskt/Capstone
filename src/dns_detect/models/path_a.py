@@ -37,13 +37,15 @@ from tensorflow import keras
 from tensorflow.keras import layers
 
 # Import shared parser
-from dns_parser import load_as_dataframe, FEATURES_8
+from dns_detect.parsing.dns_parser import load_as_dataframe, FEATURES_8
+from dns_detect.utils.paths import PROJECT_ROOT
 
 SEQUENCE_LENGTH = 10
-MODEL_RF   = "dns_tunnel_rf.pkl"
-MODEL_TF   = "dns_tunnel_transformer.keras"
-MODEL_SCALER = "dns_scaler.pkl"
-MODEL_THRESHOLD = "dns_threshold.json"
+_MODELS_DIR = str(PROJECT_ROOT / "models")
+MODEL_RF   = os.path.join(_MODELS_DIR, "dns_tunnel_rf.pkl")
+MODEL_TF   = os.path.join(_MODELS_DIR, "dns_tunnel_transformer.keras")
+MODEL_SCALER = os.path.join(_MODELS_DIR, "dns_scaler.pkl")
+MODEL_THRESHOLD = os.path.join(_MODELS_DIR, "dns_threshold.json")
 
 
 # ─────────────────────────────────────────────

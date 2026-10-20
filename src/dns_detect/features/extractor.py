@@ -705,9 +705,10 @@ if __name__ == "__main__":
 
     extractor = DNSFeatureExtractor()
 
-    # Paths — CLI args override hardcoded defaults
-    log_directory    = "/home/paifern/DNS-_raffic-_Anomaly_Detection/technitium-dns/data/dns_logs"
-    output_directory = "/home/paifern/DNS-_raffic-_Anomaly_Detection/data"
+    # Paths — CLI args override defaults; resolve from project root
+    from dns_detect.utils.paths import PROJECT_ROOT
+    log_directory    = str(PROJECT_ROOT / "data" / "raw")
+    output_directory = str(PROJECT_ROOT / "data" / "processed")
     os.makedirs(output_directory, exist_ok=True)
 
     print("="*80)

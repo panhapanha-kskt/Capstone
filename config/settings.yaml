@@ -1,0 +1,45 @@
+project:
+  name: "DNS Traffic Anomaly Detection"
+  version: "1.0.0"
+
+paths:
+  models_dir: "models"
+  data_raw_dir: "data/raw"
+  data_processed_dir: "data/processed"
+  outputs_dir: "outputs"
+  logs_dir: "logs"
+  dns_logs_dir: "data/raw"
+
+models:
+  path_a:
+    rf_file: "dns_tunnel_rf.pkl"
+    transformer_file: "dns_tunnel_transformer.keras"
+    scaler_file: "dns_scaler.pkl"
+    threshold_file: "dns_threshold.json"
+  path_b:
+    model_name: "dns_trafficformer"
+    model_file: "dns_trafficformer.h5"
+    threshold_file: "dns_trafficformer_threshold.json"
+    norm_file: "dns_trafficformer_norm.json"
+  metadata_file: "training_metadata.json"
+  provenance_file: "training_provenance.json"
+  registry_file: "trained_files_registry.json"
+
+training:
+  path_b_window_size: 20
+  threshold_multiplier: 2.5
+  sequence_length: 10
+
+ensemble:
+  rf_weight: 0.6
+  tf_weight: 0.4
+  combined_threshold: 0.5
+
+detection:
+  zscore_threshold: 2.0
+  nxdomain_threshold: 200
+  multi_client_threshold: 2
+  tunneling_length_threshold: 100
+  tunneling_entropy_threshold: 4.0
+  subdomain_depth_threshold: 5
+  ml_score_threshold: 0.7

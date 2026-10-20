@@ -28,15 +28,17 @@ import pandas as pd
 import tensorflow as tf
 from pathlib import Path
 
-# Import shared parser
-from dns_parser import load_as_array
+from dns_detect.parsing.dns_parser import load_as_array
+from dns_detect.utils.paths import PROJECT_ROOT
 
 
 # ─────────────────────────────────────────────
 # HELPERS
 # ─────────────────────────────────────────────
 
-def load_model_artifacts(save_name: str, model_dir: str = "model"):
+def load_model_artifacts(save_name: str, model_dir: str = None):
+    if model_dir is None:
+        model_dir = str(PROJECT_ROOT / "models")
     """Load model + threshold + normalization params."""
     model_path     = os.path.join(model_dir, f"{save_name}.keras")
     threshold_path = os.path.join(model_dir, f"{save_name}_threshold.json")
@@ -114,7 +116,11 @@ def normalize_scores(errors: np.ndarray, error_mean: float,
 # ─────────────────────────────────────────────
 
 def get_predict(DATA_PATH: str, SAVE_NAME: str,
-                data_dir: str = "data", model_dir: str = "model") -> dict:
+                data_dir: str = None, model_dir: str = None) -> dict:
+    if data_dir is None:
+        data_dir = str(PROJECT_ROOT / "data")
+    if model_dir is None:
+        model_dir = str(PROJECT_ROOT / "models")
     """
     Reusable prediction function for use by ml_bridge.py.
     Returns a dict with summary stats and per-window results.
@@ -175,8 +181,8 @@ Examples:
                         help="Model name (loaded from model/<save_name>.h5)")
     parser.add_argument("--data_dir",  type=str, default="data",
                         help="Data directory (default: data/)")
-    parser.add_argument("--model_dir", type=str, default="model",
-                        help="Model directory (default: model/)")
+    parser.add_argument("--model_dir", type=str, default=None,
+                        help="Model directory (default: PROJECT_ROOT/models/)")
     parser.add_argument("--output",    type=str, default=None,
                         help="Save per-window results to this CSV file")
     args = parser.parse_args()

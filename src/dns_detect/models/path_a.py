@@ -301,16 +301,50 @@ def run_training(input_path: str, rf_weight=0.5, tf_weight=0.5):
     test_combined = _ensemble_scores(
         rf_model, tf_model, X_test, X_seq_te, rf_weight, tf_weight
     )
+    # _ensemble_scores returns a score per test sample (pad samples use the
+    # RF score alone), so it is already aligned to y_test.
+    y_test_eval = y_test
     preds = (test_combined >= threshold).astype(int)
     print(classification_report(
-        y_test, preds,
+        y_test_eval, preds,
         target_names=["benign", "attack"]
     ))
+    from sklearn.metrics import precision_score, recall_score, f1_score
     try:
-        auc = roc_auc_score(y_test, test_combined)
+        auc = float(roc_auc_score(y_test_eval, test_combined))
         print(f"Ensemble ROC-AUC: {auc:.4f}")
     except Exception:
-        pass
+        auc = None
+
+    # Persist test metrics for the paper (single source of truth)
+    metrics_path = os.path.join(_MODELS_DIR, "evaluation_metrics.json")
+    try:
+        with open(metrics_path) as f:
+            all_metrics = json.load(f)
+    except Exception:
+        all_metrics = {}
+    all_metrics["path_a"] = {
+        "precision": float(precision_score(y_test_eval, preds, zero_division=0)),
+        "recall":    float(recall_score(y_test_eval, preds, zero_division=0)),
+        "f1":        float(f1_score(y_test_eval, preds, zero_division=0)),
+        "roc_auc":   auc,
+        "threshold": float(threshold),
+        "rf_weight": rf_weight,
+        "tf_weight": tf_weight,
+        "seed":      42,
+        "split_sizes": {
+            "train": int(len(X_train)),
+            "val":   int(len(X_val)),
+            "test":  int(len(X_test)),
+        },
+        "test_support": {
+            "benign": int((y_test_eval == 0).sum()),
+            "attack": int((y_test_eval == 1).sum()),
+        },
+    }
+    with open(metrics_path, "w") as f:
+        json.dump(all_metrics, f, indent=2)
+    print(f"[+] Metrics saved → {metrics_path}  (key: path_a)")
 
     print("\n✅ Training complete. Artifacts saved:")
     print(f"   {MODEL_RF}  |  {MODEL_TF}  |  {MODEL_SCALER}  |  {MODEL_THRESHOLD}")

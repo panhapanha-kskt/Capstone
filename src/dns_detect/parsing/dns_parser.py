@@ -250,6 +250,26 @@ def parse_week3_json_to_array(path: str) -> np.ndarray:
     return np.array([week3_record_to_length(r) for r in records])
 
 
+def load_values_and_labels(path: str):
+    """
+    Load a labeled feature file → (query_length array, label array) aligned
+    by record. Used by Path B for benign-only training and test-set metrics.
+
+    Labels come from each record's 'label' field (0=benign, 1=attack);
+    records without a label default to 0 (benign). Only JSON/JSONL inputs
+    carry labels — for other formats labels are all zeros.
+    """
+    ext = Path(path).suffix.lower()
+    if ext in (".json", ".jsonl", ".ndjson", ".log"):
+        records = _load_json_records(path)
+        values = np.array([week3_record_to_length(r) for r in records])
+        labels = np.array([int(r.get("label", 0)) for r in records])
+        return values, labels
+    # Fallback: no labels available for this format
+    values = load_as_array(path)
+    return values, np.zeros(len(values), dtype=int)
+
+
 def parse_traff(path: str) -> np.ndarray:
     """Original .traff format: one integer per line."""
     data = []

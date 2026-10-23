@@ -772,7 +772,7 @@ if [[ "$TRAIN_PATH_B" == true ]]; then
   info "Window size: $N_DAYS timesteps"
 
   python3 -m dns_detect.models.path_b_train \
-    --filename  "$MERGED_FEATURES" \
+    --filename  "$MERGED_LABELED" \
     --n_days    "$N_DAYS" \
     --save_name "$PATH_B_MODEL" \
     --data_dir  "/" 2>&1 | tee -a "$TRAIN_LOG"

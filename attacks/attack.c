@@ -767,8 +767,8 @@ void print_usage(char *progname) {
     printf("  -t N              Number of threads (1-%d, default: 4)\n", MAX_THREADS);
     printf("  -d N              Duration in seconds (default: 60)\n");
     printf("  -r N              Queries per second total (default: 1000)\n");
-    printf("  -w PATH           Subdomain wordlist (default: %s)\n", DEFAULT_WORDLIST);
-    printf("  -W PATH           NXDOMAIN wordlist  (default: %s)\n", DEFAULT_NXDOMAIN_WORDLIST);
+    printf("  -w PATH           Subdomain wordlist (default: %s)\n", DEFAULT_WORDLIST ? DEFAULT_WORDLIST : "none");
+    printf("  -W PATH           NXDOMAIN wordlist  (default: %s)\n", DEFAULT_NXDOMAIN_WORDLIST ? DEFAULT_NXDOMAIN_WORDLIST : "none");
     printf("  --type TYPE       Query type (A, NS, MX, TXT, ANY, etc)\n");
     printf("  --random-subdomains   Wordlist subdomain flood (requires -w wordlist)\n");
     printf("  --random-types        Randomize query types\n");
@@ -800,8 +800,10 @@ int main(int argc, char **argv) {
         .edns0_buffer        = 0,
         .query_type          = 0,
     };
-    strncpy(config.wordlist_path,         DEFAULT_WORDLIST,         sizeof(config.wordlist_path) - 1);
-    strncpy(config.nxdomain_wordlist_path, DEFAULT_NXDOMAIN_WORDLIST, sizeof(config.nxdomain_wordlist_path) - 1);
+    if (DEFAULT_WORDLIST)
+        strncpy(config.wordlist_path,         DEFAULT_WORDLIST,         sizeof(config.wordlist_path) - 1);
+    if (DEFAULT_NXDOMAIN_WORDLIST)
+        strncpy(config.nxdomain_wordlist_path, DEFAULT_NXDOMAIN_WORDLIST, sizeof(config.nxdomain_wordlist_path) - 1);
 
     signal(SIGINT, sigint_handler);
     srand(time(NULL) ^ getpid());

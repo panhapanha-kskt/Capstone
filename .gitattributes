@@ -1,0 +1,7 @@
+# Shell scripts must keep LF endings so they run under WSL/Linux
+*.sh text eol=lf
+
+# Binary model artifacts — never convert
+*.pkl binary
+*.h5 binary
+*.keras binary

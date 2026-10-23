@@ -8,7 +8,7 @@
 #    - Train from specific CSV / JSON / PCAP / LOG files or folders
 #    - Auto-ingests raw Technitium .log files before training
 #    - Rich training memory (file provenance, checksums, attack types)
-#    - Run_Pipeline.sh reads memory and warns on data mismatch
+#    - run_pipeline.sh reads memory and warns on data mismatch
 #
 #  NEW in v3 (smart retrain):
 #    - --retrain no longer forces full retrain of existing data
@@ -17,16 +17,16 @@
 #    - Only genuinely new data triggers retraining
 #
 #  Usage:
-#    ./Train_Models.sh                              # default: scan DNS_LOG_DIR + data/
-#    ./Train_Models.sh --data-dir /path/to/folder   # scan a specific folder
-#    ./Train_Models.sh --files a.csv b.pcap c.log   # specific files
-#    ./Train_Models.sh --data-dir /folder --files x.json   # both
-#    ./Train_Models.sh --retrain                    # find NEW data and retrain on it
-#    ./Train_Models.sh --force-retrain              # old behavior: retrain everything
-#    ./Train_Models.sh --path-a-only
-#    ./Train_Models.sh --path-b-only
-#    ./Train_Models.sh --n-days 30
-#    ./Train_Models.sh --help
+#    ./scripts/train_models.sh                              # default: scan DNS_LOG_DIR + data/
+#    ./scripts/train_models.sh --data-dir /path/to/folder   # scan a specific folder
+#    ./scripts/train_models.sh --files a.csv b.pcap c.log   # specific files
+#    ./scripts/train_models.sh --data-dir /folder --files x.json   # both
+#    ./scripts/train_models.sh --retrain                    # find NEW data and retrain on it
+#    ./scripts/train_models.sh --force-retrain              # old behavior: retrain everything
+#    ./scripts/train_models.sh --path-a-only
+#    ./scripts/train_models.sh --path-b-only
+#    ./scripts/train_models.sh --n-days 30
+#    ./scripts/train_models.sh --help
 # ============================================================
 
 set -euo pipefail
@@ -117,7 +117,7 @@ declare -a EXTRA_FILES=()
 # ── ARG PARSING ────────────────────────────────────────────
 show_help() {
   echo ""
-  echo -e "${BOLD}Usage:${NC}  ./Train_Models.sh [options]"
+  echo -e "${BOLD}Usage:${NC}  ./scripts/train_models.sh [options]"
   echo ""
   echo "Source options:"
   echo "  --data-dir PATH     Scan a folder for CSV/JSON/PCAP/LOG files"
@@ -147,14 +147,14 @@ show_help() {
   echo "  --force-retrain  Trains on everything regardless of history"
   echo ""
   echo -e "${BOLD}Examples:${NC}"
-  echo "  ./Train_Models.sh --data-dir /home/kali/captures/"
-  echo "  ./Train_Models.sh --files /tmp/attack.pcap /tmp/normal.log"
-  echo "  ./Train_Models.sh --retrain                    # smart: new data only"
-  echo "  ./Train_Models.sh --force-retrain              # full retrain everything"
-  echo "  ./Train_Models.sh --data-dir /captures --files extra.json --retrain"
+  echo "  ./scripts/train_models.sh --data-dir /home/kali/captures/"
+  echo "  ./scripts/train_models.sh --files /tmp/attack.pcap /tmp/normal.log"
+  echo "  ./scripts/train_models.sh --retrain                    # smart: new data only"
+  echo "  ./scripts/train_models.sh --force-retrain              # full retrain everything"
+  echo "  ./scripts/train_models.sh --data-dir /captures --files extra.json --retrain"
   echo ""
   echo -e "${BOLD}After running this:${NC}"
-  echo "  ./Run_Pipeline.sh    (uses saved models; prints training provenance)"
+  echo "  ./scripts/run_pipeline.sh    (uses saved models; prints training provenance)"
   echo ""
   exit 0
 }
@@ -355,9 +355,9 @@ if [[ "$TRAIN_PATH_A" == false && "$TRAIN_PATH_B" == false ]]; then
   echo ""
   echo -e "  Models stored in : ${BOLD}$MODELS_DIR${NC}"
   echo -e "  Trained on       : $(python3 -c "import json; d=json.load(open('$MEM_PROVENANCE')); print(str(len(d.get('source_files',[]))) + ' source files')" 2>/dev/null || echo "see $MEM_METADATA")"
-  echo -e "  Smart retrain    : ${BOLD}./Train_Models.sh --retrain${NC}  (new files only)"
-  echo -e "  Force retrain    : ${BOLD}./Train_Models.sh --force-retrain${NC}  (all data)"
-  echo -e "  Run detection    : ${BOLD}./Run_Pipeline.sh${NC}"
+  echo -e "  Smart retrain    : ${BOLD}./scripts/train_models.sh --retrain${NC}  (new files only)"
+  echo -e "  Force retrain    : ${BOLD}./scripts/train_models.sh --force-retrain${NC}  (all data)"
+  echo -e "  Run detection    : ${BOLD}./scripts/run_pipeline.sh${NC}"
   echo ""
   exit 0
 fi
@@ -695,6 +695,19 @@ RECORD_COUNT=$(python3 -c "import json; print(len(json.load(open('$MERGED_FEATUR
 ok "Merged dataset: $RECORD_COUNT records → $MERGED_FEATURES"
 
 # ══════════════════════════════════════════════════════════════
+#  STEP 0-D: EXPLORATORY DATA ANALYSIS (profile before training)
+# ══════════════════════════════════════════════════════════════
+step "STEP 0-D — Exploratory Data Analysis (data profiling)"
+info "Profiling the merged dataset before labeling/training"
+
+EDA_REPORT="$DATA_DIR/eda_report.json"
+python3 -m dns_detect.features.eda \
+  --input  "$MERGED_FEATURES" \
+  --output "$EDA_REPORT" 2>&1 | tee -a "$TRAIN_LOG" || \
+  warn "EDA step reported issues (continuing — EDA is informational, not a gate)"
+[[ -f "$EDA_REPORT" ]] && ok "EDA report → $EDA_REPORT"
+
+# ══════════════════════════════════════════════════════════════
 #  STEP 1: GENERATE LABELS
 # ══════════════════════════════════════════════════════════════
 step "STEP 1 — Generate labels from merged dataset"
@@ -889,12 +902,13 @@ ok "Training memory saved"
 # ══════════════════════════════════════════════════════════════
 step "Generating pipeline awareness check script"
 
-cat > "$MODELS_DIR/pipeline_awareness_check.sh" << 'AWARENESS_EOF'
+cat > "$SCRIPT_DIR/pipeline_awareness_check.sh" << 'AWARENESS_EOF'
 #!/bin/bash
 CYAN='\033[0;36m'; YELLOW='\033[1;33m'; RED='\033[0;31m'
 GREEN='\033[0;32m'; BOLD='\033[1m'; NC='\033[0m'
 
-_MEM_DIR="$(dirname "${BASH_SOURCE[0]}")"
+# Lives in scripts/; training metadata lives in models/
+_MEM_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../models" && pwd)"
 _META="$_MEM_DIR/training_metadata.json"
 _PROV="$_MEM_DIR/training_provenance.json"
 _REG="$_MEM_DIR/trained_files_registry.json"
@@ -907,7 +921,7 @@ pipeline_print_training_context() {
 
   if [[ ! -f "$_META" ]]; then
     echo -e "${RED}  ❌ No training metadata found at $_META${NC}"
-    echo -e "${YELLOW}  ⚠  Run ./Train_Models.sh first before using the pipeline.${NC}"
+    echo -e "${YELLOW}  ⚠  Run ./scripts/train_models.sh first before using the pipeline.${NC}"
     echo ""
     return 1
   fi
@@ -998,7 +1012,7 @@ if warnings:
     print(f"\n{WARN}  ⚠  DATA DRIFT DETECTED — live traffic differs from training data:{NC}")
     for feat, ref_m, live_m, z in warnings:
         print(f"{WARN}     {feat:<30} train_mean={ref_m:.4f}  live_mean={live_m:.4f}  z={z:.1f}{NC}")
-    print(f"{WARN}  Run: ./Train_Models.sh --retrain  (will only train on new files){NC}\n")
+    print(f"{WARN}  Run: ./scripts/train_models.sh --retrain  (only trains on new files){NC}\n")
 else:
     print(f"\n{GREEN}  ✅ Live traffic features match training distribution (no drift){NC}\n")
 PYEOF
@@ -1007,20 +1021,8 @@ PYEOF
 pipeline_print_training_context
 AWARENESS_EOF
 
-chmod +x "$MODELS_DIR/pipeline_awareness_check.sh"
-ok "Pipeline awareness check → $MODELS_DIR/pipeline_awareness_check.sh"
-
-RUN_PIPELINE="$SCRIPT_DIR/run_pipeline.sh"
-if [[ -f "$RUN_PIPELINE" ]]; then
-  if ! grep -q "pipeline_awareness_check.sh" "$RUN_PIPELINE"; then
-    sed -i '2s|^|# ── Training context (auto-inserted by Train_Models.sh) ──\nsource "'"$MODELS_DIR"'/pipeline_awareness_check.sh" || true\n\n|' "$RUN_PIPELINE"
-    ok "Patched Run_Pipeline.sh to load training context on startup"
-  else
-    ok "Run_Pipeline.sh already has awareness check — no patch needed"
-  fi
-else
-  warn "Run_Pipeline.sh not found at $RUN_PIPELINE — patch skipped"
-fi
+chmod +x "$SCRIPT_DIR/pipeline_awareness_check.sh"
+ok "Pipeline awareness check → $SCRIPT_DIR/pipeline_awareness_check.sh"
 
 # ══════════════════════════════════════════════════════════════
 #  FINAL SUMMARY
@@ -1059,11 +1061,11 @@ echo -e "${BOLD}Model memory saved to:${NC}  $MODELS_DIR"
 echo "  Training log           : $TRAIN_LOG"
 echo ""
 echo -e "${BOLD}${CYAN}  ▶  Run detection:${NC}"
-echo -e "  ${BOLD}./Run_Pipeline.sh${NC}"
+echo -e "  ${BOLD}./scripts/run_pipeline.sh${NC}"
 echo ""
 echo -e "${CYAN}  Smart retrain (new files only):${NC}"
-echo -e "  ${BOLD}./Train_Models.sh --retrain${NC}"
+echo -e "  ${BOLD}./scripts/train_models.sh --retrain${NC}"
 echo ""
 echo -e "${CYAN}  Force retrain everything:${NC}"
-echo -e "  ${BOLD}./Train_Models.sh --force-retrain${NC}"
+echo -e "  ${BOLD}./scripts/train_models.sh --force-retrain${NC}"
 echo ""

@@ -186,23 +186,30 @@ def train_transformer(X_seq_train, y_seq_train, X_seq_test, y_seq_test):
 # ENSEMBLE INFERENCE
 # ─────────────────────────────────────────────
 
+def _ensemble_scores(rf_model, tf_model, X_flat, X_seq,
+                     rf_weight=0.5, tf_weight=0.5):
+    """
+    Weighted ensemble probability per sample, aligned to X_flat length.
+    The first `pad` samples (which have no full sequence window) fall
+    back to the RF score alone.
+    """
+    rf_probs = rf_model.predict_proba(X_flat)[:, 1]
+    tf_probs = tf_model.predict(X_seq, verbose=0).flatten()
+    pad = len(rf_probs) - len(tf_probs)
+    return np.concatenate([
+        rf_probs[:pad],
+        rf_weight * rf_probs[pad:] + tf_weight * tf_probs
+    ])
+
+
 def ensemble_predict(rf_model, tf_model, X_flat, X_seq,
                      threshold=0.5, rf_weight=0.5, tf_weight=0.5):
     """
     Weighted ensemble of RF + Transformer probabilities.
     Both models output P(attack). Combined score >= threshold → attack.
     """
-    rf_probs = rf_model.predict_proba(X_flat)[:, 1]           # shape: (N,)
-    tf_probs = tf_model.predict(X_seq, verbose=0).flatten()   # shape: (N - seq_len + 1,)
-
-    # Align: RF has N scores, TF has N-pad scores (sequence windowing lag)
-    pad = len(rf_probs) - len(tf_probs)
-    # For the first `pad` samples: use only RF score
-    combined = np.concatenate([
-        rf_probs[:pad],
-        rf_weight * rf_probs[pad:] + tf_weight * tf_probs
-    ])
-
+    combined = _ensemble_scores(rf_model, tf_model, X_flat, X_seq,
+                                rf_weight, tf_weight)
     predictions = (combined >= threshold).astype(int)
     return predictions, combined
 
@@ -242,53 +249,65 @@ def run_training(input_path: str, rf_weight=0.5, tf_weight=0.5):
     X = df[FEATURES_8].values
     y = df["label"].values
 
-    # Scale features
+    # ── STEP 1: SPLIT BEFORE SCALING (prevents data leakage) ──────
+    # 3-way stratified split: 70% train / 15% validation / 15% test.
+    # Validation is used ONLY to calibrate the decision threshold.
+    # Test is held out and used ONLY for final unbiased metrics.
+    X_train_raw, X_tmp_raw, y_train, y_tmp = train_test_split(
+        X, y, test_size=0.30, random_state=42, stratify=y
+    )
+    X_val_raw, X_test_raw, y_val, y_test = train_test_split(
+        X_tmp_raw, y_tmp, test_size=0.50, random_state=42, stratify=y_tmp
+    )
+    print(f"[*] Split → train={len(X_train_raw)}  val={len(X_val_raw)}  test={len(X_test_raw)}")
+
+    # ── STEP 2: FIT SCALER ON TRAINING DATA ONLY ──────────────────
+    # The scaler never sees validation or test data. It is fit on the
+    # training set, then applied (transform) to all three splits.
     scaler = StandardScaler()
-    X_scaled = scaler.fit_transform(X)
+    X_train = scaler.fit_transform(X_train_raw)
+    X_val   = scaler.transform(X_val_raw)
+    X_test  = scaler.transform(X_test_raw)
     joblib.dump(scaler, MODEL_SCALER)
-    print(f"Saved → {MODEL_SCALER}")
+    print(f"Saved → {MODEL_SCALER}  (fit on training data only)")
 
-    # Stratified split — ensures both classes appear in train AND test
-    X_train, X_test, y_train, y_test = train_test_split(
-        X_scaled, y, test_size=0.3, random_state=42, stratify=y
-    )
+    # ── STEP 3: BUILD SEQUENCES PER-SPLIT ─────────────────────────
+    # Sequences are built inside each split so no window straddles the
+    # train/val/test boundary (another leakage source).
+    X_seq_tr, y_seq_tr = build_sequences(X_train, y_train, SEQUENCE_LENGTH)
+    X_seq_val, y_seq_val = build_sequences(X_val, y_val, SEQUENCE_LENGTH)
+    X_seq_te, y_seq_te = build_sequences(X_test, y_test, SEQUENCE_LENGTH)
 
-    # Build sequences for transformer
-    X_seq_all, y_seq_all = build_sequences(X_scaled, y, SEQUENCE_LENGTH)
-    X_seq_tr, X_seq_te, y_seq_tr, y_seq_te = train_test_split(
-        X_seq_all, y_seq_all, test_size=0.3, random_state=42, stratify=y_seq_all
-    )
-
-    # Train both models
+    # ── STEP 4: TRAIN ─────────────────────────────────────────────
+    # Transformer uses the validation split for early stopping.
     rf_model = train_random_forest(X_train, y_train, X_test, y_test)
-    tf_model = train_transformer(X_seq_tr, y_seq_tr, X_seq_te, y_seq_te)
+    tf_model = train_transformer(X_seq_tr, y_seq_tr, X_seq_val, y_seq_val)
 
-    # Calibrate ensemble threshold on test set
-    print("\n── Calibrating Ensemble Threshold ────────────────────────────")
-    X_seq_eval, y_seq_eval = build_sequences(X_test, y_test, SEQUENCE_LENGTH)
-    rf_probs = rf_model.predict_proba(X_test)[:, 1]
-    tf_probs = tf_model.predict(X_seq_eval, verbose=0).flatten()
-    pad = len(rf_probs) - len(tf_probs)
-    combined = np.concatenate([
-        rf_probs[:pad],
-        rf_weight * rf_probs[pad:] + tf_weight * tf_probs
-    ])
-    threshold = calibrate_threshold(y_test, combined)
+    # ── STEP 5: CALIBRATE THRESHOLD ON VALIDATION SET ─────────────
+    print("\n── Calibrating Ensemble Threshold (validation set) ───────────")
+    val_combined = _ensemble_scores(
+        rf_model, tf_model, X_val, X_seq_val, rf_weight, tf_weight
+    )
+    threshold = calibrate_threshold(y_val, val_combined)
 
     with open(MODEL_THRESHOLD, "w") as f:
         json.dump({"threshold": threshold, "rf_weight": rf_weight, "tf_weight": tf_weight}, f)
     print(f"Saved → {MODEL_THRESHOLD}")
 
-    # Final ensemble evaluation
-    print("\n── Final Ensemble Evaluation ─────────────────────────────────")
-    preds = (combined >= threshold).astype(int)
-    min_len = min(len(y_test), len(preds))
+    # ── STEP 6: FINAL EVALUATION ON HELD-OUT TEST SET ─────────────
+    # These are the only metrics that estimate real-world performance,
+    # because the test set influenced neither training nor the threshold.
+    print("\n── Final Ensemble Evaluation (held-out test set) ─────────────")
+    test_combined = _ensemble_scores(
+        rf_model, tf_model, X_test, X_seq_te, rf_weight, tf_weight
+    )
+    preds = (test_combined >= threshold).astype(int)
     print(classification_report(
-        y_test[:min_len], preds[:min_len],
+        y_test, preds,
         target_names=["benign", "attack"]
     ))
     try:
-        auc = roc_auc_score(y_test[:min_len], combined[:min_len])
+        auc = roc_auc_score(y_test, test_combined)
         print(f"Ensemble ROC-AUC: {auc:.4f}")
     except Exception:
         pass

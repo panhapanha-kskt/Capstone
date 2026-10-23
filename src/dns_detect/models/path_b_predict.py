@@ -37,15 +37,20 @@ from dns_detect.utils.paths import PROJECT_ROOT
 # ─────────────────────────────────────────────
 
 def load_model_artifacts(save_name: str, model_dir: str = None):
+    """Load model + threshold + normalization params."""
     if model_dir is None:
         model_dir = str(PROJECT_ROOT / "models")
-    """Load model + threshold + normalization params."""
-    model_path     = os.path.join(model_dir, f"{save_name}.keras")
     threshold_path = os.path.join(model_dir, f"{save_name}_threshold.json")
     norm_path      = os.path.join(model_dir, f"{save_name}_norm.json")
 
-    if not os.path.exists(model_path):
-        raise FileNotFoundError(f"Model not found: {model_path}")
+    # Training saves .h5; .keras is also accepted so either format loads.
+    candidates = [os.path.join(model_dir, f"{save_name}{ext}")
+                  for ext in (".h5", ".keras")]
+    model_path = next((p for p in candidates if os.path.exists(p)), None)
+    if model_path is None:
+        raise FileNotFoundError(
+            f"Model not found: tried {' and '.join(candidates)}"
+        )
 
     print(f"[*] Loading model: {model_path}")
     model = tf.keras.models.load_model(model_path)
@@ -178,7 +183,7 @@ Examples:
     parser.add_argument("--filename",  type=str, default="predict.traff",
                         help="Input file (.traff / .pcap / .json / .log)")
     parser.add_argument("--save_name", type=str, required=True,
-                        help="Model name (loaded from model/<save_name>.h5)")
+                        help="Model name (loaded from models/<save_name>.h5)")
     parser.add_argument("--data_dir",  type=str, default="data",
                         help="Data directory (default: data/)")
     parser.add_argument("--model_dir", type=str, default=None,

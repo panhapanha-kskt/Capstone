@@ -29,7 +29,6 @@ import argparse
 import numpy as np
 import tensorflow as tf
 from pathlib import Path
-from sklearn.model_selection import train_test_split
 
 from dns_detect.parsing.dns_parser import load_as_array
 from dns_detect.models.path_a import transformer_encoder
@@ -136,7 +135,7 @@ Examples:
     parser.add_argument("--n_days",     type=int, required=True,
                         help="Window size (timesteps)")
     parser.add_argument("--save_name",  type=str, required=True,
-                        help="Model save name (saved to model/<save_name>.h5)")
+                        help="Model save name (saved to models/<save_name>.h5)")
     parser.add_argument("--data_dir",   type=str, default="data",
                         help="Data directory (default: data/)")
     parser.add_argument("--multiplier", type=float, default=2.5,
@@ -151,25 +150,35 @@ Examples:
     data = load_as_array(str(DATA_PATH))
     print(f"[*] Loaded {len(data)} data points from {DATA_PATH}")
 
-    # Normalize to [0, 1] range before training
-    data_min   = float(data.min())
-    data_max   = float(data.max())
-    data_range = data_max - data_min if data_max > data_min else 1.0
-    data_norm  = (data.astype(np.float32) - data_min) / data_range
+    # ── CHRONOLOGICAL SPLIT BEFORE NORMALIZATION ──────────────────
+    # This is a time series, so split by time (first 80% train, last 20%
+    # validation) rather than shuffling windows. Normalization params are
+    # derived from the TRAIN portion only — the model must not peek at the
+    # validation range, or reconstruction error on it is optimistically low.
+    split_idx  = int(len(data) * 0.8)
+    train_raw  = data[:split_idx].astype(np.float32)
+    valid_raw  = data[split_idx:].astype(np.float32)
+    print(f"[*] Chronological split → train={len(train_raw)}  val={len(valid_raw)}")
 
-    # Save normalization params alongside model
+    data_min   = float(train_raw.min())
+    data_max   = float(train_raw.max())
+    data_range = data_max - data_min if data_max > data_min else 1.0
+
+    train_norm = (train_raw - data_min) / data_range
+    valid_norm = (valid_raw - data_min) / data_range
+
+    # Save normalization params alongside model (train-derived)
     _models_dir = str(PROJECT_ROOT / "models")
     os.makedirs(_models_dir, exist_ok=True)
     norm_path = os.path.join(_models_dir, f"{SAVE_NAME}_norm.json")
     with open(norm_path, "w") as f:
         json.dump({"min": data_min, "max": data_max, "range": data_range}, f)
-    print(f"[*] Normalization params saved → {norm_path}")
+    print(f"[*] Normalization params saved → {norm_path}  (train-derived)")
 
-    # Build reconstruction dataset
-    train_x, train_y = make_dataset(data_norm, window_size=N_DAYS)
-    x_train, x_valid, y_train, y_valid = train_test_split(
-        train_x, train_y, test_size=0.2, random_state=42
-    )
+    # Build reconstruction windows within each split (no window crosses
+    # the train/val boundary).
+    x_train, y_train = make_dataset(train_norm, window_size=N_DAYS)
+    x_valid, y_valid = make_dataset(valid_norm, window_size=N_DAYS)
     print(f"[*] Train windows: {len(x_train)}  |  Val windows: {len(x_valid)}")
 
     # Build and compile the reconstruction model

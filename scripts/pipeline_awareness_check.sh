@@ -2,7 +2,8 @@
 CYAN='\033[0;36m'; YELLOW='\033[1;33m'; RED='\033[0;31m'
 GREEN='\033[0;32m'; BOLD='\033[1m'; NC='\033[0m'
 
-_MEM_DIR="$(dirname "${BASH_SOURCE[0]}")"
+# Lives in scripts/; training metadata lives in models/
+_MEM_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../models" && pwd)"
 _META="$_MEM_DIR/training_metadata.json"
 _PROV="$_MEM_DIR/training_provenance.json"
 _REG="$_MEM_DIR/trained_files_registry.json"
@@ -15,7 +16,7 @@ pipeline_print_training_context() {
 
   if [[ ! -f "$_META" ]]; then
     echo -e "${RED}  ❌ No training metadata found at $_META${NC}"
-    echo -e "${YELLOW}  ⚠  Run ./Train_Models.sh first before using the pipeline.${NC}"
+    echo -e "${YELLOW}  ⚠  Run ./scripts/train_models.sh first before using the pipeline.${NC}"
     echo ""
     return 1
   fi
@@ -106,7 +107,7 @@ if warnings:
     print(f"\n{WARN}  ⚠  DATA DRIFT DETECTED — live traffic differs from training data:{NC}")
     for feat, ref_m, live_m, z in warnings:
         print(f"{WARN}     {feat:<30} train_mean={ref_m:.4f}  live_mean={live_m:.4f}  z={z:.1f}{NC}")
-    print(f"{WARN}  Run: ./Train_Models.sh --retrain  (will only train on new files){NC}\n")
+    print(f"{WARN}  Run: ./scripts/train_models.sh --retrain  (only trains on new files){NC}\n")
 else:
     print(f"\n{GREEN}  ✅ Live traffic features match training distribution (no drift){NC}\n")
 PYEOF

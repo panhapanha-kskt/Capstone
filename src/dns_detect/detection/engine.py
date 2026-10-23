@@ -181,6 +181,26 @@ class ZScoreDetector:
 
     def build_baseline(self, df, features, group_by='client_ip'):
         print("\n📊 Building statistical baseline for Z-score detection...")
+
+        # A Z-score baseline is only meaningful if it describes NORMAL
+        # traffic. Building it from the same data we score (which contains
+        # the attacks) inflates mean/std so the attacks no longer stand out
+        # as outliers. Filter to benign rows using whatever signal is present.
+        clean_df = df
+        for col, benign_value in (('label', 0),
+                                  ('ml_combined_label', 0),
+                                  ('attack_count', 0)):
+            if col in df.columns:
+                clean_df = df[df[col] == benign_value]
+                print(f"   Baseline from benign subset via '{col}': "
+                      f"{len(clean_df)}/{len(df)} rows")
+                break
+        if len(clean_df) == 0:
+            print("   ⚠ No benign rows identified — falling back to full dataset "
+                  "(baseline may be contaminated by attack traffic)")
+            clean_df = df
+        df = clean_df
+
         baseline = {}
         for ip in df[group_by].unique():
             ip_df          = df[df[group_by] == ip]
@@ -562,8 +582,12 @@ class RuleBasedDNSDetector:
 
         length_threshold  = self.tunneling_rule['length_threshold']
         entropy_threshold = self.tunneling_rule['entropy_threshold']
+        # AND, not OR: real DNS tunneling shows BOTH an abnormally long
+        # query AND high character entropy. OR fires on any long-but-benign
+        # name (CDNs, cloud hostnames) or any high-entropy short name,
+        # producing heavy false positives.
         tunneling_df      = df[
-            (df.get('query_length', pd.Series(0, index=df.index)) > length_threshold) |
+            (df.get('query_length', pd.Series(0, index=df.index)) > length_threshold) &
             (df.get('entropy',       pd.Series(0, index=df.index)) > entropy_threshold)
         ].copy()
         print(f"   📊 Found {len(tunneling_df)} potential tunneling queries")
@@ -726,7 +750,17 @@ class RuleBasedDNSDetector:
 
         threshold  = self.ml_score_rule['score_threshold']
         high_df    = df[df['ml_threat_score'] >= threshold].copy()
-        print(f"   📊 Found {len(high_df)} queries with threat score >= {threshold}")
+        # Deduplicate against Rule 5: any query already flagged by the ML
+        # combined label is reported by Rule 5, so Rule 6 only surfaces the
+        # ADDITIONAL high-threat-score queries Rule 5 missed. Without this,
+        # the same query generates two near-identical ML alerts.
+        if 'ml_combined_label' in high_df.columns:
+            before = len(high_df)
+            high_df = high_df[high_df['ml_combined_label'] != 1].copy()
+            deduped = before - len(high_df)
+            if deduped > 0:
+                print(f"   ↳ {deduped} already covered by Rule 5 — deduplicated")
+        print(f"   📊 Found {len(high_df)} additional queries with threat score >= {threshold}")
         if len(high_df) == 0:
             return []
 

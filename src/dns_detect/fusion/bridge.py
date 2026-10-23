@@ -209,7 +209,8 @@ def merge_ml_scores(df_path_a: pd.DataFrame,
                     score_b: pd.Series,
                     label_b: pd.Series,
                     weight_a: float = 0.6,
-                    weight_b: float = 0.4) -> pd.DataFrame:
+                    weight_b: float = 0.4,
+                    decision_threshold: float = None) -> pd.DataFrame:
     df = df_path_a.copy()
     df["ml_score_B"] = score_b.values
     df["ml_label_B"] = label_b.values
@@ -219,10 +220,14 @@ def merge_ml_scores(df_path_a: pd.DataFrame,
         weight_b * df["ml_score_B"].fillna(0.0)
     )
 
+    # Decide from the weighted fusion score against a single calibrated
+    # threshold. The previous OR-gate (label_A OR label_B OR score>=0.5)
+    # let either path unilaterally fire regardless of the fused score,
+    # which defeats the point of weighting the two paths.
+    if decision_threshold is None:
+        decision_threshold = load_threshold()
     df["ml_combined_label"] = (
-        (df["ml_label_A"] == 1) |
-        (df["ml_label_B"] == 1) |
-        (df["ml_combined_score"] >= 0.5)
+        df["ml_combined_score"] >= decision_threshold
     ).astype(int)
 
     df["ml_combined_verdict"] = df["ml_combined_label"].map({

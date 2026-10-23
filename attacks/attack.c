@@ -800,10 +800,7 @@ int main(int argc, char **argv) {
         .edns0_buffer        = 0,
         .query_type          = 0,
     };
-    if (DEFAULT_WORDLIST)
-        strncpy(config.wordlist_path,         DEFAULT_WORDLIST,         sizeof(config.wordlist_path) - 1);
-    if (DEFAULT_NXDOMAIN_WORDLIST)
-        strncpy(config.nxdomain_wordlist_path, DEFAULT_NXDOMAIN_WORDLIST, sizeof(config.nxdomain_wordlist_path) - 1);
+    /* wordlist defaults are NULL — paths stay zero-initialized */
 
     signal(SIGINT, sigint_handler);
     srand(time(NULL) ^ getpid());

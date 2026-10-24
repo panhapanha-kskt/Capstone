@@ -27,10 +27,18 @@ models:
 
 training:
   path_b_window_size: 20
-  threshold_multiplier: 2.5
-  sequence_length: 10
+  path_b_threshold_percentile: 99   # Path B anomaly threshold = 99th pct of benign val error
+  threshold_multiplier: 2.5         # only used by the mean+k·std fallback method
+  sequence_length: 10               # Transformer baseline only
+  path_b_features: [query_length, query_entropy, subdomain_count, digit_ratio, longest_label]
 
 ensemble:
+  # Path A production decision = RF + HistGradientBoosting soft-vote (50/50),
+  # or RF-only if the combo doesn't beat RF on the held-out test (gate in path_a.py).
+  # The Transformer is trained + reported as a baseline but excluded from the decision.
+  path_a_models: [random_forest, hist_gradient_boosting]
+  transformer_in_decision: false
+  # Path A / Path B fusion weights used by fusion/bridge.py (ml_combined_score)
   rf_weight: 0.6
   tf_weight: 0.4
   combined_threshold: 0.5

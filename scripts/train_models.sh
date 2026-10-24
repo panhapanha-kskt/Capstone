@@ -183,6 +183,7 @@ done
 # ── FILE PATHS ─────────────────────────────────────────────
 MERGED_FEATURES="$DATA_DIR/merged_features_all.json"
 MERGED_LABELED="$DATA_DIR/merged_features_labeled.json"
+ATTACK_MANIFEST="$PROJECT_ROOT/data/attack_manifest.csv"   # Tier 1 ground-truth labels (if present)
 TRAINED_FILES_REGISTRY="$MODELS_DIR/trained_files_registry.json"
 
 MEM_RF="$MODELS_DIR/dns_tunnel_rf.pkl"
@@ -712,12 +713,26 @@ python3 -m dns_detect.features.eda \
 # ══════════════════════════════════════════════════════════════
 step "STEP 1 — Generate labels from merged dataset"
 
-python3 -m dns_detect.fusion.bridge \
-  --week3  "$MERGED_FEATURES" \
-  --output "$MERGED_LABELED" \
-  --label-only 2>&1 | tee -a "$TRAIN_LOG"
+if [[ -f "$ATTACK_MANIFEST" ]]; then
+  # Tier 1: INDEPENDENT ground-truth labels from the attack manifest
+  # (time-window + source). Breaks the circular attack_count labeling.
+  info "Attack manifest found → labeling from GROUND TRUTH (not attack_count)"
+  info "Manifest: $ATTACK_MANIFEST"
+  python3 "$SCRIPT_DIR/label_from_manifest.py" \
+    --features "$MERGED_FEATURES" \
+    --manifest "$ATTACK_MANIFEST" \
+    --output   "$MERGED_LABELED" 2>&1 | tee -a "$TRAIN_LOG"
+else
+  # Fallback: heuristic weak labels from attack_count (circular — see AUDIT_REPORT.md).
+  warn "No attack manifest at $ATTACK_MANIFEST — falling back to heuristic attack_count labels"
+  warn "For defensible metrics, add data/attack_manifest.csv (see data/attack_manifest.example.csv)"
+  python3 -m dns_detect.fusion.bridge \
+    --week3  "$MERGED_FEATURES" \
+    --output "$MERGED_LABELED" \
+    --label-only 2>&1 | tee -a "$TRAIN_LOG"
+fi
 
-[[ $? -eq 0 && -f "$MERGED_LABELED" ]] || fail "Label generation failed"
+[[ -f "$MERGED_LABELED" ]] || fail "Label generation failed"
 
 ATTACK_COUNT=$(python3 -c "
 import json; d=json.load(open('$MERGED_LABELED'))
@@ -731,7 +746,7 @@ import json; print(len(json.load(open('$MERGED_LABELED'))))" 2>/dev/null || echo
 ATTACK_TYPES=$(python3 -c "
 import json
 d = json.load(open('$MERGED_LABELED'))
-types = sorted(set(r.get('attack_type','unknown') for r in d if r.get('label',0)==1))
+types = sorted(set(str(r.get('attack_family', r.get('attack_type','unknown'))) for r in d if r.get('label',0)==1))
 print(','.join(types) if types else 'none')" 2>/dev/null || echo "unknown")
 
 ok "Labels: attacks=$ATTACK_COUNT  benign=$BENIGN_COUNT  total=$TOTAL_COUNT"

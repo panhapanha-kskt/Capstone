@@ -48,13 +48,10 @@ from dns_detect.parsing.dns_parser import (
     _load_json_records, week3_record_to_length
 )
 from dns_detect.models.path_a import (
-    build_sequences_unlabeled, ensemble_predict, load_threshold,
-    SEQUENCE_LENGTH, MODEL_RF, MODEL_TF, MODEL_SCALER
+    load_path_a_models, tree_ensemble_scores, load_threshold,
+    MODEL_RF, MODEL_GBT, MODEL_SCALER
 )
-from dns_detect.models.path_b_predict import (
-    load_model_artifacts, build_windows,
-    compute_reconstruction_errors, normalize_scores
-)
+from dns_detect.models.path_b_predict import score_records
 from dns_detect.utils.paths import PROJECT_ROOT
 
 
@@ -84,11 +81,19 @@ def generate_labels_from_week3(records: list) -> list:
     labeled = []
     label_counts = {0: 0, 1: 0}
 
+    preserved = 0
     for rec in records:
         r = dict(rec)
 
-        attack_count = int(r.get("attack_count", 0))
-        r["label"] = 1 if attack_count >= 1 else 0
+        # Defensive: if the record already carries an INDEPENDENT ground-truth
+        # label (e.g. from scripts/label_from_manifest.py), never overwrite it
+        # with the circular attack_count label.
+        if "label" in rec and rec["label"] in (0, 1, "0", "1"):
+            r["label"] = int(rec["label"])
+            preserved += 1
+        else:
+            attack_count = int(r.get("attack_count", 0))
+            r["label"] = 1 if attack_count >= 1 else 0
         label_counts[r["label"]] += 1
 
         # Primary attack type (first in signature)
@@ -101,6 +106,8 @@ def generate_labels_from_week3(records: list) -> list:
     total = len(labeled)
     print(f"   Labels generated: {label_counts[0]} benign  |  {label_counts[1]} attack")
     print(f"   Attack rate: {label_counts[1]/max(total,1)*100:.1f}%")
+    if preserved:
+        print(f"   Preserved {preserved} existing ground-truth label(s) (not overwritten)")
 
     return labeled
 
@@ -111,24 +118,21 @@ def generate_labels_from_week3(records: list) -> list:
 
 def run_path_a(week3_json_path: str) -> pd.DataFrame:
     """
-    Run Path A (RF + Transformer) on Week 3 features JSON.
-    Returns DataFrame with ml_score_A and ml_label_A columns.
+    Run Path A (RF + Gradient Boosting soft-vote) on Week 3 features JSON.
+    The Transformer is a reported baseline only and is NOT used here.
+    Returns DataFrame with ml_score_A and ml_label_A columns (one per record).
     """
-    print("\n── Path A: RF + Transformer (8-feature ensemble) ─────────────")
+    print("\n── Path A: RF + Gradient Boosting (8-feature tree ensemble) ──")
 
-    for m in [MODEL_RF, MODEL_TF, MODEL_SCALER]:
+    for m in [MODEL_RF, MODEL_SCALER]:
         if not os.path.exists(m):
             raise FileNotFoundError(
                 f"Model not found: {m}\n"
-                f"Run first: python Model.py --train <labeled_data>"
+                f"Run first: python -m dns_detect.models.path_a --train <labeled_data>"
             )
 
-    rf_model  = joblib.load(MODEL_RF)
-    tf_model  = keras.models.load_model(MODEL_TF)
-    scaler    = joblib.load(MODEL_SCALER)
-    threshold = load_threshold()
-
-    print(f"   Using ensemble threshold: {threshold:.4f}")
+    rf_model, gbt_model, scaler, threshold, decision = load_path_a_models()
+    print(f"   Decision: {decision}  |  threshold: {threshold:.4f}")
 
     df = load_as_dataframe(week3_json_path)
     for col in FEATURES_8:
@@ -136,24 +140,13 @@ def run_path_a(week3_json_path: str) -> pd.DataFrame:
             df[col] = 0
 
     X_scaled = scaler.transform(df[FEATURES_8].values)
-    X_seq    = build_sequences_unlabeled(X_scaled, SEQUENCE_LENGTH)
+    scores   = tree_ensemble_scores(rf_model, gbt_model, X_scaled, decision)
+    preds    = (scores >= threshold).astype(int)
 
-    preds, scores = ensemble_predict(
-        rf_model, tf_model, X_scaled, X_seq, threshold
-    )
-
-    pad = len(X_scaled) - len(scores)
     result_df = df.copy()
-    result_df["ml_score_A"] = np.nan
-    result_df["ml_label_A"] = np.nan
-    result_df.iloc[pad:, result_df.columns.get_loc("ml_score_A")] = scores
-    result_df.iloc[pad:, result_df.columns.get_loc("ml_label_A")] = preds
-
-    rf_probs = rf_model.predict_proba(X_scaled)[:, 1]
-    result_df.iloc[:pad, result_df.columns.get_loc("ml_score_A")] = rf_probs[:pad]
-    result_df.iloc[:pad, result_df.columns.get_loc("ml_label_A")] = (rf_probs[:pad] >= threshold).astype(int)
-
-    result_df["ml_verdict_A"] = result_df["ml_label_A"].map({1.0: "ATTACK", 0.0: "benign"})
+    result_df["ml_score_A"]   = scores
+    result_df["ml_label_A"]   = preds
+    result_df["ml_verdict_A"] = result_df["ml_label_A"].map({1: "ATTACK", 0: "benign"})
 
     a_attacks = int((result_df["ml_label_A"] == 1).sum())
     print(f"   Path A results: {a_attacks} attack  |  {len(result_df)-a_attacks} benign")
@@ -170,35 +163,24 @@ def run_path_b(week3_json_path: str, save_name: str,
     if model_dir is None:
         model_dir = str(PROJECT_ROOT / "models")
     """
-    Run Path B (Trafficformer) on Week 3 features JSON.
-    Returns (Series ml_score_B, Series ml_label_B).
+    Run Path B (multi-feature Trafficformer) on Week 3 features JSON.
+    Windows are built per client in time order; each window's score lands on
+    its last record. Returns (Series ml_score_B, Series ml_label_B) aligned to
+    the JSON's record order.
     """
-    print(f"\n── Path B: Trafficformer (sequence reconstruction) ───────────")
+    print(f"\n── Path B: Trafficformer (multi-feature, per-client sequences) ─")
 
-    model, threshold, window_size, error_mean, error_std, data_min, data_range = \
-        load_model_artifacts(save_name, model_dir)
+    scores, anomalies, covered, _thr = score_records(week3_json_path, save_name, model_dir)
+    n_total = len(scores)
 
-    records  = _load_json_records(week3_json_path)
-    lengths  = np.array([week3_record_to_length(r) for r in records], dtype=np.float32)
-    n_total  = len(lengths)
+    b_attacks = int(anomalies.sum())
+    print(f"   Path B results: {b_attacks} anomalies  |  {n_total-b_attacks} normal  "
+          f"({int(covered.sum())}/{n_total} records scored)")
+    if covered.any():
+        print(f"   Score range: {scores[covered].min():.4f} – {scores[covered].max():.4f}")
 
-    lengths_norm = (lengths - data_min) / max(data_range, 1e-9)
-
-    X_windows = build_windows(lengths_norm, window_size)
-    errors    = compute_reconstruction_errors(model, X_windows)
-    scores    = normalize_scores(errors, error_mean, error_std)
-    anomalies = (errors > threshold).astype(int)
-
-    pad               = n_total - len(scores)
-    padded_scores     = np.concatenate([np.zeros(pad), scores])
-    padded_anomalies  = np.concatenate([np.zeros(pad, dtype=int), anomalies])
-
-    b_attacks = int(padded_anomalies.sum())
-    print(f"   Path B results: {b_attacks} anomalies  |  {n_total-b_attacks} normal")
-    print(f"   Score range: {scores.min():.4f} – {scores.max():.4f}")
-
-    return (pd.Series(padded_scores, name="ml_score_B"),
-            pd.Series(padded_anomalies, name="ml_label_B"))
+    return (pd.Series(scores, name="ml_score_B"),
+            pd.Series(anomalies, name="ml_label_B"))
 
 
 # ─────────────────────────────────────────────

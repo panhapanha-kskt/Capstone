@@ -37,6 +37,16 @@ FEATURES_8 = [
     "unique_char_ratio",
 ]
 
+# Multi-feature set for Path B (Trafficformer). A single scalar (query length)
+# is too weak (Kitsune/Nadler): the autoencoder reconstructs this vector instead.
+PATH_B_FEATURES = [
+    "query_length",
+    "query_entropy",
+    "subdomain_count",
+    "digit_ratio",
+    "longest_label",
+]
+
 # Week 3 feature names that map to FEATURES_8 (for bridge alignment)
 WEEK3_TO_MODEL_MAP = {
     "query_length":    "query_length",      # direct match
@@ -268,6 +278,54 @@ def load_values_and_labels(path: str):
     # Fallback: no labels available for this format
     values = load_as_array(path)
     return values, np.zeros(len(values), dtype=int)
+
+
+def load_multifeature_with_meta(path: str, features=None):
+    """
+    Load a Week-3 / labeled features JSON → Path B inputs:
+        X         : float array (n, F) over `features` (default PATH_B_FEATURES)
+        labels    : int array (n,)  — 'label' field, 0 if absent
+        client_ip : str array (n,)  — used to build per-host windows
+        order     : float array (n,) — timestamp as epoch seconds (row index if absent)
+
+    Week-3 column names are remapped to model names, missing features are
+    zero-filled. Used so Path B windows are time-ordered within each client.
+    """
+    features = features or PATH_B_FEATURES
+    records = _load_json_records(path)
+    df = pd.DataFrame(records)
+
+    rename_map = {
+        "entropy":            "query_entropy",
+        "numeric_ratio":      "digit_ratio",
+        "subdomain_depth":    "subdomain_count",
+        "answer_size":        "answer_count",
+        "first_label_length": "longest_label",
+    }
+    df = df.rename(columns={k: v for k, v in rename_map.items()
+                            if k in df.columns and v not in df.columns})
+    for col in features:
+        if col not in df.columns:
+            df[col] = 0
+
+    n = len(df)
+    X = df[features].apply(pd.to_numeric, errors="coerce").fillna(0.0).to_numpy(dtype=np.float32)
+    labels = (pd.to_numeric(df["label"], errors="coerce").fillna(0).astype(int).to_numpy()
+              if "label" in df.columns else np.zeros(n, dtype=int))
+    client_ip = (df["client_ip"].astype(str).to_numpy()
+                 if "client_ip" in df.columns else np.array(["?"] * n))
+    if "timestamp" in df.columns:
+        ts = pd.to_datetime(df["timestamp"], errors="coerce")
+        if getattr(ts.dt, "tz", None) is not None:
+            ts = ts.dt.tz_convert(None)
+        # Seconds since epoch; NaT → NaN (astype("int64") would raise on NaT,
+        # and the datetime unit differs across pandas versions).
+        order = ((ts - pd.Timestamp("1970-01-01")) / pd.Timedelta(seconds=1)).to_numpy(dtype=float)
+        # Rows without a timestamp keep their file position as a stable fallback.
+        order = np.where(np.isnan(order), np.arange(n, dtype=float), order)
+    else:
+        order = np.arange(n, dtype=float)
+    return X, labels, client_ip, order
 
 
 def parse_traff(path: str) -> np.ndarray:

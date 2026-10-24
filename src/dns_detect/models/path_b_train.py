@@ -149,19 +149,29 @@ if __name__ == "__main__":
           f"clients={len(set(client_ip))})")
     print(f"[*] Path B features: {', '.join(PATH_B_FEATURES)}")
 
-    # ── CHRONOLOGICAL 3-WAY SPLIT (by time, before normalization) ──
-    # Sort globally by time, split 70/15/15 by position; windows are then built
-    # per client INSIDE each split, so none crosses a split or host boundary.
-    t_order = np.argsort(order, kind="stable")
-    X, labels, client_ip, order = X[t_order], labels[t_order], client_ip[t_order], order[t_order]
-    n = len(X)
-    tr_end, val_end = int(n * 0.70), int(n * 0.85)
-    splits = {
-        "train": slice(0, tr_end),
-        "val":   slice(tr_end, val_end),
-        "test":  slice(val_end, n),
-    }
-    print(f"[*] Chronological split → train={tr_end}  val={val_end - tr_end}  test={n - val_end}")
+    # ── STRATIFIED-CHRONOLOGICAL 3-WAY SPLIT (per class, before normalization) ──
+    # Why not a global time cut: on this project the attack captures (2019/2024)
+    # all predate the benign capture (2026), so sorting by time globally and
+    # taking 70/15/15 drops every attack into train and leaves val/test with no
+    # positives — Path B can't be evaluated. Instead, sort within each class by
+    # time and cut 70/15/15 per class, then concatenate. Each split now carries
+    # both classes while still respecting chronology inside each class.
+    tr_mask  = np.zeros(len(X), dtype=bool)
+    val_mask = np.zeros(len(X), dtype=bool)
+    te_mask  = np.zeros(len(X), dtype=bool)
+    for cls in np.unique(labels):
+        cls_idx = np.where(labels == cls)[0]
+        cls_idx = cls_idx[np.argsort(order[cls_idx], kind="stable")]
+        k = len(cls_idx)
+        tr_c, val_c = int(k * 0.70), int(k * 0.85)
+        tr_mask[cls_idx[:tr_c]]        = True
+        val_mask[cls_idx[tr_c:val_c]]  = True
+        te_mask[cls_idx[val_c:]]       = True
+    splits = {"train": tr_mask, "val": val_mask, "test": te_mask}
+    print(f"[*] Stratified-chronological split → "
+          f"train(ben={int((labels[tr_mask]==0).sum())},atk={int((labels[tr_mask]==1).sum())})  "
+          f"val(ben={int((labels[val_mask]==0).sum())},atk={int((labels[val_mask]==1).sum())})  "
+          f"test(ben={int((labels[te_mask]==0).sum())},atk={int((labels[te_mask]==1).sum())})")
 
     # Per-feature normalization from TRAIN rows only
     X_tr = X[splits["train"]]

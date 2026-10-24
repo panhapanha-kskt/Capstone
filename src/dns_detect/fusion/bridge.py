@@ -197,18 +197,30 @@ def merge_ml_scores(df_path_a: pd.DataFrame,
     df["ml_score_B"] = score_b.values
     df["ml_label_B"] = label_b.values
 
-    df["ml_combined_score"] = (
-        weight_a * df["ml_score_A"].fillna(0.0) +
-        weight_b * df["ml_score_B"].fillna(0.0)
-    )
+    # Fused score, capped from below by Path A's own confidence. Earlier we
+    # used `w_a*A + w_b*B` and compared it to Path A's threshold (0.955), which
+    # meant Path A at 1.0 only cleared the threshold if Path B >= 0.89 — and
+    # Path B is 0 for the first 19 records of each client and for every record
+    # that doesn't end a window. The fused detector effectively ignored Path A.
+    #
+    # Fix: report `max(A, w_a*A + w_b*B)` so adding Path B can only RAISE the
+    # score, never lower it; and decide with an OR-gate on the per-path labels
+    # (either detector may fire independently), which is the standard two-
+    # detector fusion rule when each path has its own calibrated threshold.
+    score_a = df["ml_score_A"].fillna(0.0)
+    score_b = df["ml_score_B"].fillna(0.0)
+    weighted = weight_a * score_a + weight_b * score_b
+    df["ml_combined_score"] = np.maximum(score_a, weighted)
 
-    # Decide from the weighted fusion score against a single calibrated
-    # threshold. The previous OR-gate (label_A OR label_B OR score>=0.5)
-    # let either path unilaterally fire regardless of the fused score,
-    # which defeats the point of weighting the two paths.
     if decision_threshold is None:
         decision_threshold = load_threshold()
-    df["ml_combined_label"] = (
+    # OR-gate: fire if EITHER path flagged the record (each path uses its own
+    # calibrated threshold at inference time, so this isn't a free-for-all).
+    label_a = df.get("ml_label_A", pd.Series(0, index=df.index)).fillna(0).astype(int)
+    label_b = df["ml_label_B"].fillna(0).astype(int)
+    df["ml_combined_label"] = ((label_a == 1) | (label_b == 1)).astype(int)
+    # Keep the single-threshold decision available for reporting / ablation.
+    df["ml_combined_label_thr"] = (
         df["ml_combined_score"] >= decision_threshold
     ).astype(int)
 

@@ -10,6 +10,11 @@ leakage. But the task is close to trivial on this data: a single feature
 poorly to tunneling tools it has not seen, Path B produced no evaluation metrics,
 and the Path A + Path B fusion uses the wrong threshold.
 
+**Update (2026-10-24, later in day):** The pipeline flow was cross-checked
+against the current DNS-tunnel-detection literature and matches it. Four code
+fixes (§3.1–3.4) have been prepared as a dry-run-verified patch script
+(`scratchpad/apply_fixes.py`), ready to apply, and are described in §5.
+
 ---
 
 ## 1. Progress so far
@@ -142,8 +147,7 @@ attack capture predates the benign capture, which gives:
 The autoencoder learned "normal" from only 963 benign queries (about 10 seconds
 of browsing), and the test set has no attacks to score.
 
-**Fix:** split by time *within* each client or source file, so every split
-contains both classes.
+**Fix:** split by time *within each class*, then concatenate.
 
 ### 3.2 The fused score is compared to the wrong threshold (high)
 
@@ -158,8 +162,9 @@ Path A's own threshold (0.955, from `dns_threshold.json`).
   record that does not end a window (`covered=False`).
 - Result: the fused detector mostly ignores Path A.
 
-**Fix:** tune a separate threshold on the fused score, and fall back to Path A
-alone for records Path B did not score.
+**Fix:** report `max(A, w·A + w·B)` so Path B can only raise the fused score,
+and decide with an OR-gate (`label_A == 1 OR label_B == 1`) so either path can
+fire independently at its own calibrated threshold.
 
 ### 3.3 The base64 rule flags normal domains (medium)
 
@@ -176,6 +181,10 @@ a multiple of 4 then passes, and there is no minimum length.
 - `attack_count` also feeds `ml_threat_score` in `bridge.py`, so the error spreads
   to that score.
 
+**Fix:** check base64 on the original-case domain, require length ≥ 24, and
+require mixed case OR a digit alongside letters (plain English domains rarely
+satisfy either at that length).
+
 ### 3.4 Two features do not measure what their names say (medium)
 
 - **`longest_label`** is filled from `first_label_length`
@@ -185,6 +194,10 @@ a multiple of 4 then passes, and there is no minimum length.
 - **`answer_count`** is always 0, because DNS responses are not parsed
   (`response_code: unknown`). It carries no information.
 
+**Fix:** recompute `longest_label` from the real `domain` string in
+`parse_week3_json_to_df`; annotate `answer_count` as a known-zero placeholder
+until DNS responses are parsed.
+
 ### 3.5 The Transformer baseline is set up unfairly (low)
 
 **File:** `src/dns_detect/models/path_a.py`, `run_training`
@@ -192,32 +205,145 @@ a multiple of 4 then passes, and there is no minimum length.
 `train_test_split` shuffles rows before `build_sequences`, so each 10-record
 "sequence" is a set of unrelated queries. The baseline (F1 0.77) is acceptable as
 a weak reference point, but it does not support the claim that "transformers
-underperform on this task".
+underperform on this task". Deferred — not in the current patch batch.
 
 ### 3.6 Misleading log message (low)
 
 `train_models.sh` prints "No attack manifest … falling back to heuristic
 attack_count labels", but the bridge keeps the provenance labels ("Preserved 15662
 existing ground-truth label(s)"). The training labels are correct; the warning is
-not.
+not. Deferred — not in the current patch batch.
 
 ---
 
-## 4. Next steps
+## 4. Pipeline flow — cross-check with the literature
 
-1. **Re-run verification and save the report** from a root shell
-   (`models/` is root-owned):
-   `python3 scripts/verify_models.py` → `models/verification_report.json`
-2. **Fix §3.1** (per-source split for Path B), then re-train so Path B reports
-   real test metrics.
-3. **Fix §3.2–3.4**, then re-train with `./scripts/train_models.sh --force-retrain`.
-4. **Build a separate test set the model never trained on:** benign traffic from a
+The project's pipeline was compared against the current DNS-tunnel-detection
+literature. The high-level flow matches what the field uses; the issues above
+are implementation defects inside that flow, not a wrong flow.
+
+**Project pipeline, as implemented:**
+
+```
+PCAP → parse DNS queries → extract lexical/statistical features per query
+     → provenance labels → merge → EDA profile
+     → split (stratified)
+         Path A: scale → RF + GBT (+ Transformer baseline) → threshold calibrated on val
+         Path B: per-client sliding windows → benign-only autoencoder (Trafficformer)
+                 → threshold = 99th percentile of benign-val reconstruction error
+     → fuse  → persist metrics + metadata + provenance
+```
+
+**What recent papers do:**
+
+- **Lexical features per query (entropy, length, char distribution).** Infoblox's
+  production detector uses "subdomain entropy, word segmentation ratios, and
+  query frequency" fed into a Random Forest ([Infoblox blog](https://www.infoblox.com/blog/security/novel-ai-techniques-for-dns-tunnel-security/)).
+  Nadler et al.'s widely cited features (length + Shannon entropy of the query)
+  are the same ones Path A relies on most ([arXiv 2507.10267](https://arxiv.org/abs/2507.10267)).
+- **Per-client windows + autoencoder reconstruction loss.** Infoblox explicitly
+  describes "a CNN autoencoder [that] learns normal DNS query behavior … and
+  reconstruction loss values distinguish normal from anomalous activity" — this
+  is exactly Path B's Trafficformer, with the same scoring rule.
+- **Ensemble of a supervised model and an unsupervised one.** The Wiley 2026
+  "intelligent feature engineering" framework combines engineered features with
+  a learned representation and reports that it helps with low-and-slow
+  exfiltration ([Wiley AIS](https://advanced.onlinelibrary.wiley.com/doi/10.1002/aisy.202501311)).
+- **Known difficulty: generalization to unseen tools.** The 2025 Domainator
+  paper, which also uses dns2tcp, iodine, and dnscat2, reports a sharp recall
+  drop on held-out traffic and only ~50% recognition of iodine in several of
+  their test files ([arXiv 2505.22220](https://arxiv.org/pdf/2505.22220)). The
+  0.32 / 0.00 we measured in §2 is consistent with this.
+- **Known shortcut: query length alone is strong.** The arXiv 2507.10267 review
+  argues DNS tunneling is detectable "from just two numbers: length and Shannon
+  entropy". Our single-feature AUC 0.998 reproduces this.
+
+**What this means for the paper.** The methodological flow is defensible — a
+reviewer who knows the field will recognize all of its parts. The limitations
+we reported (query-length shortcut, leave-one-tool-out gap) are *expected* on
+this kind of dataset, not peculiar to this implementation. The novelty argument
+has to come from somewhere else than "we got 1.00". Candidates: the Path B
+per-client window design, the explicit fusion rule, the provenance-labeling
+discipline, or evaluation on a wider range of tools.
+
+---
+
+## 5. Fixes prepared (ready to apply)
+
+A single Python script applies §3.1–3.4 as exact-text replacements, with a
+dry-run mode and `.bak` backups per file. Line endings (CRLF/LF) are preserved
+per file.
+
+**Script:** `/tmp/claude-1000/-home-ounnha-Documents-Capstone/f0d030ed-afe5-4e40-83c4-516f4bf96efe/scratchpad/apply_fixes.py`
+
+**Verified on current source** (dry-run): all four anchors matched; CRLF
+preserved on `bridge.py`, `extractor.py`, `dns_parser.py`; LF preserved on
+`path_b_train.py`.
+
+Patches:
+
+| § | File | What changes |
+|---|---|---|
+| 3.1 | `src/dns_detect/models/path_b_train.py` | Replace the global chronological 70/15/15 with a **stratified-chronological** split (per class). Each split will now contain both benign and attack. |
+| 3.2 | `src/dns_detect/fusion/bridge.py` | `ml_combined_score = max(ml_score_A, w_a·A + w_b·B)` (adding Path B can only raise the score). `ml_combined_label = (ml_label_A == 1) OR (ml_label_B == 1)` (either path can fire at its own threshold). Keeps the single-threshold decision as `ml_combined_label_thr` for ablation. |
+| 3.3 | `src/dns_detect/features/extractor.py` | base64 check runs on the **original-case** domain, requires length ≥ 24, and requires mixed case OR a digit alongside letters. |
+| 3.4 | `src/dns_detect/parsing/dns_parser.py` | `longest_label` recomputed from the real `domain` string in `parse_week3_json_to_df`. Comment in `WEEK3_TO_MODEL_MAP` updated to be accurate about `answer_count` (always 0) and `longest_label` (now overridden). |
+
+### How to apply
+
+```bash
+sudo python3 /tmp/claude-1000/-home-ounnha-Documents-Capstone/f0d030ed-afe5-4e40-83c4-516f4bf96efe/scratchpad/apply_fixes.py
+```
+
+(Needs sudo because the files under `src/` are root-owned.) The script makes
+`.bak` copies before writing. To revert any single file:
+
+```bash
+sudo mv src/dns_detect/features/extractor.py.bak src/dns_detect/features/extractor.py
+```
+
+### How to validate after apply
+
+1. **Re-generate the labeled benign feature file**, so the base64 fix changes
+   `attack_count` on benign records:
+   ```bash
+   python3 scripts/make_labeled_features.py --label 0 --family benign \
+     --input /home/ounnha/Downloads/benign_dns.pcap \
+     --output data/processed/labeled_benign.json
+   ```
+2. **Confirm the benign false-positive rate dropped:**
+   ```bash
+   python3 -c "import json,pandas as pd; d=pd.DataFrame(json.load(open('data/processed/labeled_benign.json'))); print('benign FP rate (heuristic):', ((d.attack_count>0)&(d.label==0)).mean())"
+   ```
+   Expected: well under the previous 0.238.
+3. **Re-train both paths:**
+   ```bash
+   sudo ./scripts/train_models.sh --force-retrain \
+     --files data/processed/labeled_tunnels.json data/processed/labeled_benign.json
+   ```
+4. **Confirm Path B now reports test metrics** — check that
+   `models/evaluation_metrics.json` contains a `"path_b"` block with
+   `precision/recall/f1/pr_auc/roc_auc` filled in.
+5. **Re-run verification:**
+   ```bash
+   sudo python3 scripts/verify_models.py
+   ```
+   The leave-one-family-out recall numbers won't change on this dataset (that's
+   a data-coverage issue, not a code bug) — those are addressed by §6.
+
+---
+
+## 6. Next steps (unchanged from the first version of this doc)
+
+1. **Build a separate test set the model never trained on:** benign traffic from a
    different host or day, plus a tunneling tool not in training (iodine or
    dnscat2). Then run:
    `python3 scripts/verify_models.py --holdout <benign.json> <tunnel.json>`
    This is the number that best measures real-world performance.
-5. **Make the benign data more varied:** several hosts, longer captures, different
+2. **Make the benign data more varied:** several hosts, longer captures, different
    times of day. Aim for benign traffic to be at least half the dataset.
+3. Address §3.5 (Transformer baseline sequences) and §3.6 (misleading log
+   message) once the high-impact fixes above are confirmed working.
 
 ---
 
@@ -231,3 +357,13 @@ not.
 | `models/training_metadata.json` | Run metadata, feature snapshot |
 | `data/processed/eda_report.json` | Exploratory data analysis of the merged dataset |
 | `logs/training_20261023_232847.log` | Full training log |
+| `scratchpad/apply_fixes.py` | Patch script for §3.1–3.4 (dry-run verified) |
+
+## Appendix: literature referenced in §4
+
+- Nadler et al., *DNS Tunneling: Threat Landscape and Improved Detection Solutions*, arXiv 2507.10267 — [paper](https://arxiv.org/abs/2507.10267)
+- Domainator (2025), arXiv 2505.22220 — [paper](https://arxiv.org/pdf/2505.22220)
+- Infoblox, *ML-Based DNS Tunneling Detection at Scale* — [blog](https://www.infoblox.com/blog/security/novel-ai-techniques-for-dns-tunnel-security/)
+- Almadhor et al., *An Intelligent Feature Engineering-Driven Hybrid Framework* (Wiley 2026) — [paper](https://advanced.onlinelibrary.wiley.com/doi/10.1002/aisy.202501311)
+- *DNS Covert Channel Detection via Behavioral Analysis* (2020), arXiv 2010.01582 — [paper](https://arxiv.org/pdf/2010.01582)
+- *A Study of Newly Observed Hostnames and DNS Tunneling in the Wild* (2019), arXiv 1902.08454 — [paper](https://arxiv.org/pdf/1902.08454)

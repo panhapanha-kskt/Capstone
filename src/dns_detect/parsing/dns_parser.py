@@ -53,8 +53,8 @@ WEEK3_TO_MODEL_MAP = {
     "entropy":         "query_entropy",     # week3 calls it 'entropy'
     "numeric_ratio":   "digit_ratio",       # week3 calls it 'numeric_ratio'
     "subdomain_depth": "subdomain_count",   # week3 calls it 'subdomain_depth'
-    "answer_size":     "answer_count",      # week3 calls it 'answer_size'
-    "first_label_length": "longest_label",  # approximation
+    "answer_size":     "answer_count",      # NOTE: always 0 on this data (DNS responses aren't parsed)
+    "first_label_length": "longest_label",  # overridden with the true longest label when `domain` is available
 }
 
 
@@ -228,6 +228,16 @@ def parse_week3_json_to_df(path: str) -> pd.DataFrame:
         "first_label_length": "longest_label",
     }
     df = df.rename(columns={k: v for k, v in rename_map.items() if k in df.columns})
+
+    # Compute the TRUE longest label from the domain itself. Week 3 only
+    # recorded `first_label_length`, which the rename above aliases to
+    # `longest_label` for compatibility — but the first label isn't always the
+    # longest (`www.scientificamerican.com` → first=3, longest=17). When
+    # `domain` is available, override with the correct value.
+    if "domain" in df.columns:
+        df["longest_label"] = df["domain"].astype(str).apply(
+            lambda d: max((len(p) for p in d.split(".") if p), default=0)
+        )
 
     # Ensure has_digits exists (derive from domain if missing)
     if "has_digits" not in df.columns and "domain" in df.columns:

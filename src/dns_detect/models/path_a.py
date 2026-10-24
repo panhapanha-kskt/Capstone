@@ -344,6 +344,14 @@ def run_training(input_path: str, rf_weight=0.5, tf_weight=0.5, shuffle_labels=F
 
     X = df[FEATURES_8].values
     y = df["label"].values
+    if len(np.unique(y)) < 2:
+        # Checked before ANY artifact (scaler, models, threshold) is written,
+        # so a bad dataset never leaves the saved models half-overwritten.
+        raise SystemExit(
+            f"[error] Training data has a single class (label={int(y[0])} for all "
+            f"{len(y)} rows). Path A needs both benign and attack samples — "
+            f"add benign data. No model files were changed."
+        )
     # attack_family (from ground-truth manifest labeling) for per-family recall
     fam = df["attack_family"].values if "attack_family" in df.columns else np.array(["?"] * len(df))
 
@@ -409,7 +417,10 @@ def run_training(input_path: str, rf_weight=0.5, tf_weight=0.5, shuffle_labels=F
     print(classification_report(y_test, preds, target_names=["benign", "attack"]))
     print(f"PR-AUC (primary): {chosen['pr_auc']}  (baseline={chosen['pr_auc_baseline']:.3f})  "
           f"| ROC-AUC: {chosen['roc_auc']}")
-    recall_by_family = _recall_by_family(y_test, preds, fam_test)
+    # Only meaningful when labels came with families (manifest / provenance labeling)
+    recall_by_family = _recall_by_family(
+        y_test, preds, fam_test if "attack_family" in df.columns else None
+    )
     if recall_by_family:
         print("Per-attack-family recall:")
         for k, v in recall_by_family.items():

@@ -417,7 +417,9 @@ NEW_FILES_FOUND=0
 
 classify_file() {
   local f="$1"
-  [[ -f "$f" ]] || { warn "File not found, skipping: $f"; return; }
+  # A file the user named explicitly must exist — silently skipping it can drop a
+  # whole class (e.g. the benign set) and train on the wrong data.
+  [[ -f "$f" ]] || fail "File not found: $f  (check the path passed to --files / --data-dir)"
 
   # ── Smart retrain: check registry before bucketing ────────
   if [[ "$FORCE_RETRAIN" == false && "$RETRAIN" == true ]]; then
@@ -734,6 +736,13 @@ print(','.join(types) if types else 'none')" 2>/dev/null || echo "unknown")
 
 ok "Labels: attacks=$ATTACK_COUNT  benign=$BENIGN_COUNT  total=$TOTAL_COUNT"
 ok "Attack types found: $ATTACK_TYPES"
+
+# Both classes are required — stop BEFORE any model artifact is overwritten.
+if [[ "$ATTACK_COUNT" == "0" || "$BENIGN_COUNT" == "0" ]]; then
+  fail "Training data has only one class (attacks=$ATTACK_COUNT, benign=$BENIGN_COUNT). \
+Add benign data (e.g. a benign capture converted with scripts/make_labeled_features.py --label 0). \
+Existing models were NOT changed."
+fi
 
 # ══════════════════════════════════════════════════════════════
 #  STEP 2: TRAIN PATH A

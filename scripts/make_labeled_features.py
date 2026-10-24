@@ -149,8 +149,13 @@ def main():
                     help="attack family (default: filename prefix for attacks, 'benign' for label 0)")
     ap.add_argument("--domain", default=None,
                     help="keep only queries under this base domain (e.g. the tunnel's domain)")
+    ap.add_argument("--max-per-file", type=int, default=None,
+                    help="randomly keep at most N queries per input file (seeded) to balance classes")
+    ap.add_argument("--seed", type=int, default=42, help="random seed for --max-per-file")
     ap.add_argument("--output", required=True, help="output JSON path")
     args = ap.parse_args()
+    import random
+    rng = random.Random(args.seed)
 
     ex = DNSFeatureExtractor()
     all_recs = []
@@ -169,6 +174,12 @@ def main():
         else:
             print(f"  [warn] unsupported type {ext}, skipping: {path}")
             continue
+
+        total_in_file = len(recs)
+        if args.max_per_file and total_in_file > args.max_per_file:
+            keep = sorted(rng.sample(range(total_in_file), args.max_per_file))  # keep time order
+            recs = [recs[i] for i in keep]
+            print(f"    (sampled {len(recs)} of {total_in_file} queries, seed={args.seed})")
 
         family = args.family or ("benign" if args.label == 0 else _family_from_name(path))
         for r in recs:

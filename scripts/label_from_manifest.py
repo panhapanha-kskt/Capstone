@@ -124,6 +124,17 @@ def label_records(records, windows):
 
     for rec in records:
         r = dict(rec)
+        # Records that already carry a ground-truth label (e.g. provenance labels from
+        # scripts/make_labeled_features.py) are kept as-is — never overwritten.
+        if r.get("label") in (0, 1, "0", "1"):
+            r["label"] = int(r["label"])
+            r.setdefault("attack_family", "benign" if r["label"] == 0 else "attack")
+            key = "attack" if r["label"] == 1 else "benign"
+            counts[key] += 1
+            if r["label"] == 1:
+                family_counts[r["attack_family"]] = family_counts.get(r["attack_family"], 0) + 1
+            labeled.append(r)
+            continue
         ts = _naive(parse_ts(r.get("timestamp")))
         if ts is None:
             missing_ts += 1

@@ -112,6 +112,7 @@ N_DAYS=20
 RF_WEIGHT=0.6
 TF_WEIGHT=0.4
 CUSTOM_DATA_DIR=""
+PCAP_LABEL=""          # provenance label applied to every query in input pcaps (0/1)
 declare -a EXTRA_FILES=()
 
 # ── ARG PARSING ────────────────────────────────────────────
@@ -123,6 +124,8 @@ show_help() {
   echo "  --data-dir PATH     Scan a folder for CSV/JSON/PCAP/LOG files"
   echo "  --files F1 F2 ...   Specific files to train on (any mix of types)"
   echo "                      Both flags can be combined."
+  echo "  --pcap-label 0|1    Ground-truth label for EVERY query in input .pcap/.pcapng"
+  echo "                      files (1 = attack capture, 0 = benign capture)"
   echo ""
   echo "Training options:"
   echo "  --retrain           Find NEW files not seen before and retrain on them"
@@ -170,6 +173,7 @@ while [[ $# -gt 0 ]]; do
     --rf-weight)      RF_WEIGHT="$2";         shift 2 ;;
     --tf-weight)      TF_WEIGHT="$2";         shift 2 ;;
     --data-dir)       CUSTOM_DATA_DIR="$2";   shift 2 ;;
+    --pcap-label)     PCAP_LABEL="$2";        shift 2 ;;
     --files)
       shift
       while [[ $# -gt 0 && "$1" != --* ]]; do
@@ -526,59 +530,38 @@ else
 fi
 
 # ══════════════════════════════════════════════════════════════
-#  STEP 0-B: PRE-PROCESS PCAP → JSON features (via tshark)
+#  STEP 0-B: PRE-PROCESS PCAP → labeled JSON features (scapy, provenance label)
 # ══════════════════════════════════════════════════════════════
 step "STEP 0-B — Pre-processing PCAP files"
 
 declare -a JSON_FROM_PCAP=()
 
-if [[ ${#SRC_PCAP[@]} -gt 0 && "$TSHARK_AVAILABLE" == true ]]; then
-  info "Found ${#SRC_PCAP[@]} new PCAP file(s) — extracting DNS records via tshark"
+if [[ ${#SRC_PCAP[@]} -gt 0 && -n "$PCAP_LABEL" ]]; then
+  info "Found ${#SRC_PCAP[@]} new PCAP file(s) — labeling every query as label=$PCAP_LABEL (provenance)"
   for pcap_file in "${SRC_PCAP[@]}"; do
-    base=$(basename "$pcap_file" .pcap)
-    base="${base%.pcapng}"
-    raw_csv="$DATA_DIR/pcap_raw_${base}_$(date +%s).csv"
+    base=$(basename "$pcap_file")
+    base="${base%.*}"
     out_json="$DATA_DIR/pcap_feat_${base}_$(date +%s).json"
-
-    detail "tshark parsing: $pcap_file"
-    tshark -r "$pcap_file" \
-      -Y "dns" \
-      -T fields \
-      -e frame.time_epoch \
-      -e ip.src \
-      -e dns.qry.name \
-      -e dns.qry.type \
-      -e dns.flags.response \
-      -e dns.resp.len \
-      -E header=y \
-      -E separator=, \
-      -E quote=d \
-      -E occurrence=f \
-      > "$raw_csv" 2>>"$TRAIN_LOG" || {
-        warn "tshark failed for $pcap_file — skipping"
+    detail "Converting: $pcap_file → $out_json"
+    python3 "$SCRIPT_DIR/make_labeled_features.py" \
+      --input  "$pcap_file" \
+      --label  "$PCAP_LABEL" \
+      --output "$out_json" 2>&1 | tee -a "$TRAIN_LOG" || {
+        warn "Conversion failed for $pcap_file — skipping"
         continue
       }
-
-    python3 dns_parser.py \
-      --input  "$raw_csv" \
-      --output "$out_json" \
-      --source pcap 2>&1 | tee -a "$TRAIN_LOG" || {
-        warn "dns_parser.py failed for $raw_csv — skipping"
-        continue
-      }
-
     if [[ -f "$out_json" ]]; then
       JSON_FROM_PCAP+=("$out_json")
       SRC_JSON+=("$out_json")
       RECORD_COUNT_PCAP=$(python3 -c "import json; print(len(json.load(open('$out_json'))))" 2>/dev/null || echo "?")
       register_trained_file "$pcap_file" "$RECORD_COUNT_PCAP" "pcap"
     fi
-    rm -f "$raw_csv"
   done
   ok "PCAP pre-processing done — ${#JSON_FROM_PCAP[@]} JSON file(s) produced"
-elif [[ ${#SRC_PCAP[@]} -gt 0 && "$TSHARK_AVAILABLE" == false ]]; then
-  warn "PCAP files found but tshark is not installed — skipping all PCAP files"
-  warn "Install with: sudo apt install tshark"
+elif [[ ${#SRC_PCAP[@]} -gt 0 ]]; then
+  warn "PCAP files found but no --pcap-label given — skipping them (a pcap carries no label)"
+  warn "Use --pcap-label 1 (attack captures) / 0 (benign), or convert first with"
+  warn "  scripts/make_labeled_features.py --label 0|1 --input <pcaps> --output <json>"
 else
   info "No new PCAP files — skipping PCAP pre-processing"
 fi

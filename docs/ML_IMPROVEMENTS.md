@@ -151,6 +151,25 @@ honest result: it measures how much of the earlier score came from the circular 
 
 ---
 
+## 6. Datasets evaluated and rejected
+
+**Kaggle "Cyber Security Attacks"** (`cybersecurity_attacks.csv`, 40,000 rows × 25 columns),
+rejected on 2026-10-25.
+
+| Check | Finding |
+|-------|---------|
+| Can the models use it? | **No.** There is no DNS query name column, and every model feature is computed from the domain name |
+| Benign class? | **None.** `Attack Type` is always DDoS (13,428), Malware (13,307), or Intrusion (13,265) |
+| Realistic? | **No, the data is synthetic.** Every categorical column is split almost exactly evenly, `Payload Data` is lorem-ipsum text, city/state pairs don't match (e.g. "Jamshedpur, Sikkim"), indicator columns hold a single value in exactly 50% of rows, and rows with `Traffic Type = DNS` use random ports rather than 53 |
+| Learnability test | A RandomForest (200 trees) with 5-fold CV on 12 feature columns predicting `Attack Type` reached **0.330 accuracy against a chance level of 0.333**. The labels carry no signal |
+
+**Conclusion:** the labels in this dataset can't be told apart from random, so it can't
+support any detection claim. Rejecting it follows the "inappropriate dataset / sampling
+bias" pitfall in Arp et al. (2022). We train instead on lab traffic with ground truth from
+the attack manifest (Tier 1), and use **CIC-Bell-DNS-2021** for external evaluation.
+
+---
+
 ## References
 
 1. Arp et al., *Dos and Don'ts of Machine Learning in Computer Security*, USENIX Security 2022. https://www.usenix.org/system/files/sec22-arp.pdf

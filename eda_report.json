@@ -1,0 +1,204 @@
+{
+  "input": "/home/ounnha/Documents/Capstone/data/processed/merged_features_all.json",
+  "n_records": 18353,
+  "n_columns": 39,
+  "features": {
+    "query_length": {
+      "mean": 45.7427,
+      "std": 60.1957,
+      "min": 2.0,
+      "max": 194.0,
+      "p25": 14.0,
+      "p50": 26.0,
+      "p75": 36.0
+    },
+    "query_entropy": {
+      "mean": 3.8407,
+      "std": 0.7826,
+      "min": 1.0,
+      "max": 5.2199,
+      "p25": 3.2776,
+      "p50": 3.9312,
+      "p75": 4.3158
+    },
+    "has_digits": {
+      "mean": 0.585,
+      "std": 0.4927,
+      "min": 0.0,
+      "max": 1.0,
+      "p25": 0.0,
+      "p50": 1.0,
+      "p75": 1.0
+    },
+    "answer_count": {
+      "mean": 0.0,
+      "std": 0.0,
+      "min": 0.0,
+      "max": 0.0,
+      "p25": 0.0,
+      "p50": 0.0,
+      "p75": 0.0
+    },
+    "subdomain_count": {
+      "mean": 2.2458,
+      "std": 1.1352,
+      "min": 0.0,
+      "max": 5.0,
+      "p25": 1.0,
+      "p50": 2.0,
+      "p75": 4.0
+    },
+    "longest_label": {
+      "mean": 18.08,
+      "std": 18.7053,
+      "min": 2.0,
+      "max": 63.0,
+      "p25": 8.0,
+      "p50": 11.0,
+      "p75": 19.0
+    },
+    "digit_ratio": {
+      "mean": 0.0756,
+      "std": 0.0836,
+      "min": 0.0,
+      "max": 0.6,
+      "p25": 0.0,
+      "p50": 0.0417,
+      "p75": 0.1316
+    },
+    "unique_char_ratio": {
+      "mean": 0.6486,
+      "std": 0.2112,
+      "min": 0.1598,
+      "max": 1.0,
+      "p25": 0.5833,
+      "p50": 0.6923,
+      "p75": 0.7692
+    }
+  },
+  "missing": {
+    "query_length": {
+      "present": true,
+      "missing_rate": 0.0
+    },
+    "query_entropy": {
+      "present": true,
+      "missing_rate": 0.0
+    },
+    "has_digits": {
+      "present": true,
+      "missing_rate": 0.0
+    },
+    "answer_count": {
+      "present": true,
+      "missing_rate": 0.0
+    },
+    "subdomain_count": {
+      "present": true,
+      "missing_rate": 0.0
+    },
+    "longest_label": {
+      "present": true,
+      "missing_rate": 0.0
+    },
+    "digit_ratio": {
+      "present": true,
+      "missing_rate": 0.0
+    },
+    "unique_char_ratio": {
+      "present": true,
+      "missing_rate": 0.0
+    }
+  },
+  "class_balance": {
+    "attack": 9962,
+    "benign": 8391,
+    "attack_rate": 0.5428
+  },
+  "correlation": {
+    "query_length": {
+      "query_length": 1.0,
+      "query_entropy": 0.743,
+      "has_digits": 0.444,
+      "answer_count": NaN,
+      "subdomain_count": 0.728,
+      "longest_label": 0.99,
+      "digit_ratio": 0.47,
+      "unique_char_ratio": -0.891
+    },
+    "query_entropy": {
+      "query_length": 0.743,
+      "query_entropy": 1.0,
+      "has_digits": 0.771,
+      "answer_count": NaN,
+      "subdomain_count": 0.831,
+      "longest_label": 0.776,
+      "digit_ratio": 0.694,
+      "unique_char_ratio": -0.707
+    },
+    "has_digits": {
+      "query_length": 0.444,
+      "query_entropy": 0.771,
+      "has_digits": 1.0,
+      "answer_count": NaN,
+      "subdomain_count": 0.594,
+      "longest_label": 0.463,
+      "digit_ratio": 0.761,
+      "unique_char_ratio": -0.409
+    },
+    "answer_count": {
+      "query_length": NaN,
+      "query_entropy": NaN,
+      "has_digits": NaN,
+      "answer_count": NaN,
+      "subdomain_count": NaN,
+      "longest_label": NaN,
+      "digit_ratio": NaN,
+      "unique_char_ratio": NaN
+    },
+    "subdomain_count": {
+      "query_length": 0.728,
+      "query_entropy": 0.831,
+      "has_digits": 0.594,
+      "answer_count": NaN,
+      "subdomain_count": 1.0,
+      "longest_label": 0.764,
+      "digit_ratio": 0.738,
+      "unique_char_ratio": -0.812
+    },
+    "longest_label": {
+      "query_length": 0.99,
+      "query_entropy": 0.776,
+      "has_digits": 0.463,
+      "answer_count": NaN,
+      "subdomain_count": 0.764,
+      "longest_label": 1.0,
+      "digit_ratio": 0.526,
+      "unique_char_ratio": -0.896
+    },
+    "digit_ratio": {
+      "query_length": 0.47,
+      "query_entropy": 0.694,
+      "has_digits": 0.761,
+      "answer_count": NaN,
+      "subdomain_count": 0.738,
+      "longest_label": 0.526,
+      "digit_ratio": 1.0,
+      "unique_char_ratio": -0.458
+    },
+    "unique_char_ratio": {
+      "query_length": -0.891,
+      "query_entropy": -0.707,
+      "has_digits": -0.409,
+      "answer_count": NaN,
+      "subdomain_count": -0.812,
+      "longest_label": -0.896,
+      "digit_ratio": -0.458,
+      "unique_char_ratio": 1.0
+    }
+  },
+  "warnings": [
+    "Feature 'answer_count' is constant (std=0) \u2014 no signal.",
+    "'query_length' and 'longest_label' highly correlated (r=0.99)."
+  ]
+}

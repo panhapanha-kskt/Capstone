@@ -14,7 +14,6 @@ models/*.json
 !models/.gitkeep
 
 # Data outputs
-data/processed/
 !data/processed/.gitkeep
 
 # Outputs
@@ -42,3 +41,8 @@ Thumbs.db
 attacks/attack
 *.o
 *.exe
+
+# processed data: ignore by default, track json outputs
+data/processed/*
+!data/processed/.gitkeep
+!data/processed/*.json

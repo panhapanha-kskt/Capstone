@@ -1,0 +1,660 @@
+# =============================================================================
+# PLAN.yaml — DNS Traffic Anomaly Detection: ML Improvement Plan
+# =============================================================================
+# Author     : AI-assisted deep review of C:\Programming-CTF\Capstone\docs
+# Date       : 2026-10-25
+# Scope      : Concrete, prioritized actions to move the ML from
+#              "1.00 F1 on an easy dataset" to a defensible, generalizing detector.
+# Reads from : docs/README_full.md, Understanding.md, PLAN.md, AUDIT_REPORT.md,
+#              ML_IMPROVEMENTS.md, MODEL_EVALUATION_2026-10-24.md, progress.md,
+#              Document_DNS.md
+# =============================================================================
+
+meta:
+  project: "DNS Traffic Anomaly Detection using Hybrid ML Fusion"
+  current_branch: main
+  current_state:
+    headline_f1: 0.9997           # rf_gbt branch
+    path_b_f1: 1.0000
+    single_feature_auc_query_length: 0.998
+    leave_one_tool_out_recall:
+      dns2tcp: 0.32
+      dnsexfiltrator: 0.00
+    external_holdout_evaluated: false
+    attack_families_covered: 2
+    benign_hosts: 4
+    benign_duration_seconds: 50
+  core_diagnosis: |
+    The code is structurally correct after the 2026-10-24 fix round, but the
+    results are not yet strong enough to claim. The detector learns tool
+    FINGERPRINTS (length/entropy of specific tools), not tunneling BEHAVIOR.
+    A single feature (query_length) separates the training classes with
+    AUC 0.998, so almost any model trained on this data will show ~1.00.
+    This is a data breadth + feature coverage problem, not a modeling problem.
+  north_star: |
+    "Measured generalization gap on data the model never saw, reported honestly."
+    Specifically: external-holdout PR-AUC >= 0.80 and leave-one-tool-out
+    recall >= 0.70 on at least 3 unseen tool families, with FPR on cross-dataset
+    benign <= 5%.
+
+# -----------------------------------------------------------------------------
+# PRIORITY LADDER
+#   P0 — must do first; everything else depends on it
+#   P1 — core improvements; biggest research-defensibility payoff
+#   P2 — depth / robustness; strengthens the paper
+#   P3 — polish & future work
+# -----------------------------------------------------------------------------
+
+priorities:
+
+  # ===========================================================================
+  P0_data_foundation:
+    headline: "Expand data breadth before touching the models."
+    rationale: |
+      Every current limitation (query_length shortcut, 0.00 recall on
+      dnsexfiltrator LOTO, 1.00 F1 on test, undefended "it generalizes" claim)
+      is downstream of narrow data. Fixing models before fixing data wastes
+      iterations.
+
+    tasks:
+
+      - id: P0.1
+        name: "External holdout — DNSTunnel2026 (Zenodo)"
+        why: |
+          Papers consistently show in-dataset F1 collapses on cross-dataset
+          evaluation (NIDS Survey 2025, arXiv 2502.06688). An external holdout
+          converts a "1.00 F1" result into a credible generalization claim or
+          an honest gap number — either outcome is defensible.
+        steps:
+          - Download DNSTunnel2026 from https://zenodo.org/records/23326431
+          - Convert its PCAPs/CSVs to the pipeline's JSON schema using
+            `scripts/make_labeled_features.py` with `--family <tool>`
+          - Run `scripts/verify_models.py --holdout` on it WITHOUT retraining
+          - Record precision / recall / F1 / PR-AUC / ROC-AUC in a new
+            table in docs/MODEL_EVALUATION_2026-10-24.md section "External holdout"
+        acceptance:
+          - Metrics file at models/evaluation_metrics.json has a new
+            `external_holdout` block with at least 3 tool families
+          - Report the delta between in-dataset F1 and holdout F1 in the paper
+        effort_hours: 4
+        references:
+          - "https://zenodo.org/records/23326431 — DNSTunnel2026"
+          - "arXiv 2502.06688 — Cross-dataset NIDS evaluation gap"
+          - "arXiv 2511.20229 — LSH, holdout-tool protocol"
+
+      - id: P0.2
+        name: "Capture broader benign baseline"
+        why: |
+          Current benign is one ~50-second pcap from 4 clients on one subnet.
+          Published guidance (Nadler et al. arXiv 1709.08395; CIC-Bell-DNS-2021)
+          targets ≥99% benign ratio and 25+ enterprise clients. Narrow benign
+          is the reason the base64 heuristic was so false-positive heavy, and
+          it caps Path B's reach.
+        steps:
+          - On 2–3 different hosts (different OSes if possible), capture ≥2 h
+            of normal browsing with `tcpdump -i any -w benign_<host>_<date>.pcap 'port 53'`
+          - Supplement with a Tranco top-1M loop (`dig +short <domain>`) from
+            each host to broaden the lexical variety
+          - Target: ≥50,000 benign queries across ≥3 clients and ≥2 time windows
+          - Rebuild `data/processed/labeled_benign.json` and retrain
+        acceptance:
+          - benign:attack ratio >= 5:1 in the training set (currently ~0.57:1)
+          - at least 3 distinct `client_ip` values appear in BOTH train and val
+          - benign heuristic FP rate (post base64 fix) remains below 5%
+        effort_hours: 6
+        references:
+          - "arXiv 1709.08395 — benign must dominate"
+          - "CIC-Bell-DNS-2021 — benign generation recipe"
+          - "DNSTunnel2026 — 25 enterprise clients"
+
+      - id: P0.3
+        name: "Add 3+ unseen attack families to training *and* a separate LOTO set"
+        why: |
+          Only dns2tcp and dnsexfiltrator today. LOTO recall is 0.32 / 0.00.
+          Adding iodine, dnscat2, DNSExfiltrator variants, and a DGA generator
+          (sowbug / cryptolocker-DGA) gives real coverage; keeping one tool
+          OUT of training (iodine) gives the leave-one-tool-out number that
+          actually measures generalization.
+        steps:
+          - Run `attacks/attack.c` with `--random-subdomains`, `--nxdomain-flood`,
+            `--amplification` modes against the lab Technitium; label each run
+            in `data/attack_manifest.csv`
+          - Add external captures: dnscat2 (GitHub), iodine (hold out),
+            CIRA-CIC-DoHBrw-2020 tunnels, GraphTunnel PCAPs
+          - Create `data/processed/holdout_iodine.json` NEVER used in training
+        acceptance:
+          - `recall_by_family` has >=5 keys in models/evaluation_metrics.json
+          - A LOTO benchmark script runs end-to-end and reports recall per family
+        effort_hours: 8
+        references:
+          - "arXiv 2505.22220 — Domainator, generalization gap on unseen tools"
+          - "docs/MODEL_EVALUATION_2026-10-24.md §2 — current LOTO numbers"
+
+      - id: P0.4
+        name: "Replace circular-labeling fallback with a 'labels required' gate"
+        why: |
+          If no manifest exists, `fusion/bridge.py --label-only` currently
+          falls back to `attack_count ≥ 1`, which is circular (NIST AI 100-2e2025).
+          A fallback this quiet is a research-credibility risk at the defense.
+        steps:
+          - In `fusion/bridge.py`, make `--label-only` HARD-FAIL (exit 1) if
+            `data/attack_manifest.csv` is missing, unless `--allow-heuristic-labels`
+            is explicitly passed
+          - Emit a WARNING (not INFO) when the fallback is used, including
+            the string "circular labeling — results are not comparable to
+            manifest-labeled runs"
+          - Record `label_source: {manifest|heuristic}` in training_metadata.json
+            so every model artifact carries its own label-provenance tag
+        acceptance:
+          - Running trainer without manifest + without the flag exits non-zero
+          - evaluation_metrics.json has a `label_source` field
+        effort_hours: 1
+        references:
+          - "NIST AI 100-2e2025 — adversarial ML taxonomy"
+          - "docs/AUDIT_REPORT.md Issue 1 — circular labeling"
+          - "docs/ML_IMPROVEMENTS.md Tier 1 — provenance labels"
+
+  # ===========================================================================
+  P1_feature_and_model_depth:
+    headline: "Move the detector from lexical fingerprints to behavioral patterns."
+    rationale: |
+      The current 8 features are all per-query lexical measures. That is why
+      the model learns tool fingerprints: dns2tcp always produces queries of
+      {26, 79, 101, 194} characters. Adding per-domain/per-client aggregates
+      and temporal rhythm turns the task into "does this HOST behave like a
+      tunneler" instead of "does this QUERY look like dns2tcp".
+
+    tasks:
+
+      - id: P1.1
+        name: "Per-domain and per-client aggregation features (Infoblox pattern)"
+        why: |
+          Infoblox's production detector groups by (second-level domain,
+          client IP) and computes volume, subdomain entropy, and query
+          frequency. This is the single most important feature-engineering
+          step the current literature agrees on.
+        steps:
+          - Add a new module `src/dns_detect/features/aggregates.py` with
+            functions keyed by (registered_domain, client_ip):
+              * unique_subdomains_per_sld_1m / 5m / 15m
+              * query_rate_per_client_per_sld
+              * avg_subdomain_entropy_per_sld
+              * nxdomain_ratio_per_sld
+              * qtype_distribution_per_sld  (NULL / TXT / A share)
+              * answer_size_variance_per_sld
+          - Wire these into the extractor as a second pass AFTER per-query
+            extraction (so you have time-ordered rows to aggregate over)
+          - Add them to `FEATURES_8` (rename it) and the Path B feature set
+        acceptance:
+          - A trained model's RF feature_importance_ shows at least ONE
+            aggregate feature in the top 3
+          - Single-feature AUC of `query_length` drops below 0.95 on new data
+            (because aggregates now carry signal the shortcut lacks)
+          - Leave-one-tool-out recall on unseen tool >= 0.60
+        effort_hours: 12
+        references:
+          - "Infoblox: https://www.infoblox.com/blog/security/novel-ai-techniques-for-dns-tunnel-security/"
+          - "Saeli et al. 2020 arXiv 2010.01582 — behavioral features"
+          - "Lyu et al. 2021 — hierarchical subnet aggregation"
+
+      - id: P1.2
+        name: "Temporal / burstiness features"
+        why: |
+          Tunneling tools transmit with a rhythm — short inter-arrival times
+          for high-throughput tunnels, fixed heartbeats for C2. Lexical
+          mimicry can hide length and entropy but is slow to hide timing.
+        steps:
+          - Compute per (client, sld) rolling features over 1m/5m windows:
+              * inter_arrival_mean, inter_arrival_std, inter_arrival_entropy
+              * burst_count (queries in 1s bins > threshold)
+              * periodicity_score (FFT magnitude at dominant frequency)
+          - Include these in the Path B window features (`PATH_B_FEATURES`)
+        acceptance:
+          - At least 2 timing features appear in top 10 feature importance
+          - A beaconing attack (fixed 30s interval) is caught by the regularity
+            feature with recall >= 0.80 at FPR <= 1%
+        effort_hours: 8
+        references:
+          - "arXiv 1906.11246 — DNS tunneling detection w/ timing features"
+          - "docs/PLAN.md §5.2 — window features"
+
+      - id: P1.3
+        name: "Metadata-sequence features (Domainator 2025)"
+        why: |
+          Domainator (arXiv 2505.22220) shows that *sequences* of QTYPE and
+          RCODE codes generalize better across tools than lexical features,
+          because tools must use specific record types to carry payload but
+          can obfuscate the string.
+        steps:
+          - For each (client, sld) in a 5-min window, build:
+              qtype_sequence_hash (bag-of-trigrams over A/AAAA/TXT/NULL/...)
+              rcode_sequence_hash
+              qtype_entropy  (how varied is the QTYPE mix)
+          - Feed these as additional Path A features
+        acceptance:
+          - Metadata-sequence features are present in evaluation_metrics.json
+          - LOTO recall on dnsexfiltrator rises from 0.00 to >= 0.30
+        effort_hours: 6
+        references:
+          - "arXiv 2505.22220 — Domainator, metadata sequences"
+
+      - id: P1.4
+        name: "Upgrade Path B to a Kitsune-style ensemble (KitNET)"
+        why: |
+          Current Path B is one 5-feature autoencoder. Kitsune's reference
+          design (Mirsky et al., NDSS 2018) is an ENSEMBLE of small AEs,
+          each over a correlation-clustered feature subset, with a final AE
+          over the member RMSEs. On single-feature-AE designs, one shortcut
+          dominates reconstruction error — the ensemble spreads the signal.
+        steps:
+          - Replace `path_b_train.build_trafficformer` with a KitNET-like layout:
+              * cluster features into K subsets by correlation
+              * train K small AEs on their subsets
+              * train an outer AE on the K per-sample RMSEs
+              * final anomaly score = output-layer RMSE
+          - Keep the Trafficformer as a baseline (same gating pattern as the
+            Transformer baseline in Path A)
+        acceptance:
+          - models/evaluation_metrics.json has both `path_b_kitnet` and
+            `path_b_trafficformer_baseline`
+          - KitNET PR-AUC >= Trafficformer PR-AUC on the external holdout
+        effort_hours: 10
+        references:
+          - "Mirsky et al. 2018 — Kitsune (NDSS), arXiv 1802.09089"
+          - "docs/AUDIT_REPORT.md Issue 5 — multi-feature AE"
+          - "docs/ML_IMPROVEMENTS.md §2 Tier 2b — Kitsune reference"
+
+      - id: P1.5
+        name: "Calibrated score with a reliability curve"
+        why: |
+          `ml_combined_score` is used directly as a severity signal. If scores
+          are not calibrated, 0.85 and 0.95 are not comparable across runs.
+          Platt scaling / isotonic regression on validation gives usable
+          probabilities and a reliability curve for the paper.
+        steps:
+          - After Path A training, fit `sklearn.calibration.CalibratedClassifierCV`
+            (method='isotonic', cv='prefit') on the validation set
+          - Save a calibrated version alongside the raw model
+          - Plot and save a reliability diagram to models/reliability_curve.png
+        acceptance:
+          - Expected Calibration Error (ECE) on test <= 0.05
+          - Reliability curve lies within ±5% of diagonal in bins >50 samples
+        effort_hours: 3
+        references:
+          - "Platt 1999; Niculescu-Mizil & Caruana 2005"
+          - "docs/PLAN.md §10 — score calibration metric"
+
+  # ===========================================================================
+  P2_evaluation_and_robustness:
+    headline: "Make the evaluation itself a research artifact."
+    rationale: |
+      "We got 1.00" is not a result. "We measured a 0.72 PR-AUC on data the
+      model never saw and here is the error analysis" is. These tasks make
+      the evaluation reproducible, adversarial, and honest.
+
+    tasks:
+
+      - id: P2.1
+        name: "Detection-as-code with a replay test"
+        why: |
+          Thresholds, weights, and feature lists drift between runs. One
+          versioned `detections/config.yaml` plus a replay test (`tests/test_replay.py`)
+          that asserts expected alerts on a frozen input is a NIST SP 800-53
+          SI-7 (software integrity) safeguard adapted for ML.
+        steps:
+          - Collapse hardcoded thresholds in `engine.py` and model CLIs into
+            `config/detections.yaml` (one hash per release)
+          - Build `tests/replays/tunnel_light.jsonl` + `.expected.json` with
+            3 benign + 3 malicious scenarios
+          - CI job runs the replay before any merge
+        acceptance:
+          - `pytest tests/test_replay.py` passes on the current main
+          - A deliberate +0.05 threshold change breaks the test with a clear diff
+        effort_hours: 4
+        references:
+          - "docs/PLAN.md §A6 — detection-as-code & replay"
+          - "NIST SP 800-53 Rev. 5 SI-7"
+
+      - id: P2.2
+        name: "Adversarial robustness evaluation (CTF-style)"
+        why: |
+          A capstone in a CTF context should probe how easy it is to evade
+          its own detector. The current `query_length` shortcut means any
+          attacker who caps queries at ≤25 chars evades Path A entirely.
+        steps:
+          - Build `scripts/evade_test.py` that generates tunneling traffic
+            with 3 evasion strategies:
+              1. length-matched (<= benign 90th percentile)
+              2. entropy-matched (English-word padding)
+              3. rate-limited (<=10 queries/min)
+          - Measure recall per strategy and report delta vs un-evaded tunnel
+        acceptance:
+          - evaluation_metrics.json has an `adversarial` block with recall
+            under each evasion strategy
+          - The paper quotes the DROP in recall under each strategy
+        effort_hours: 6
+        references:
+          - "arXiv 2505.22220 — Domainator, evasion resistance"
+          - "docs/PLAN.md A1 — dry-run before enforcement"
+
+      - id: P2.3
+        name: "Formal LOTO + k-fold cross-validation harness"
+        why: |
+          Current numbers come from one train/val/test split (seed 42).
+          A single split cannot support 'significance'. 5-fold stratified
+          CV + LOTO over K tools gives mean ± std for the paper.
+        steps:
+          - Build `scripts/cross_validate.py` wrapping Path A training
+            with StratifiedKFold(n_splits=5, shuffle=True, random_state=42)
+          - Separately: iterate over tool families, train leaving one out,
+            report recall on the held-out tool
+          - Write `models/cv_metrics.json` with per-fold and aggregate numbers
+        acceptance:
+          - Headline F1 is reported as mean ± std across 5 folds
+          - LOTO table has >= 5 rows (one per family) with recall ± std
+        effort_hours: 5
+        references:
+          - "scikit-learn StratifiedKFold documentation"
+          - "arXiv 2511.20229 — LSH, holdout-tool evaluation"
+
+      - id: P2.4
+        name: "Error analysis — what the model actually misses"
+        why: |
+          A reviewer will ask "which malicious queries slip through, and
+          why?". Without a classified error table, you cannot answer.
+        steps:
+          - After the next training, dump the test set's FN and FP rows
+            to `data/processed/error_analysis_<date>.csv` with:
+              * row features
+              * both ml_scores
+              * manifest attack_family
+              * closest-matching training-set row (nearest neighbor in
+                scaled feature space)
+          - Hand-cluster the 20 largest-error FNs and name each cluster
+        acceptance:
+          - A table in the paper lists the top 5 FN clusters with examples
+          - A table of top 5 FP clusters with suggested feature additions
+        effort_hours: 3
+        references:
+          - "Andrej Karpathy, 'A Recipe for Training Neural Networks' — error analysis"
+
+      - id: P2.5
+        name: "Score drift monitoring on live data"
+        why: |
+          `monitoring/monitor.py` reports PSI drift per feature. Add a
+          *score* drift check: if the live ml_combined_score distribution
+          shifts (KS-stat > 0.1) vs training-era scores, flag it.
+        steps:
+          - Save `score_distribution` (histogram) in training_metadata.json
+          - In monitor.py add a KS-test against the saved histogram
+          - Trigger `retrain_recommended: true` on KS-stat > 0.1
+        acceptance:
+          - monitoring_report.json gains a `score_drift` block
+          - Deliberately shifting live scores by +0.1 triggers the alarm
+        effort_hours: 2
+        references:
+          - "docs/PLAN.md §A6 — score-health"
+
+  # ===========================================================================
+  P3_depth_and_future_work:
+    headline: "Depth features that strengthen the paper but are not blocking."
+
+    tasks:
+
+      - id: P3.1
+        name: "DoH / DoT coverage (ATT&CK known-gap)"
+        why: |
+          Encrypted DNS is a declared blind spot. CIRA-CIC-DoHBrw-2020 is
+          the standard dataset. Even reporting "DoH not covered, measured
+          evasion rate under DoH = X%" is stronger than silence.
+        steps:
+          - Fetch CIRA-CIC-DoHBrw-2020 and extract per-connection timing
+            features (packet lengths, inter-arrival times)
+          - Train a separate micro-model on this (not fused with the main
+            engine) and report its PR-AUC
+        acceptance:
+          - A separate `path_c_doh` block in evaluation_metrics.json
+          - The paper has one subsection acknowledging DoH coverage
+        effort_hours: 10
+        references:
+          - "https://www.unb.ca/cic/datasets/dohbrw-2020.html"
+          - "docs/PLAN.md §A5 — ATT&CK coverage table"
+
+      - id: P3.2
+        name: "Per-host risk score (risk-based alerting)"
+        why: |
+          Instead of alerting per query, aggregate signals per host:
+            risk(host) = Σ weight(signal) · confidence · exp(-Δt / τ)
+          A real attack produces several Low alerts on the same host that
+          escalate together — reducing alert fatigue and improving SOC UX.
+        steps:
+          - Add `src/dns_detect/scoring/host_risk.py`
+          - Decay signals with τ = 2 h
+          - Emit one case per host when risk crosses a threshold
+        acceptance:
+          - Alert volume per host drops >= 50% while recall is unchanged
+        effort_hours: 6
+        references:
+          - "docs/PLAN.md §A7 — risk score"
+
+      - id: P3.3
+        name: "Online learning / concept drift handling"
+        why: |
+          Monitor already recommends retrain, but there is no partial-fit
+          path — every retrain is from scratch. HistGradientBoostingClassifier
+          supports warm_start; a per-day sliding retrain would reduce staleness.
+        steps:
+          - Add `--incremental` to train_models.sh that reuses the previous
+            RF/GBT and partial-fits on new data
+          - Guard with the label-shuffle check to detect drift-induced leakage
+        acceptance:
+          - A nightly cron can retrain in under 2 minutes on 10k new rows
+        effort_hours: 5
+        references:
+          - "scikit-learn warm_start documentation"
+          - "docs/PLAN.md §A2 — verdict buttons → labels"
+
+      - id: P3.4
+        name: "Human-in-the-loop verdict labels (feeds back into training)"
+        why: |
+          Approvers tapping [True positive] / [False positive] in the planned
+          Telegram HITL produce labels that are costly to generate elsewhere.
+          Appending them to `feedback.jsonl` and promoting to a training set
+          after review is a cheap source of ground truth.
+        steps:
+          - After PLAN.md Phase 5 (HITL) lands, append verdicts to
+            `data/feedback.jsonl` with (alert_id, approver_id, model_version, verdict)
+          - A `scripts/promote_verdicts.py` reviews, de-duplicates and merges
+            into the training set behind a manual gate
+        acceptance:
+          - A full round-trip: alert → verdict → next retrain picks it up
+        effort_hours: 4
+        references:
+          - "docs/PLAN.md §A2 — verdict buttons"
+
+      - id: P3.5
+        name: "Make config/settings.yaml the single source of truth"
+        why: |
+          AUDIT_REPORT and ML_IMPROVEMENTS both flag that thresholds are
+          partly in code, partly in CLI, partly in YAML. One source removes
+          a class of silent misconfig bugs.
+        steps:
+          - Audit every hardcoded threshold in engine.py, bridge.py, path_a.py,
+            path_b_train.py — move each one to settings.yaml
+          - Fail-fast on startup if a key the module expects is missing
+        acceptance:
+          - `grep -rE "0\.[0-9]+\s*#\s*threshold|THRESHOLD\s*=" src/` returns 0 hits
+        effort_hours: 3
+        references:
+          - "docs/AUDIT_REPORT.md Minor Issues — config drift"
+          - "docs/Understanding.md §4 — config and path resolution"
+
+# -----------------------------------------------------------------------------
+# TIMELINE (12-week capstone horizon)
+# -----------------------------------------------------------------------------
+
+timeline:
+  week_1:
+    - P0.1_external_holdout_dns_tunnel_2026
+    - P0.2_broader_benign_capture
+    - P0.4_disable_circular_labeling_fallback
+  week_2:
+    - P0.3_add_unseen_attack_families
+    - P1.1_per_domain_per_client_aggregates
+  week_3:
+    - P1.2_temporal_burstiness_features
+    - P1.3_metadata_sequence_features
+    - P2.3_formal_kfold_and_loto_harness
+  week_4:
+    - P1.4_kitsune_style_ensemble_for_path_b
+    - P1.5_score_calibration_reliability_curve
+  week_5:
+    - P2.1_detection_as_code_replay_test
+    - P2.2_adversarial_evaluation
+    - P2.4_error_analysis
+    - P2.5_score_drift_monitoring
+  week_6_onwards:
+    - P3.1_doh_coverage
+    - P3.2_per_host_risk_score
+    - P3.3_online_learning
+    - P3.4_verdict_feedback_loop
+    - P3.5_config_single_source_of_truth
+    - docs/PLAN.md phases 1–5 (Wazuh, HITL, near-real-time)
+
+# -----------------------------------------------------------------------------
+# SUCCESS CRITERIA — what "better ML" looks like
+# -----------------------------------------------------------------------------
+
+success_metrics:
+  must_have:
+    external_holdout_pr_auc: ">= 0.80"
+    leave_one_tool_out_recall_min: ">= 0.70 across >=3 unseen tools"
+    cross_dataset_benign_fpr: "<= 5%"
+    single_feature_shortcut_auc: "< 0.95 (down from 0.998)"
+    expected_calibration_error: "<= 0.05"
+    label_source: "manifest-only (circular fallback disabled)"
+  should_have:
+    adversarial_recall_under_length_matched: ">= 0.50"
+    kitnet_pr_auc_vs_trafficformer_baseline: "KitNET >= Trafficformer"
+    replay_test_in_ci: "passing on main"
+    monitor_detects_induced_drift: "true"
+  nice_to_have:
+    doh_coverage_micro_model_reported: "true"
+    per_host_risk_alert_consolidation: ">= 50% volume reduction"
+    verdict_feedback_round_trip: "demonstrated end-to-end"
+
+# -----------------------------------------------------------------------------
+# RISKS & GUARDRAILS
+# -----------------------------------------------------------------------------
+
+risks:
+  - name: "Data leakage via new aggregate features"
+    description: |
+      Per-domain / per-client aggregates computed over the FULL dataset
+      leak test-set information into training rows. Compute aggregates
+      WITHIN each split, not globally.
+    mitigation: "Add an assertion in features/aggregates.py that split-id
+                 of every input row equals split-id of the aggregate's
+                 contributing rows."
+
+  - name: "Label contamination from HITL verdicts"
+    description: |
+      If analysts rubber-stamp Approve, their verdicts poison the training
+      set.
+    mitigation: "Only verdicts from allowlisted approvers; one verdict per
+                 alert per approver; 10% of verdicts re-audited by a second
+                 approver before promotion."
+
+  - name: "Overfitting new aggregates to lab topology"
+    description: |
+      `client_ip` and `source_subnet` features can memorize the lab's 4
+      hosts. Report feature importances and drop any that leak the lab.
+    mitigation: "After every training, assert no feature of the form
+                 `client_ip*` or `subnet*` has importance > 0.1."
+
+  - name: "KitNET compute cost on live traffic"
+    description: |
+      Ensembles are slower. If per-query inference latency breaks the
+      near-real-time target, keep Trafficformer in production and KitNET
+      offline for evaluation only.
+    mitigation: "Measure P50/P99 inference latency per path; gate KitNET
+                 behind a latency SLO."
+
+# -----------------------------------------------------------------------------
+# DELIVERABLES PER PRIORITY
+# -----------------------------------------------------------------------------
+
+deliverables:
+  P0:
+    - "models/evaluation_metrics.json → `external_holdout` block"
+    - "data/processed/labeled_benign.json (≥50k queries, ≥3 hosts)"
+    - "data/attack_manifest.csv (≥5 attack families)"
+    - "data/processed/holdout_iodine.json (never-trained set)"
+  P1:
+    - "src/dns_detect/features/aggregates.py"
+    - "src/dns_detect/features/temporal.py"
+    - "src/dns_detect/models/path_b_kitnet.py"
+    - "models/reliability_curve.png"
+  P2:
+    - "config/detections.yaml"
+    - "tests/test_replay.py + tests/replays/*.jsonl"
+    - "scripts/evade_test.py"
+    - "scripts/cross_validate.py + models/cv_metrics.json"
+    - "data/processed/error_analysis_<date>.csv"
+  P3:
+    - "models/path_c_doh.* + CIRA-DoHBrw metrics block"
+    - "src/dns_detect/scoring/host_risk.py"
+    - "scripts/promote_verdicts.py"
+    - "All thresholds live in config/settings.yaml (grep-clean)"
+
+# -----------------------------------------------------------------------------
+# OPEN QUESTIONS — ask the advisor before building
+# -----------------------------------------------------------------------------
+
+open_questions:
+  - "Is DoH coverage in scope for the defense, or declared as a documented gap?"
+  - "How much lab-topology memorization is acceptable in the paper? (e.g.
+     do we pseudonymize client IPs in reported metrics?)"
+  - "Is the 'risk-based alerting' per-host score part of the capstone or
+     future work?"
+  - "Which external dataset is the committee most likely to accept as the
+     holdout — DNSTunnel2026, CIC-Bell-DNS-2021, or GraphTunnel?"
+
+# -----------------------------------------------------------------------------
+# BIBLIOGRAPHY — sources this plan is built on
+# -----------------------------------------------------------------------------
+
+references:
+  core_papers:
+    - "Arp et al. 2022 — Dos and Don'ts of ML in Computer Security — USENIX Security"
+    - "Mirsky et al. 2018 — Kitsune, NDSS — arXiv 1802.09089"
+    - "Nadler et al. 2019 — DNS Exfiltration Detection — arXiv 1709.08395"
+    - "Grinsztajn et al. 2022 — Trees > deep nets on tabular — NeurIPS, arXiv 2207.08815"
+    - "Saito & Rehmsmeier 2015 — PR plots on imbalanced data — PLoS ONE"
+    - "Sommer & Paxson 2010 — Outside the Closed World — IEEE S&P"
+  recent_dns_tunneling:
+    - "LSH 2025 — arXiv 2511.20229 — holdout-tool evaluation"
+    - "Domainator 2025 — arXiv 2505.22220 — metadata sequences"
+    - "DNS Tunneling Threat Landscape 2025 — arXiv 2507.10267"
+    - "NIDS Datasets Survey 2025 — arXiv 2502.06688"
+    - "DNS-HyXNet 2025 — arXiv 2512.09565"
+  datasets:
+    - "DNSTunnel2026 — https://zenodo.org/records/23326431"
+    - "CIC-Bell-DNS-2021 — https://www.unb.ca/cic/datasets/dns-2021.html"
+    - "CIRA-CIC-DoHBrw-2020 — https://www.unb.ca/cic/datasets/dohbrw-2020.html"
+    - "BCCC-CIC-Bell-DNS-2024"
+  frameworks_and_standards:
+    - "NIST AI 100-2e2025 — Adversarial ML Taxonomy"
+    - "NIST SP 800-94 — IDPS Guide (baseline hygiene)"
+    - "NIST SP 800-61 Rev. 3 — IR Guide (alert correlation)"
+    - "MITRE ATT&CK T1071.004 (DNS), T1572, T1568, T1048"
+  practitioner_blogs:
+    - "Infoblox — https://www.infoblox.com/blog/security/novel-ai-techniques-for-dns-tunnel-security/"
+  internal_docs:
+    - "docs/README_full.md — academic paper"
+    - "docs/Understanding.md — architectural ground truth"
+    - "docs/AUDIT_REPORT.md — standards-compliance audit"
+    - "docs/ML_IMPROVEMENTS.md — rationale + sources"
+    - "docs/MODEL_EVALUATION_2026-10-24.md — current evaluation + gaps"
+    - "docs/progress.md — roadmap and literature plan"
+    - "docs/PLAN.md — capstone extension plan (Wazuh/Telegram/near-real-time)"

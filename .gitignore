@@ -46,3 +46,6 @@ attacks/attack
 data/processed/*
 !data/processed/.gitkeep
 !data/processed/*.json
+
+# Claude Code local config / skills (per-developer, not shared)
+.claude/

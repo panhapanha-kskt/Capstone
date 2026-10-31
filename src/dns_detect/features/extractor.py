@@ -167,8 +167,9 @@ class DNSFeatureExtractor:
 
     def detect_encoding_patterns(self, domain: str) -> Dict[str, Any]:
         """
-        Detect base32/base64 encoding patterns (--encoding)
-        Attack tool generates .base32.lab.local and .base64.lab.local domains
+        Detect base32/base64-encoded names from their character statistics.
+        No tool-name shortcut (e.g. '.base64.' in the name): a real attacker never
+        labels their payload, so such a check only recognises our own lab tool.
         """
         result = {
             'is_base32': False,
@@ -176,21 +177,6 @@ class DNSFeatureExtractor:
             'encoding_type': None,
             'confidence': 0.0
         }
-
-        # Direct attack tool pattern detection
-        if '.base32.' in domain.lower():
-            result['is_base32'] = True
-            result['encoding_type'] = 'base32_attack_tool'
-            result['confidence'] = 1.0
-            self.attack_patterns['encoding_patterns'] += 1
-            return result
-
-        if '.base64.' in domain.lower():
-            result['is_base64'] = True
-            result['encoding_type'] = 'base64_attack_tool'
-            result['confidence'] = 1.0
-            self.attack_patterns['encoding_patterns'] += 1
-            return result
 
         # Detect base32 patterns (A-Z, 2-7, length multiple of 8)
         domain_clean = domain.replace('.', '').upper()

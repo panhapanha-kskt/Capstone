@@ -141,6 +141,42 @@ if [[ "$WITH_INFRA" == true ]]; then
   fi
 fi
 
+# ── GROUND TRUTH: record each attack run in the attack manifest ──
+# Training (Step 8) labels queries inside this window under the target domain as attack.
+# source_ip is left empty: behind Docker, Technitium may see the bridge gateway, not this host.
+# The window uses the clock the Technitium log uses (its "Local" is UTC unless the container sets TZ).
+ATTACK_MANIFEST="$PROJECT_ROOT/data/attack_manifest.csv"
+record_attack_in_manifest() {
+  local target_domain family="" start="$ATTACK_START_UTC" end="$ATTACK_END_UTC" clock="UTC"
+  target_domain=$(awk '{print $2}' <<< "$ATTACK_ARGS")
+  for flag in $ATTACK_ARGS; do
+    case "$flag" in
+      --all-attacks)       family+="${family:++}all_attacks" ;;
+      --nxdomain-flood)    family+="${family:++}nxdomain_flood" ;;
+      --random-subdomains) family+="${family:++}random_subdomains" ;;
+      --amplification)     family+="${family:++}amplification" ;;
+      --cache-poison)      family+="${family:++}cache_poisoning" ;;
+    esac
+  done
+  [[ -n "$family" ]] || family="attack_tool"
+  # Which clock does the newest Technitium log use? Compare its last timestamp with now.
+  local newest last_ts
+  newest=$(ls -t "$INFRA_LOGS"/*.log 2>/dev/null | head -n 1 || true)
+  if [[ -n "$newest" ]]; then
+    last_ts=$(grep -o '^\[[0-9-]* [0-9:]* Local\]' "$newest" | tail -n 1 | tr -d '[]' | sed 's/ Local//')
+    if [[ -n "$last_ts" ]]; then
+      local now diff_local diff_utc
+      now=$(date +%s)
+      diff_local=$(( now - $(date -d "$last_ts" +%s 2>/dev/null || echo 0) ))
+      diff_utc=$(( now - $(date -u -d "$last_ts" +%s 2>/dev/null || echo 0) ))
+      if (( ${diff_local#-} < ${diff_utc#-} )); then start="$ATTACK_START_LOCAL"; end="$ATTACK_END_LOCAL"; clock="host local time"; fi
+    fi
+  fi
+  [[ -f "$ATTACK_MANIFEST" ]] || echo "campaign_id,family,source_ip,start,end,target_domain" > "$ATTACK_MANIFEST"
+  echo "C-$(date +%Y%m%d-%H%M%S),$family,,$start,$end,$target_domain" >> "$ATTACK_MANIFEST"
+  ok "Recorded attack window in data/attack_manifest.csv ($family, $start → $end, $clock, domain $target_domain)"
+}
+
 # ── OPTIONAL: GENERATE ATTACK TRAFFIC ──────────────────────
 if [[ "$WITH_ATTACK" == true ]]; then
   stage "Attack — generate labeled traffic (Kali/root, raw sockets)"
@@ -149,8 +185,11 @@ if [[ "$WITH_ATTACK" == true ]]; then
   info "Building attack tool ..."
   make -C "$ATTACK_DIR" || fail "attack build failed"
   info "Running: sudo ./attack $ATTACK_ARGS"
+  ATTACK_START_LOCAL=$(date +%Y-%m-%dT%H:%M:%S); ATTACK_START_UTC=$(date -u +%Y-%m-%dT%H:%M:%S)
   # shellcheck disable=SC2086
   sudo "$ATTACK_DIR/attack" $ATTACK_ARGS || warn "attack exited non-zero (continuing)"
+  ATTACK_END_LOCAL=$(date +%Y-%m-%dT%H:%M:%S); ATTACK_END_UTC=$(date -u +%Y-%m-%dT%H:%M:%S)
+  record_attack_in_manifest
   # Feed the fresh Technitium logs into the pipeline input
   if compgen -G "$INFRA_LOGS/*.log" >/dev/null; then
     cp -f "$INFRA_LOGS"/*.log "$DNS_LOG_DIR"/ && ok "Copied new DNS logs → $DNS_LOG_DIR"

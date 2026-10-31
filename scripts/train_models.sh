@@ -1,96 +1,85 @@
 #!/bin/bash
 # ============================================================
-#  DNS Traffic Anomaly Detection — ML Model Trainer v2
-#  Run this ONCE (or whenever you want to retrain on new data).
-#  Saves trained models as persistent "memory" files.
-#
-#  NEW in v2:
-#    - Train from specific CSV / JSON / PCAP / LOG files or folders
-#    - Auto-ingests raw Technitium .log files before training
-#    - Rich training memory (file provenance, checksums, attack types)
-#    - run_pipeline.sh reads memory and warns on data mismatch
-#
-#  NEW in v3 (smart retrain):
-#    - --retrain no longer forces full retrain of existing data
-#    - Instead, it finds NEW files not seen in previous training runs
-#    - Already-trained data is skipped with a clear banner
-#    - Only genuinely new data triggers retraining
+#  DNS Traffic Anomaly Detection — ML Model Trainer
+#  Trains Path A (RF + GBT) and Path B (Trafficformer) and saves them to models/.
+#  Prints one short line per stage; the full output goes to logs/training_<time>.log.
 #
 #  Usage:
-#    ./scripts/train_models.sh                              # default: scan DNS_LOG_DIR + data/
-#    ./scripts/train_models.sh --data-dir /path/to/folder   # scan a specific folder
+#    ./scripts/train_models.sh                              # scan data/raw/
+#    ./scripts/train_models.sh --data-dir /path/to/folder   # scan a folder
 #    ./scripts/train_models.sh --files a.csv b.pcap c.log   # specific files
-#    ./scripts/train_models.sh --data-dir /folder --files x.json   # both
-#    ./scripts/train_models.sh --retrain                    # find NEW data and retrain on it
-#    ./scripts/train_models.sh --force-retrain              # old behavior: retrain everything
-#    ./scripts/train_models.sh --path-a-only
-#    ./scripts/train_models.sh --path-b-only
-#    ./scripts/train_models.sh --n-days 30
+#    ./scripts/train_models.sh --retrain                    # only files not trained before
+#    ./scripts/train_models.sh --force-retrain              # retrain on all given data
+#    ./scripts/train_models.sh --path-a-only | --path-b-only
+#    ./scripts/train_models.sh --eda-only                   # stop after both EDA reports
+#    ./scripts/train_models.sh --verbose                    # also stream the full output
 #    ./scripts/train_models.sh --help
 # ============================================================
 
 set -euo pipefail
 
-# ── COLOURS ────────────────────────────────────────────────
-RED='\033[0;31m';   GREEN='\033[0;32m';  YELLOW='\033[1;33m'
-CYAN='\033[0;36m';  MAGENTA='\033[0;35m'; BOLD='\033[1m';  NC='\033[0m'
+RED='\033[0;31m'; GREEN='\033[0;32m'; YELLOW='\033[1;33m'; BOLD='\033[1m'; NC='\033[0m'
+[[ -t 1 ]] || { RED=''; GREEN=''; YELLOW=''; BOLD=''; NC=''; }   # no colour codes when piped
 
-ok()     { echo -e "${GREEN}  ✅ $*${NC}"; }
-info()   { echo -e "${CYAN}  ℹ  $*${NC}"; }
-warn()   { echo -e "${YELLOW}  ⚠  $*${NC}"; }
-fail()   { echo -e "${RED}  ❌ $*${NC}"; exit 1; }
-step()   { echo -e "\n${BOLD}${CYAN}══ $* ${NC}"; }
-detail() { echo -e "${MAGENTA}     ↳ $*${NC}"; }
+STEP_N=0
+STEP_TOTAL=10
+TRAIN_LOG=""
+VERBOSE=false
+EDA_ONLY=false
+declare -a NOTES=()
 
-banner() {
-  printf "\n${BOLD}${CYAN}"
-  printf "  ╔══════════════════════════════════════════════════════════════╗\n"
-  printf "  ║   DNS Anomaly Detection — ML Model Trainer v3               ║\n"
-  printf "  ║   Sources: CSV · JSON · PCAP · LOG                          ║\n"
-  printf "  ║   Memory:  full provenance saved for pipeline awareness      ║\n"
-  printf "  ╚══════════════════════════════════════════════════════════════╝\n"
-  printf "${NC}"
+# ── OUTPUT ─────────────────────────────────────────────────
+# say: one numbered line per stage, followed by any notes collected for it.
+# later: queue a warning to print under the next stage line.
+log()   { if [[ -n "$TRAIN_LOG" ]]; then echo "$*" >> "$TRAIN_LOG"; fi; }
+note()  { printf "      ${YELLOW}! %s${NC}\n" "$*"; log "  ! $*"; }
+later() { NOTES+=("$*"); }
+flush_notes() {
+  local n
+  for n in "${NOTES[@]+"${NOTES[@]}"}"; do note "$n"; done
+  NOTES=()
+}
+say() {
+  STEP_N=$((STEP_N + 1))
+  printf "${GREEN}[%d/%d]${NC} %s\n" "$STEP_N" "$STEP_TOTAL" "$*"
+  log "[$STEP_N/$STEP_TOTAL] $*"
+  flush_notes
+}
+fail() {
+  flush_notes
+  printf "${RED}✗ %s${NC}\n" "$*" >&2
+  log "✗ $*"
+  if [[ -n "$TRAIN_LOG" ]]; then printf "  Full log: %s\n" "$TRAIN_LOG" >&2; fi
+  exit 1
 }
 
-already_trained_banner() {
-  local file="$1"
-  local records="$2"
-  local trained_date="$3"
-  printf "\n${BOLD}${YELLOW}"
-  printf "  ╔══════════════════════════════════════════════════════════════╗\n"
-  printf "  ║   ⚠  ALREADY TRAINED — SKIPPING                            ║\n"
-  printf "  ╚══════════════════════════════════════════════════════════════╝\n"
-  printf "${NC}"
-  echo -e "${YELLOW}  File     : $file${NC}"
-  echo -e "${YELLOW}  Records  : $records${NC}"
-  echo -e "${YELLOW}  Trained  : $trained_date${NC}"
-  echo -e "${YELLOW}  Action   : Ignored — looking for new data instead${NC}"
-  printf "\n"
+# run: command output goes to the log only (and to the screen with --verbose).
+run() {
+  if [[ "$VERBOSE" == true ]]; then
+    "$@" 2>&1 | tee -a "$TRAIN_LOG"
+  else
+    "$@" >> "$TRAIN_LOG" 2>&1
+  fi
 }
-
-no_new_data_banner() {
-  printf "\n${BOLD}${CYAN}"
-  printf "  ╔══════════════════════════════════════════════════════════════╗\n"
-  printf "  ║   ℹ  NO NEW DATA FOUND                                      ║\n"
-  printf "  ╚══════════════════════════════════════════════════════════════╝\n"
-  printf "${NC}"
-  echo -e "${CYAN}  All discovered files have already been used for training.${NC}"
-  echo -e "${CYAN}  Models are up to date — nothing new to learn.${NC}"
-  echo -e "${CYAN}  Add new log/pcap/json/csv files and run again to retrain.${NC}"
-  echo -e "${CYAN}  Use --force-retrain to retrain on ALL data regardless.${NC}"
-  printf "\n"
+# run_or_fail: like run, but on failure show the command's last output lines and stop.
+run_or_fail() {
+  local msg="$1"; shift
+  local start
+  start=$(wc -l < "$TRAIN_LOG")
+  if ! run "$@"; then
+    flush_notes
+    [[ "$VERBOSE" == true ]] || tail -n +$((start + 1)) "$TRAIN_LOG" | tail -n 12 | sed 's/^/    /' >&2
+    fail "$msg"
+  fi
 }
-
-new_data_found_banner() {
-  local count="$1"
-  printf "\n${BOLD}${GREEN}"
-  printf "  ╔══════════════════════════════════════════════════════════════╗\n"
-  printf "  ║   ✅  NEW DATA FOUND — RETRAINING                           ║\n"
-  printf "  ╚══════════════════════════════════════════════════════════════╝\n"
-  printf "${NC}"
-  echo -e "${GREEN}  New files found : $count${NC}"
-  echo -e "${GREEN}  Action          : Training on new data only${NC}"
-  printf "\n"
+# json_num FILE a.b.c → that number from a JSON file, or "?"
+json_num() {
+  python3 -c "
+import json
+d = json.load(open('$1'))
+for k in '$2'.split('.'):
+    d = d.get(k, {}) if isinstance(d, dict) else {}
+print('%.4g' % d if isinstance(d, (int, float)) else '?')" 2>/dev/null || echo "?"
 }
 
 # ── PATHS (resolved from project root) ──────────────────────
@@ -101,6 +90,9 @@ LOG_DIR="$PROJECT_ROOT/logs"
 MODELS_DIR="$PROJECT_ROOT/models"
 DNS_LOG_DIR="$PROJECT_ROOT/data/raw"
 export PYTHONPATH="$PROJECT_ROOT/src${PYTHONPATH:+:$PYTHONPATH}"
+export TF_CPP_MIN_LOG_LEVEL=2   # hide TensorFlow's C++ info/warning lines
+export PYTHONIOENCODING=utf-8   # output goes to a log file; keep → ✅ etc. printable everywhere
+export PYTHONUNBUFFERED=1       # keep stdout and tracebacks in order in the log
 
 # ── DEFAULTS ───────────────────────────────────────────────
 RETRAIN=false
@@ -109,56 +101,50 @@ PATH_A_ONLY=false
 PATH_B_ONLY=false
 PATH_B_MODEL="dns_trafficformer"
 N_DAYS=20
-RF_WEIGHT=0.6
-TF_WEIGHT=0.4
 CUSTOM_DATA_DIR=""
 PCAP_LABEL=""          # provenance label applied to every query in input pcaps (0/1)
 declare -a EXTRA_FILES=()
 
 # ── ARG PARSING ────────────────────────────────────────────
 show_help() {
-  echo ""
-  echo -e "${BOLD}Usage:${NC}  ./scripts/train_models.sh [options]"
-  echo ""
-  echo "Source options:"
-  echo "  --data-dir PATH     Scan a folder for CSV/JSON/PCAP/LOG files"
-  echo "  --files F1 F2 ...   Specific files to train on (any mix of types)"
-  echo "                      Both flags can be combined."
-  echo "  --pcap-label 0|1    Ground-truth label for EVERY query in input .pcap/.pcapng"
-  echo "                      files (1 = attack capture, 0 = benign capture)"
-  echo ""
-  echo "Training options:"
-  echo "  --retrain           Find NEW files not seen before and retrain on them"
-  echo "                      Already-trained files are skipped automatically"
-  echo "  --force-retrain     Retrain on ALL data regardless of history"
-  echo "  --path-a-only       Train only Path A (RF + Transformer, 8 features)"
-  echo "  --path-b-only       Train only Path B (Trafficformer, sequence)"
-  echo "  --n-days N          Sequence window size for Path B (default: 20)"
-  echo "  --model-name NAME   Path B model save name (default: dns_trafficformer)"
-  echo "  --rf-weight N       RF weight in ensemble (default: 0.6)"
-  echo "  --tf-weight N       Transformer weight (default: 0.4)"
-  echo "  --help              Show this help"
-  echo ""
-  echo -e "${BOLD}Supported file types:${NC}"
-  echo "  .csv    Pre-extracted feature tables"
-  echo "  .json   week3_features-format feature files"
-  echo "  .pcap   Raw packet captures (parsed via tshark)"
-  echo "  .log    Raw Technitium DNS log files"
-  echo ""
-  echo -e "${BOLD}Smart retrain behavior:${NC}"
-  echo "  --retrain        Skips already-trained files, only trains on NEW ones"
-  echo "  --force-retrain  Trains on everything regardless of history"
-  echo ""
-  echo -e "${BOLD}Examples:${NC}"
-  echo "  ./scripts/train_models.sh --data-dir /home/kali/captures/"
-  echo "  ./scripts/train_models.sh --files /tmp/attack.pcap /tmp/normal.log"
-  echo "  ./scripts/train_models.sh --retrain                    # smart: new data only"
-  echo "  ./scripts/train_models.sh --force-retrain              # full retrain everything"
-  echo "  ./scripts/train_models.sh --data-dir /captures --files extra.json --retrain"
-  echo ""
-  echo -e "${BOLD}After running this:${NC}"
-  echo "  ./scripts/run_pipeline.sh    (uses saved models; prints training provenance)"
-  echo ""
+  cat <<EOF
+
+Usage:  ./scripts/train_models.sh [options]
+
+Data:
+  --data-dir PATH     Scan a folder (3 levels deep) for .log .pcap .pcapng .json .csv
+  --files F1 F2 ...   Train on specific files (can be combined with --data-dir)
+  --pcap-label 0|1    Label for every query in .pcap files (1 = attack, 0 = benign);
+                      without it PCAPs are kept as unlabeled data
+  (neither given)     Scan data/raw/ for .log .json .csv
+
+  Every file found is marked labeled or unlabeled: .json/.csv rows with a 'label'
+  0/1 are labeled, .pcap is labeled with --pcap-label, .log is always unlabeled.
+  Unlabeled data is labeled later from data/attack_manifest.csv, else by heuristics.
+
+EDA:
+  EDA #1 runs right after finding the data: labeled data, unlabeled data and their
+  comparison → data/processed/eda_data_report.html (+ .json)
+  EDA #2 runs after merging: feature profile → data/processed/eda_report.json
+  --eda-only          Stop after both EDA reports (no labeling, no training,
+                      nothing marked as trained)
+
+Training:
+  --retrain           Train only on files not trained before (skips the rest)
+  --force-retrain     Retrain on all given data
+  --path-a-only       Train only Path A (RF + GBT)
+  --path-b-only       Train only Path B (Trafficformer)
+  --n-days N          Path B window size in queries (default: 20)
+  --model-name NAME   Path B model save name (default: dns_trafficformer)
+
+Output:
+  --verbose, -v       Also stream the full training output (always written to logs/)
+  --help, -h          Show this help
+
+Labels come from data/attack_manifest.csv when it exists, otherwise from heuristics.
+After training:  ./scripts/run_pipeline.sh
+
+EOF
   exit 0
 }
 
@@ -168,25 +154,27 @@ while [[ $# -gt 0 ]]; do
     --force-retrain)  FORCE_RETRAIN=true;     shift ;;
     --path-a-only)    PATH_A_ONLY=true;       shift ;;
     --path-b-only)    PATH_B_ONLY=true;       shift ;;
-    --n-days)         N_DAYS="$2";            shift 2 ;;
-    --model-name)     PATH_B_MODEL="$2";      shift 2 ;;
-    --rf-weight)      RF_WEIGHT="$2";         shift 2 ;;
-    --tf-weight)      TF_WEIGHT="$2";         shift 2 ;;
-    --data-dir)       CUSTOM_DATA_DIR="$2";   shift 2 ;;
-    --pcap-label)     PCAP_LABEL="$2";        shift 2 ;;
+    --n-days)         N_DAYS="${2:?--n-days needs a number}";           shift 2 ;;
+    --model-name)     PATH_B_MODEL="${2:?--model-name needs a name}";   shift 2 ;;
+    --data-dir)       CUSTOM_DATA_DIR="${2:?--data-dir needs a path}";  shift 2 ;;
+    --pcap-label)     PCAP_LABEL="${2:?--pcap-label needs 0 or 1}";     shift 2 ;;
+    --verbose|-v)     VERBOSE=true;           shift ;;
+    --eda-only)       EDA_ONLY=true;          shift ;;
     --files)
       shift
       while [[ $# -gt 0 && "$1" != --* ]]; do
         EXTRA_FILES+=("$1"); shift
       done ;;
-    --help|-h)      show_help ;;
-    *) warn "Unknown option: $1 (ignored)"; shift ;;
+    --help|-h)        show_help ;;
+    *) printf "${YELLOW}! Unknown option ignored: %s${NC}\n" "$1"; shift ;;
   esac
 done
 
 # ── FILE PATHS ─────────────────────────────────────────────
 MERGED_FEATURES="$DATA_DIR/merged_features_all.json"
 MERGED_LABELED="$DATA_DIR/merged_features_labeled.json"
+EDA_REPORT="$DATA_DIR/eda_report.json"              # EDA #2 (features, after merge)
+EDA_DATA_REPORT="$DATA_DIR/eda_data_report.json"    # EDA #1 (labeled · unlabeled · comparison)
 ATTACK_MANIFEST="$PROJECT_ROOT/data/attack_manifest.csv"   # Tier 1 ground-truth labels (if present)
 TRAINED_FILES_REGISTRY="$MODELS_DIR/trained_files_registry.json"
 
@@ -200,29 +188,23 @@ MEM_PATH_B_NORM="$MODELS_DIR/${PATH_B_MODEL}_norm.json"
 MEM_METADATA="$MODELS_DIR/training_metadata.json"
 MEM_PROVENANCE="$MODELS_DIR/training_provenance.json"
 
-TRAIN_LOG="$LOG_DIR/training_$(date +%Y%m%d_%H%M%S).log"
-
 # ── SETUP ──────────────────────────────────────────────────
-banner
 mkdir -p "$DATA_DIR" "$LOG_DIR" "$MODELS_DIR"
 cd "$PROJECT_ROOT"
-
+TRAIN_LOG="$LOG_DIR/training_$(date +%Y%m%d_%H%M%S).log"
 START_TIME=$(date +%s)
-echo "" | tee -a "$TRAIN_LOG"
-info "Script dir    : $SCRIPT_DIR"        | tee -a "$TRAIN_LOG"
-info "Model memory  : $MODELS_DIR"  | tee -a "$TRAIN_LOG"
-info "Data dir      : $DATA_DIR"          | tee -a "$TRAIN_LOG"
-info "Log file      : $TRAIN_LOG"         | tee -a "$TRAIN_LOG"
 
-# ── INITIALISE TRAINED FILES REGISTRY ─────────────────────
-# Registry stores sha256 checksums of every file already trained on.
-# --retrain uses this to skip known files and find new ones.
-# --force-retrain ignores this registry entirely.
+printf "${BOLD}Training DNS models${NC} · log: %s\n" "${TRAIN_LOG#"$PROJECT_ROOT"/}"
+log "Project root: $PROJECT_ROOT"
+log "Models dir  : $MODELS_DIR"
+log "Data dir    : $DATA_DIR"
+
+# Registry of sha256 checksums for every file already trained on.
+# --retrain uses it to skip known files; --force-retrain ignores it.
 if [[ ! -f "$TRAINED_FILES_REGISTRY" ]]; then
   echo '{"trained_files": []}' > "$TRAINED_FILES_REGISTRY"
 fi
 
-# ── HELPER: check if a file has been trained on before ─────
 file_already_trained() {
   local filepath="$1"
   [[ -f "$TRAINED_FILES_REGISTRY" ]] || return 1
@@ -230,59 +212,19 @@ file_already_trained() {
 import json, hashlib, sys
 registry = json.load(open('$TRAINED_FILES_REGISTRY'))
 trained  = {entry['checksum'] for entry in registry.get('trained_files', [])}
-
 h = hashlib.sha256()
 with open('$filepath', 'rb') as f:
     for chunk in iter(lambda: f.read(65536), b''): h.update(chunk)
-checksum = h.hexdigest()
-
-sys.exit(0 if checksum in trained else 1)
+sys.exit(0 if h.hexdigest() in trained else 1)
 " 2>/dev/null
 }
 
-# ── HELPER: get trained date for a file ────────────────────
-file_trained_date() {
-  local filepath="$1"
-  python3 -c "
-import json, hashlib
-registry = json.load(open('$TRAINED_FILES_REGISTRY'))
-
-h = hashlib.sha256()
-with open('$filepath', 'rb') as f:
-    for chunk in iter(lambda: f.read(65536), b''): h.update(chunk)
-checksum = h.hexdigest()
-
-for entry in registry.get('trained_files', []):
-    if entry['checksum'] == checksum:
-        print(entry.get('trained_at', 'unknown date'))
-        break
-" 2>/dev/null || echo "unknown date"
-}
-
-# ── HELPER: get record count label for display ─────────────
-file_record_count() {
-  local filepath="$1"
-  python3 -c "
-import json, hashlib
-registry = json.load(open('$TRAINED_FILES_REGISTRY'))
-
-h = hashlib.sha256()
-with open('$filepath', 'rb') as f:
-    for chunk in iter(lambda: f.read(65536), b''): h.update(chunk)
-checksum = h.hexdigest()
-
-for entry in registry.get('trained_files', []):
-    if entry['checksum'] == checksum:
-        print(entry.get('records', '?'))
-        break
-" 2>/dev/null || echo "?"
-}
-
-# ── HELPER: register a file as trained ─────────────────────
 register_trained_file() {
   local filepath="$1"
   local records="$2"
   local filetype="$3"
+  # --eda-only trains nothing, so nothing may be marked as trained
+  [[ "$EDA_ONLY" == false ]] || return 0
   python3 - <<PYEOF
 import json, hashlib
 from datetime import datetime, timezone
@@ -290,7 +232,7 @@ from datetime import datetime, timezone
 registry_path = "$TRAINED_FILES_REGISTRY"
 try:
     registry = json.load(open(registry_path))
-except:
+except Exception:
     registry = {"trained_files": []}
 
 h = hashlib.sha256()
@@ -298,9 +240,7 @@ with open("$filepath", "rb") as f:
     for chunk in iter(lambda: f.read(65536), b""): h.update(chunk)
 checksum = h.hexdigest()
 
-# Don't add duplicates
-existing = {e["checksum"] for e in registry["trained_files"]}
-if checksum not in existing:
+if checksum not in {e["checksum"] for e in registry["trained_files"]}:
     registry["trained_files"].append({
         "path":       "$filepath",
         "checksum":   checksum,
@@ -313,105 +253,55 @@ if checksum not in existing:
 PYEOF
 }
 
-# ── CHECK IF ALREADY TRAINED ───────────────────────────────
-step "Checking existing trained models"
-
+# ══════════════════════════════════════════════════════════════
+#  1. WHICH MODELS NEED TRAINING
+# ══════════════════════════════════════════════════════════════
 PATH_A_EXISTS=false
 PATH_B_EXISTS=false
-
-if [[ -f "$MEM_RF" && -f "$MEM_TF" && -f "$MEM_SCALER" && -f "$MEM_THRESHOLD" ]]; then
-  PATH_A_EXISTS=true
-  TRAINED_DATE=$(python3 -c "
-import json
-try:
-    d = json.load(open('$MEM_METADATA'))
-    print(d.get('path_a_trained', 'unknown date'))
-except: print('unknown date')
-" 2>/dev/null || echo "unknown date")
-  ok "Path A models exist (trained: $TRAINED_DATE)"
-  [[ "$FORCE_RETRAIN" == false && "$RETRAIN" == false && "$PATH_B_ONLY" == false ]] && \
-    warn "Path A will be SKIPPED — use --retrain (new data only) or --force-retrain (all data)"
-fi
-
-if [[ -f "$MEM_PATH_B" && -f "$MEM_PATH_B_THRESHOLD" && -f "$MEM_PATH_B_NORM" ]]; then
-  PATH_B_EXISTS=true
-  TRAINED_DATE_B=$(python3 -c "
-import json
-try:
-    d = json.load(open('$MEM_METADATA'))
-    print(d.get('path_b_trained', 'unknown date'))
-except: print('unknown date')
-" 2>/dev/null || echo "unknown date")
-  ok "Path B model exists (trained: $TRAINED_DATE_B)"
-  [[ "$FORCE_RETRAIN" == false && "$RETRAIN" == false && "$PATH_A_ONLY" == false ]] && \
-    warn "Path B will be SKIPPED — use --retrain (new data only) or --force-retrain (all data)"
-fi
+if [[ -f "$MEM_RF" && -f "$MEM_TF" && -f "$MEM_SCALER" && -f "$MEM_THRESHOLD" ]]; then PATH_A_EXISTS=true; fi
+if [[ -f "$MEM_PATH_B" && -f "$MEM_PATH_B_THRESHOLD" && -f "$MEM_PATH_B_NORM" ]]; then PATH_B_EXISTS=true; fi
 
 TRAIN_PATH_A=false
 TRAIN_PATH_B=false
-[[ "$PATH_B_ONLY" == false ]] && { [[ "$PATH_A_EXISTS" == false || "$RETRAIN" == true || "$FORCE_RETRAIN" == true ]] && TRAIN_PATH_A=true; } || true
-[[ "$PATH_A_ONLY" == false ]] && { [[ "$PATH_B_EXISTS" == false || "$RETRAIN" == true || "$FORCE_RETRAIN" == true ]] && TRAIN_PATH_B=true; } || true
+if [[ "$PATH_B_ONLY" == false ]] && [[ "$PATH_A_EXISTS" == false || "$RETRAIN" == true || "$FORCE_RETRAIN" == true ]]; then TRAIN_PATH_A=true; fi
+if [[ "$PATH_A_ONLY" == false ]] && [[ "$PATH_B_EXISTS" == false || "$RETRAIN" == true || "$FORCE_RETRAIN" == true ]]; then TRAIN_PATH_B=true; fi
 
-if [[ "$TRAIN_PATH_A" == false && "$TRAIN_PATH_B" == false ]]; then
-  echo ""
-  echo -e "${BOLD}${GREEN}══════════════════════════════════════════════════════${NC}"
-  echo -e "${BOLD}${GREEN}  ✅  All models already trained. Nothing to do.${NC}"
-  echo -e "${BOLD}${GREEN}══════════════════════════════════════════════════════${NC}"
-  echo ""
-  echo -e "  Models stored in : ${BOLD}$MODELS_DIR${NC}"
-  echo -e "  Trained on       : $(python3 -c "import json; d=json.load(open('$MEM_PROVENANCE')); print(str(len(d.get('source_files',[]))) + ' source files')" 2>/dev/null || echo "see $MEM_METADATA")"
-  echo -e "  Smart retrain    : ${BOLD}./scripts/train_models.sh --retrain${NC}  (new files only)"
-  echo -e "  Force retrain    : ${BOLD}./scripts/train_models.sh --force-retrain${NC}  (all data)"
-  echo -e "  Run detection    : ${BOLD}./scripts/run_pipeline.sh${NC}"
-  echo ""
+if [[ "$TRAIN_PATH_A" == false && "$TRAIN_PATH_B" == false && "$EDA_ONLY" == false ]]; then
+  say "Models already trained — nothing to do (use --retrain or --force-retrain)"
   exit 0
 fi
 
-info "Training mode — RETRAIN: $RETRAIN  |  FORCE_RETRAIN: $FORCE_RETRAIN" | tee -a "$TRAIN_LOG"
-info "Training needed — Path A: $TRAIN_PATH_A  |  Path B: $TRAIN_PATH_B"   | tee -a "$TRAIN_LOG"
+state() { if [[ "$1" == true ]]; then echo "found"; else echo "missing"; fi; }
+if   [[ "$EDA_ONLY" == true ]]; then TODO="nothing (--eda-only: EDA reports only)"
+elif [[ "$TRAIN_PATH_A" == true && "$TRAIN_PATH_B" == true ]]; then TODO="Path A + Path B"
+elif [[ "$TRAIN_PATH_A" == true ]]; then TODO="Path A only"
+else TODO="Path B only"; fi
+say "Models: Path A $(state "$PATH_A_EXISTS"), Path B $(state "$PATH_B_EXISTS") → training $TODO"
 
-# ── PREFLIGHT CHECKS ───────────────────────────────────────
-step "Preflight checks"
-
-python3 --version &>/dev/null || fail "python3 not found"
-ok "python3: $(python3 --version)"
-
-TSHARK_AVAILABLE=false
-if command -v tshark &>/dev/null; then
-  TSHARK_AVAILABLE=true
-  ok "tshark: $(tshark --version 2>&1 | head -1)"
-else
-  warn "tshark not found — PCAP files will be skipped (install: sudo apt install tshark)"
-fi
-
-python3 -c "from dns_detect.config import settings" 2>/dev/null || \
+# ══════════════════════════════════════════════════════════════
+#  2. ENVIRONMENT
+# ══════════════════════════════════════════════════════════════
+command -v python3 &>/dev/null || fail "python3 not found"
+python3 -c "from dns_detect.config import settings" &>/dev/null || \
   fail "dns_detect package not importable (check PYTHONPATH and src/dns_detect/)"
-ok "dns_detect package ready"
 
 MISSING_PKGS=()
-python3 -c "import pandas"     2>/dev/null || MISSING_PKGS+=("pandas")
-python3 -c "import numpy"      2>/dev/null || MISSING_PKGS+=("numpy")
-python3 -c "import sklearn"    2>/dev/null || MISSING_PKGS+=("scikit-learn")
-python3 -c "import tensorflow" 2>/dev/null || MISSING_PKGS+=("tensorflow")
-python3 -c "import joblib"     2>/dev/null || MISSING_PKGS+=("joblib")
+for spec in pandas:pandas numpy:numpy sklearn:scikit-learn tensorflow:tensorflow joblib:joblib; do
+  python3 -c "import ${spec%%:*}" &>/dev/null || MISSING_PKGS+=("${spec#*:}")
+done
 if [[ ${#MISSING_PKGS[@]} -gt 0 ]]; then
-  warn "Installing missing packages: ${MISSING_PKGS[*]}"
-  pip install "${MISSING_PKGS[@]}" --break-system-packages -q || \
-    fail "pip install failed"
+  later "Installed missing packages: ${MISSING_PKGS[*]}"
+  run pip install "${MISSING_PKGS[@]}" --break-system-packages -q || fail "pip install failed: ${MISSING_PKGS[*]}"
 fi
-ok "Python packages ready"
+say "Environment ready ($(python3 --version 2>&1))"
 
 # ══════════════════════════════════════════════════════════════
-#  SOURCE DISCOVERY — collect all input files
+#  3. FIND NEW DATA
 # ══════════════════════════════════════════════════════════════
-step "SOURCE DISCOVERY — scanning for training data"
-
 declare -a SRC_CSV=()
 declare -a SRC_JSON=()
 declare -a SRC_PCAP=()
 declare -a SRC_LOG=()
-
-# Counters for summary
 SKIPPED_ALREADY_TRAINED=0
 NEW_FILES_FOUND=0
 
@@ -421,32 +311,26 @@ classify_file() {
   # whole class (e.g. the benign set) and train on the wrong data.
   [[ -f "$f" ]] || fail "File not found: $f  (check the path passed to --files / --data-dir)"
 
-  # ── Smart retrain: check registry before bucketing ────────
-  if [[ "$FORCE_RETRAIN" == false && "$RETRAIN" == true ]]; then
-    if file_already_trained "$f"; then
-      local trained_date
-      trained_date=$(file_trained_date "$f")
-      local rec_count
-      rec_count=$(file_record_count "$f")
-      already_trained_banner "$f" "$rec_count" "$trained_date"
-      SKIPPED_ALREADY_TRAINED=$(( SKIPPED_ALREADY_TRAINED + 1 ))
-      return
-    fi
+  if [[ "$FORCE_RETRAIN" == false && "$RETRAIN" == true ]] && file_already_trained "$f"; then
+    SKIPPED_ALREADY_TRAINED=$((SKIPPED_ALREADY_TRAINED + 1))
+    log "  skipped (already trained): $f"
+    return
   fi
 
   case "${f,,}" in
-    *.csv)           SRC_CSV+=("$f");  detail "CSV  : $f"; NEW_FILES_FOUND=$(( NEW_FILES_FOUND + 1 )) ;;
-    *.json)          SRC_JSON+=("$f"); detail "JSON : $f"; NEW_FILES_FOUND=$(( NEW_FILES_FOUND + 1 )) ;;
-    *.pcap|*.pcapng) SRC_PCAP+=("$f"); detail "PCAP : $f"; NEW_FILES_FOUND=$(( NEW_FILES_FOUND + 1 )) ;;
-    *.log)           SRC_LOG+=("$f");  detail "LOG  : $f"; NEW_FILES_FOUND=$(( NEW_FILES_FOUND + 1 )) ;;
-    *) warn "Unknown extension, skipping: $f" ;;
+    *.csv)           SRC_CSV+=("$f") ;;
+    *.json)          SRC_JSON+=("$f") ;;
+    *.pcap|*.pcapng) SRC_PCAP+=("$f") ;;
+    *.log)           SRC_LOG+=("$f") ;;
+    *) later "Unknown file type skipped: $f"; return ;;
   esac
+  NEW_FILES_FOUND=$((NEW_FILES_FOUND + 1))
+  log "  found: $f"
 }
 
-# ── Scan custom --data-dir if given ───────────────────────
+WHERE=""
 if [[ -n "$CUSTOM_DATA_DIR" ]]; then
   [[ -d "$CUSTOM_DATA_DIR" ]] || fail "--data-dir not found: $CUSTOM_DATA_DIR"
-  info "Scanning folder: $CUSTOM_DATA_DIR"
   while IFS= read -r -d '' f; do
     classify_file "$f"
   done < <(find "$CUSTOM_DATA_DIR" -maxdepth 3 \
@@ -455,19 +339,13 @@ if [[ -n "$CUSTOM_DATA_DIR" ]]; then
     -print0 2>/dev/null)
 fi
 
-# ── Individual --files entries ─────────────────────────────
-if [[ ${#EXTRA_FILES[@]} -gt 0 ]]; then
-  info "Individual files provided: ${#EXTRA_FILES[@]}"
-  for f in "${EXTRA_FILES[@]}"; do
-    classify_file "$f"
-  done
-fi
+for f in "${EXTRA_FILES[@]+"${EXTRA_FILES[@]}"}"; do
+  classify_file "$f"
+done
 
-# ── Fallback: default DNS_LOG_DIR ─────────────────────────
-TOTAL_SRC=$(( ${#SRC_CSV[@]} + ${#SRC_JSON[@]} + ${#SRC_PCAP[@]} + ${#SRC_LOG[@]} ))
-if [[ $TOTAL_SRC -eq 0 && $SKIPPED_ALREADY_TRAINED -eq 0 ]]; then
-  warn "No files specified — falling back to default DNS log directory"
-  info "Scanning: $DNS_LOG_DIR"
+# Fallback: nothing given → default DNS log directory
+if [[ $NEW_FILES_FOUND -eq 0 && $SKIPPED_ALREADY_TRAINED -eq 0 ]]; then
+  WHERE="data/raw/"
   while IFS= read -r -d '' f; do
     classify_file "$f"
   done < <(find "$DNS_LOG_DIR" -maxdepth 3 \
@@ -477,356 +355,325 @@ fi
 
 TOTAL_SRC=$(( ${#SRC_CSV[@]} + ${#SRC_JSON[@]} + ${#SRC_PCAP[@]} + ${#SRC_LOG[@]} ))
 
-echo ""
-ok "Source discovery complete:"
-ok "  New CSV  : ${#SRC_CSV[@]} file(s)"
-ok "  New JSON : ${#SRC_JSON[@]} file(s)"
-ok "  New PCAP : ${#SRC_PCAP[@]} file(s)"
-ok "  New LOG  : ${#SRC_LOG[@]} file(s)"
-[[ $SKIPPED_ALREADY_TRAINED -gt 0 ]] && \
-  warn "  Skipped  : $SKIPPED_ALREADY_TRAINED file(s) already trained — ignored"
-
-# ── If --retrain and all files were already trained → nothing new ──
 if [[ "$RETRAIN" == true && "$FORCE_RETRAIN" == false && $TOTAL_SRC -eq 0 ]]; then
-  no_new_data_banner
+  say "No new files since last training — models are up to date"
+  exit 0
+fi
+[[ $TOTAL_SRC -gt 0 ]] || fail "No training data found. Use --data-dir or --files."
+
+# ── Label status of every file: labeled data and unlabeled data both go forward ──
+# .json/.csv: labeled when rows carry 'label' 0/1 (partial = some rows)
+# .pcap:      labeled when --pcap-label is given, otherwise unlabeled (kept, not skipped)
+# .log:       always unlabeled
+declare -a SRC_LABELED=()
+declare -a SRC_UNLABELED=()
+PARTIAL_FILES=0
+ALL_SRC=("${SRC_LOG[@]+"${SRC_LOG[@]}"}" "${SRC_PCAP[@]+"${SRC_PCAP[@]}"}"
+         "${SRC_JSON[@]+"${SRC_JSON[@]}"}" "${SRC_CSV[@]+"${SRC_CSV[@]}"}")
+STATUS_ARGS=(--status "${ALL_SRC[@]}")
+[[ -z "$PCAP_LABEL" ]] || STATUS_ARGS+=(--pcap-label "$PCAP_LABEL")
+while IFS=$'\t' read -r st _labeled_rows path; do
+  path="${path%$'\r'}"   # Windows Python ends lines with \r\n
+  [[ -n "$path" ]] || continue
+  log "  label status: $st  $path"
+  case "$st" in
+    labeled)   SRC_LABELED+=("$path") ;;
+    partial)   SRC_LABELED+=("$path"); PARTIAL_FILES=$((PARTIAL_FILES + 1)) ;;
+    *)         SRC_UNLABELED+=("$path") ;;
+  esac
+done < <(python3 -m dns_detect.features.eda_data "${STATUS_ARGS[@]}" 2>>"$TRAIN_LOG")
+
+if [[ $(( ${#SRC_LABELED[@]} + ${#SRC_UNLABELED[@]} )) -ne $TOTAL_SRC ]]; then
+  later "Could not check label status (see log) — treating every file as unlabeled"
+  SRC_LABELED=()
+  SRC_UNLABELED=("${ALL_SRC[@]}")
+fi
+
+# "2 json, 1 log" for a list of files
+type_desc() {
+  local n_log=0 n_pcap=0 n_json=0 n_csv=0 f out=""
+  for f in "$@"; do
+    case "${f,,}" in
+      *.log)           n_log=$((n_log + 1)) ;;
+      *.pcap|*.pcapng) n_pcap=$((n_pcap + 1)) ;;
+      *.json)          n_json=$((n_json + 1)) ;;
+      *.csv)           n_csv=$((n_csv + 1)) ;;
+    esac
+  done
+  for p in "$n_log log" "$n_pcap pcap" "$n_json json" "$n_csv csv"; do
+    [[ "${p%% *}" == "0" ]] || out+="${out:+, }$p"
+  done
+  echo "$out"
+}
+
+FOUND_DESC="${#SRC_LABELED[@]} labeled"
+[[ ${#SRC_LABELED[@]} -eq 0 ]] || FOUND_DESC+=" ($(type_desc "${SRC_LABELED[@]}"))"
+FOUND_DESC+=", ${#SRC_UNLABELED[@]} unlabeled"
+[[ ${#SRC_UNLABELED[@]} -eq 0 ]] || FOUND_DESC+=" ($(type_desc "${SRC_UNLABELED[@]}"))"
+SKIP_DESC=""
+[[ $SKIPPED_ALREADY_TRAINED -eq 0 ]] || SKIP_DESC=", skipped $SKIPPED_ALREADY_TRAINED already trained"
+
+[[ $PARTIAL_FILES -eq 0 ]] || later "$PARTIAL_FILES file(s) are only partly labeled — their unlabeled rows count as unlabeled data"
+if [[ ${#SRC_UNLABELED[@]} -gt 0 || $PARTIAL_FILES -gt 0 ]]; then
+  if [[ -f "$ATTACK_MANIFEST" ]]; then
+    later "Unlabeled data will be labeled from data/attack_manifest.csv"
+  else
+    later "No attack manifest — unlabeled data will be labeled by behaviour rules, or left out when unsure"
+  fi
+fi
+if [[ "$RETRAIN" == true && "$FORCE_RETRAIN" == false ]]; then
+  later "--retrain trains only on these new files; earlier training data is not included"
+fi
+say "Found $TOTAL_SRC new file(s)${WHERE:+ in $WHERE}: $FOUND_DESC$SKIP_DESC"
+
+# ══════════════════════════════════════════════════════════════
+#  4. EDA #1 — labeled data · unlabeled data · comparison  (informational)
+# ══════════════════════════════════════════════════════════════
+EDA1_ARGS=(--output "$EDA_DATA_REPORT")
+[[ ${#SRC_LABELED[@]} -eq 0 ]]   || EDA1_ARGS+=(--labeled "${SRC_LABELED[@]}")
+[[ ${#SRC_UNLABELED[@]} -eq 0 ]] || EDA1_ARGS+=(--unlabeled "${SRC_UNLABELED[@]}")
+[[ -z "$PCAP_LABEL" ]]           || EDA1_ARGS+=(--pcap-label "$PCAP_LABEL")
+[[ ! -f "$ATTACK_MANIFEST" ]]    || EDA1_ARGS+=(--manifest "$ATTACK_MANIFEST")
+
+if run python3 -m dns_detect.features.eda_data "${EDA1_ARGS[@]}" && [[ -f "$EDA_DATA_REPORT" ]]; then
+  EDA1_SUMMARY=$(python3 - "$EDA_DATA_REPORT" <<'PYEOF' 2>/dev/null || true
+import json, sys
+r = json.load(open(sys.argv[1], encoding="utf-8"))
+b = r["labeled"].get("class_balance") or {}
+t = r["totals"]
+print(t["labeled_rows"], b.get("attack", 0), b.get("benign", 0), t["unlabeled_rows"], len(r["warnings"]))
+for w in r["warnings"][:3]:
+    print(w)
+PYEOF
+)
+  L_ROWS="?"; L_ATT="?"; L_BEN="?"; U_ROWS="?"; N_WARN="?"
+  TOP_WARN=()
+  if [[ -n "$EDA1_SUMMARY" ]]; then
+    read -r L_ROWS L_ATT L_BEN U_ROWS N_WARN <<< "$(head -n 1 <<< "$EDA1_SUMMARY")" || true
+    mapfile -t TOP_WARN < <(tail -n +2 <<< "$EDA1_SUMMARY")
+  fi
+  for w in "${TOP_WARN[@]+"${TOP_WARN[@]}"}"; do later "$w"; done
+  if [[ "$N_WARN" =~ ^[0-9]+$ && $N_WARN -gt 3 ]]; then
+    later "… $((N_WARN - 3)) more warning(s) in the report"
+  fi
+  LAB_PART="labeled $L_ROWS"
+  [[ "$L_ROWS" == "0" ]] || LAB_PART+=" ($L_ATT attack / $L_BEN benign)"
+  EDA1_HTML="${EDA_DATA_REPORT%.json}.html"
+  say "EDA: $LAB_PART, unlabeled $U_ROWS · $N_WARN warning(s) → ${EDA1_HTML#"$PROJECT_ROOT"/}"
+else
+  later "EDA #1 failed — continuing (see log)"
+  say "EDA (labeled · unlabeled) skipped"
+fi
+
+# ══════════════════════════════════════════════════════════════
+#  5. PRE-PROCESS  (.log → features JSON, .pcap → features JSON, labeled or not)
+# ══════════════════════════════════════════════════════════════
+PREPROCESSED=0
+# Merge inputs: feature files as found, plus "converted.json=original" so every merged row
+# can name the log / capture it really came from.
+MERGE_INPUTS=("${SRC_JSON[@]+"${SRC_JSON[@]}"}" "${SRC_CSV[@]+"${SRC_CSV[@]}"}")
+
+for log_file in "${SRC_LOG[@]+"${SRC_LOG[@]}"}"; do
+  base=$(basename "$log_file" .log)
+  out_json="$DATA_DIR/extracted_${base}_$(date +%s).json"
+  log "  extract: $log_file → $out_json"
+  if run python3 -m dns_detect.features.extractor --input "$log_file" --output "$out_json" \
+     && [[ -f "$out_json" ]]; then
+    SRC_JSON+=("$out_json")
+    MERGE_INPUTS+=("$out_json=$log_file")
+    records=$(python3 -c "import json; print(len(json.load(open('$out_json'))))" 2>/dev/null || echo "?")
+    # Registers the original log (not the extracted JSON) as trained
+    register_trained_file "$log_file" "$records" "log"
+    PREPROCESSED=$((PREPROCESSED + 1))
+  else
+    later "No DNS queries extracted, skipped: $(basename "$log_file") (see log)"
+  fi
+done
+
+# PCAPs: labeled with --pcap-label, otherwise converted as unlabeled data (labeled in step 8)
+if [[ -n "$PCAP_LABEL" ]]; then PCAP_LABEL_ARGS=(--label "$PCAP_LABEL"); else PCAP_LABEL_ARGS=(--unlabeled); fi
+for pcap_file in "${SRC_PCAP[@]+"${SRC_PCAP[@]}"}"; do
+  base=$(basename "$pcap_file")
+  base="${base%.*}"
+  out_json="$DATA_DIR/pcap_feat_${base}_$(date +%s).json"
+  log "  convert: $pcap_file → $out_json (label=${PCAP_LABEL:-none})"
+  if run python3 "$SCRIPT_DIR/make_labeled_features.py" \
+       --input "$pcap_file" "${PCAP_LABEL_ARGS[@]}" --output "$out_json" \
+     && [[ -f "$out_json" ]]; then
+    SRC_JSON+=("$out_json")
+    MERGE_INPUTS+=("$out_json=$pcap_file")
+    records=$(python3 -c "import json; print(len(json.load(open('$out_json'))))" 2>/dev/null || echo "?")
+    register_trained_file "$pcap_file" "$records" "pcap"
+    PREPROCESSED=$((PREPROCESSED + 1))
+  else
+    later "PCAP conversion failed, skipped: $(basename "$pcap_file")"
+  fi
+done
+
+if [[ $(( ${#SRC_LOG[@]} + ${#SRC_PCAP[@]} )) -eq 0 ]]; then
+  say "Pre-process: nothing to convert (JSON/CSV only)"
+else
+  say "Pre-processed $PREPROCESSED file(s) into features"
+fi
+
+# ══════════════════════════════════════════════════════════════
+#  6. MERGE ALL SOURCES → one features file
+# ══════════════════════════════════════════════════════════════
+if [[ ${#SRC_JSON[@]} -eq 0 && ${#SRC_CSV[@]} -eq 0 ]]; then
+  fail "No usable feature files after pre-processing. Cannot train."
+fi
+
+MERGE_REPORT="$DATA_DIR/merge_report.json"
+MERGE_ARGS=(--input "${MERGE_INPUTS[@]}" --output "$MERGED_FEATURES"
+            --provenance "$MEM_PROVENANCE" --report "$MERGE_REPORT")
+# --eda-only trains nothing, so nothing may be marked as trained
+[[ "$EDA_ONLY" == true ]] || MERGE_ARGS+=(--registry "$TRAINED_FILES_REGISTRY")
+run_or_fail "Merge failed" python3 -m dns_detect.ingest.merge "${MERGE_ARGS[@]}"
+[[ -f "$MERGED_FEATURES" ]] || fail "Merge failed — $MERGED_FEATURES not created"
+
+MERGE_SUMMARY=$(python3 - "$MERGE_REPORT" <<'PYEOF' 2>/dev/null || true
+import json, sys
+r = json.load(open(sys.argv[1], encoding="utf-8"))
+d, l = r["duplicates"], r["labels"]
+print(r["rows"], len(r["inputs"]), d["distinct_feature_vectors"], f"{d['duplicated_share']:.0%}", l["conflicting_vectors"])
+for w in r["warnings"][:3]:
+    print(w)
+PYEOF
+)
+RECORD_COUNT="?"; N_INPUTS="?"; N_DISTINCT="?"; DUP_PCT="?"; N_CONFLICTS="?"
+MERGE_WARN=()
+if [[ -n "$MERGE_SUMMARY" ]]; then
+  read -r RECORD_COUNT N_INPUTS N_DISTINCT DUP_PCT N_CONFLICTS <<< "$(head -n 1 <<< "$MERGE_SUMMARY")" || true
+  mapfile -t MERGE_WARN < <(tail -n +2 <<< "$MERGE_SUMMARY")
+fi
+for w in "${MERGE_WARN[@]+"${MERGE_WARN[@]}"}"; do later "$w"; done
+say "Merged $RECORD_COUNT records from $N_INPUTS file(s) · $N_DISTINCT distinct feature vectors, $DUP_PCT of rows duplicated · $N_CONFLICTS label conflicts"
+
+# ══════════════════════════════════════════════════════════════
+#  7. EDA #2 — merged feature profile  (informational — never stops training)
+# ══════════════════════════════════════════════════════════════
+if run python3 -m dns_detect.features.eda --input "$MERGED_FEATURES" --output "$EDA_REPORT" \
+   && [[ -f "$EDA_REPORT" ]]; then
+  EDA_WARN=$(python3 -c "import json; print(len(json.load(open('$EDA_REPORT')).get('warnings', [])))" 2>/dev/null || echo "?")
+  say "Feature EDA saved with $EDA_WARN warning(s) → ${EDA_REPORT#"$PROJECT_ROOT"/}"
+else
+  later "Feature EDA failed — continuing (see log)"
+  say "Feature EDA skipped"
+fi
+
+if [[ "$EDA_ONLY" == true ]]; then
+  flush_notes
+  printf "${GREEN}${BOLD}✓ EDA done${NC} (--eda-only) · nothing labeled, trained or marked as trained · read %s, then run again without --eda-only\n" \
+    "$(EDA1_HTML="${EDA_DATA_REPORT%.json}.html"; echo "${EDA1_HTML#"$PROJECT_ROOT"/}")"
+  log "Stopped after EDA (--eda-only)"
   exit 0
 fi
 
-# ── If new files found under --retrain, show banner ────────
-if [[ "$RETRAIN" == true && "$FORCE_RETRAIN" == false && $NEW_FILES_FOUND -gt 0 ]]; then
-  new_data_found_banner "$NEW_FILES_FOUND"
-fi
-
-[[ $TOTAL_SRC -gt 0 ]] || fail "No training data found anywhere. Use --data-dir or --files."
-
 # ══════════════════════════════════════════════════════════════
-#  STEP 0-A: PRE-PROCESS RAW LOGS → JSON features
+#  8. LABEL
 # ══════════════════════════════════════════════════════════════
-step "STEP 0-A — Pre-processing raw LOG files"
+# Precedence per row: label already in the file → attack manifest → behaviour rules → left out.
+# See src/dns_detect/ingest/labeling.py for the research behind the rules.
+LABEL_REPORT="$DATA_DIR/labeling_report.json"
+ABSTAINED_ROWS="$DATA_DIR/abstained_rows.json"
+ALLOWLIST="$PROJECT_ROOT/config/dns_allowlist.txt"
+LABEL_ARGS=(--input "$MERGED_FEATURES" --output "$MERGED_LABELED" --abstained "$ABSTAINED_ROWS" --report "$LABEL_REPORT")
+[[ ! -f "$ATTACK_MANIFEST" ]] || LABEL_ARGS+=(--manifest "$ATTACK_MANIFEST")
+[[ ! -f "$ALLOWLIST" ]]       || LABEL_ARGS+=(--allowlist "$ALLOWLIST")
+run_or_fail "Labeling failed" python3 -m dns_detect.ingest.labeling "${LABEL_ARGS[@]}"
+[[ -f "$MERGED_LABELED" ]] || fail "Label generation failed — $MERGED_LABELED not created"
 
-declare -a JSON_FROM_LOGS=()
-
-if [[ ${#SRC_LOG[@]} -gt 0 ]]; then
-  info "Found ${#SRC_LOG[@]} new log file(s) — extracting features via DNS_feature_extractor.py"
-  for log_file in "${SRC_LOG[@]}"; do
-    base=$(basename "$log_file" .log)
-    out_json="$DATA_DIR/extracted_${base}_$(date +%s).json"
-    detail "Extracting: $log_file → $out_json"
-    python3 -m dns_detect.features.extractor \
-      --input  "$log_file" \
-      --output "$out_json" 2>&1 | tee -a "$TRAIN_LOG" || {
-        warn "Extraction failed for $log_file — skipping"
-        continue
-      }
-    if [[ -f "$out_json" ]]; then
-      JSON_FROM_LOGS+=("$out_json")
-      SRC_JSON+=("$out_json")
-      # Register the original log file as trained (not the extracted JSON)
-      RECORD_COUNT_LOG=$(python3 -c "import json; print(len(json.load(open('$out_json'))))" 2>/dev/null || echo "?")
-      register_trained_file "$log_file" "$RECORD_COUNT_LOG" "log"
-    fi
-  done
-  ok "Log pre-processing done — ${#JSON_FROM_LOGS[@]} JSON file(s) produced"
-else
-  info "No new LOG files — skipping log pre-processing"
-fi
-
-# ══════════════════════════════════════════════════════════════
-#  STEP 0-B: PRE-PROCESS PCAP → labeled JSON features (scapy, provenance label)
-# ══════════════════════════════════════════════════════════════
-step "STEP 0-B — Pre-processing PCAP files"
-
-declare -a JSON_FROM_PCAP=()
-
-if [[ ${#SRC_PCAP[@]} -gt 0 && -n "$PCAP_LABEL" ]]; then
-  info "Found ${#SRC_PCAP[@]} new PCAP file(s) — labeling every query as label=$PCAP_LABEL (provenance)"
-  for pcap_file in "${SRC_PCAP[@]}"; do
-    base=$(basename "$pcap_file")
-    base="${base%.*}"
-    out_json="$DATA_DIR/pcap_feat_${base}_$(date +%s).json"
-    detail "Converting: $pcap_file → $out_json"
-    python3 "$SCRIPT_DIR/make_labeled_features.py" \
-      --input  "$pcap_file" \
-      --label  "$PCAP_LABEL" \
-      --output "$out_json" 2>&1 | tee -a "$TRAIN_LOG" || {
-        warn "Conversion failed for $pcap_file — skipping"
-        continue
-      }
-    if [[ -f "$out_json" ]]; then
-      JSON_FROM_PCAP+=("$out_json")
-      SRC_JSON+=("$out_json")
-      RECORD_COUNT_PCAP=$(python3 -c "import json; print(len(json.load(open('$out_json'))))" 2>/dev/null || echo "?")
-      register_trained_file "$pcap_file" "$RECORD_COUNT_PCAP" "pcap"
-    fi
-  done
-  ok "PCAP pre-processing done — ${#JSON_FROM_PCAP[@]} JSON file(s) produced"
-elif [[ ${#SRC_PCAP[@]} -gt 0 ]]; then
-  warn "PCAP files found but no --pcap-label given — skipping them (a pcap carries no label)"
-  warn "Use --pcap-label 1 (attack captures) / 0 (benign), or convert first with"
-  warn "  scripts/make_labeled_features.py --label 0|1 --input <pcaps> --output <json>"
-else
-  info "No new PCAP files — skipping PCAP pre-processing"
-fi
-
-# ══════════════════════════════════════════════════════════════
-#  STEP 0-C: MERGE ALL SOURCES → single features file
-# ══════════════════════════════════════════════════════════════
-step "STEP 0-C — Merging all sources into one feature dataset"
-
-MERGE_ARGS=""
-for f in "${SRC_JSON[@]}"; do MERGE_ARGS="$MERGE_ARGS --json $f"; done
-for f in "${SRC_CSV[@]}";  do MERGE_ARGS="$MERGE_ARGS --csv  $f"; done
-
-[[ -z "$MERGE_ARGS" ]] && fail "No usable feature files after pre-processing. Cannot train."
-
-python3 - <<PYEOF 2>&1 | tee -a "$TRAIN_LOG"
-import json, csv, os, sys, hashlib
-from datetime import datetime, timezone
-
-json_files = [$(printf '"%s",' "${SRC_JSON[@]}" 2>/dev/null | sed 's/,$//')]
-csv_files  = [$(printf '"%s",' "${SRC_CSV[@]}"  2>/dev/null | sed 's/,$//')]
-
-merged   = []
-file_log = []
-
-def sha256(path):
-    h = hashlib.sha256()
-    with open(path, "rb") as f:
-        for chunk in iter(lambda: f.read(65536), b""): h.update(chunk)
-    return h.hexdigest()[:16]
-
-for path in json_files:
-    if not path or not os.path.isfile(path): continue
-    try:
-        with open(path) as f: data = json.load(f)
-        if not isinstance(data, list): data = [data]
-        merged.extend(data)
-        file_log.append({
-            "path": path, "type": "json",
-            "records": len(data), "checksum": sha256(path)
-        })
-        print(f"  [json] {len(data):>6} records  ← {path}")
-    except Exception as e:
-        print(f"  [warn] Could not load {path}: {e}", file=sys.stderr)
-
-for path in csv_files:
-    if not path or not os.path.isfile(path): continue
-    try:
-        rows = []
-        with open(path, newline="") as f:
-            reader = csv.DictReader(f)
-            for row in reader:
-                rows.append({k: (float(v) if v.replace('.','',1).replace('-','',1).isdigit() else v)
-                              for k, v in row.items()})
-        merged.extend(rows)
-        file_log.append({
-            "path": path, "type": "csv",
-            "records": len(rows), "checksum": sha256(path)
-        })
-        print(f"  [csv]  {len(rows):>6} records  ← {path}")
-    except Exception as e:
-        print(f"  [warn] Could not load {path}: {e}", file=sys.stderr)
-
-if not merged:
-    print("ERROR: merged dataset is empty", file=sys.stderr)
-    sys.exit(1)
-
-with open("$MERGED_FEATURES", "w") as f:
-    json.dump(merged, f)
-
-with open("$MEM_PROVENANCE", "w") as f:
-    json.dump({
-        "merged_at":    datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
-        "total_records": len(merged),
-        "source_files": file_log,
-        "source_counts": {
-            "json_files":  len(json_files),
-            "csv_files":   len(csv_files),
-            "pcap_converted": len([x for x in file_log if "pcap" in x["path"]]),
-            "log_converted":  len([x for x in file_log if "extracted_" in x["path"]]),
-        }
-    }, f, indent=2)
-
-print(f"\n  Merged {len(merged)} total records from {len(file_log)} source file(s)")
-print(f"  Provenance saved → $MEM_PROVENANCE")
-
-# Register JSON and CSV source files in the trained registry
-registry_path = "$TRAINED_FILES_REGISTRY"
-try:
-    registry = json.load(open(registry_path))
-except:
-    registry = {"trained_files": []}
-
-existing_checksums = {e["checksum"] for e in registry["trained_files"]}
-now_str = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
-
-for entry in file_log:
-    full_checksum = sha256(entry["path"])
-    if full_checksum not in existing_checksums:
-        registry["trained_files"].append({
-            "path":       entry["path"],
-            "checksum":   full_checksum,
-            "type":       entry["type"],
-            "records":    entry["records"],
-            "trained_at": now_str,
-        })
-
-with open(registry_path, "w") as f:
-    json.dump(registry, f, indent=2)
-print(f"  Registry updated → {registry_path}  ({len(registry['trained_files'])} total trained files)")
+LABEL_SUMMARY=$(python3 - "$LABEL_REPORT" <<'PYEOF' 2>/dev/null || true
+import json, sys
+r = json.load(open(sys.argv[1], encoding="utf-8"))
+names = {"provenance": "files", "file": "files", "manifest": "manifest",
+         "weak_behavioral": "behaviour", "abstain": "left out"}
+agg = {}
+for k, v in r["by_label_source"].items():
+    agg[names.get(k, k)] = agg.get(names.get(k, k), 0) + v
+print(", ".join(f"{k} {v}" for k, v in agg.items()))
+for w in r["warnings"][:3]:
+    print(w)
 PYEOF
+)
+LABEL_SRC="$(head -n 1 <<< "$LABEL_SUMMARY")"
+[[ -n "$LABEL_SRC" ]] || LABEL_SRC="see labeling_report.json"
+LABEL_WARN=()
+mapfile -t LABEL_WARN < <(tail -n +2 <<< "$LABEL_SUMMARY")
+for w in "${LABEL_WARN[@]+"${LABEL_WARN[@]}"}"; do [[ -z "$w" ]] || later "$w"; done
 
-[[ -f "$MERGED_FEATURES" ]] || fail "Merge step failed — $MERGED_FEATURES not created"
-RECORD_COUNT=$(python3 -c "import json; print(len(json.load(open('$MERGED_FEATURES'))))" 2>/dev/null || echo "?")
-ok "Merged dataset: $RECORD_COUNT records → $MERGED_FEATURES"
-
-# ══════════════════════════════════════════════════════════════
-#  STEP 0-D: EXPLORATORY DATA ANALYSIS (profile before training)
-# ══════════════════════════════════════════════════════════════
-step "STEP 0-D — Exploratory Data Analysis (data profiling)"
-info "Profiling the merged dataset before labeling/training"
-
-EDA_REPORT="$DATA_DIR/eda_report.json"
-python3 -m dns_detect.features.eda \
-  --input  "$MERGED_FEATURES" \
-  --output "$EDA_REPORT" 2>&1 | tee -a "$TRAIN_LOG" || \
-  warn "EDA step reported issues (continuing — EDA is informational, not a gate)"
-[[ -f "$EDA_REPORT" ]] && ok "EDA report → $EDA_REPORT"
-
-# ══════════════════════════════════════════════════════════════
-#  STEP 1: GENERATE LABELS
-# ══════════════════════════════════════════════════════════════
-step "STEP 1 — Generate labels from merged dataset"
-
-if [[ -f "$ATTACK_MANIFEST" ]]; then
-  # Tier 1: INDEPENDENT ground-truth labels from the attack manifest
-  # (time-window + source). Breaks the circular attack_count labeling.
-  info "Attack manifest found → labeling from GROUND TRUTH (not attack_count)"
-  info "Manifest: $ATTACK_MANIFEST"
-  python3 "$SCRIPT_DIR/label_from_manifest.py" \
-    --features "$MERGED_FEATURES" \
-    --manifest "$ATTACK_MANIFEST" \
-    --output   "$MERGED_LABELED" 2>&1 | tee -a "$TRAIN_LOG"
-else
-  # Fallback: heuristic weak labels from attack_count (circular — see AUDIT_REPORT.md).
-  warn "No attack manifest at $ATTACK_MANIFEST — falling back to heuristic attack_count labels"
-  warn "For defensible metrics, add data/attack_manifest.csv (see data/attack_manifest.example.csv)"
-  python3 -m dns_detect.fusion.bridge \
-    --week3  "$MERGED_FEATURES" \
-    --output "$MERGED_LABELED" \
-    --label-only 2>&1 | tee -a "$TRAIN_LOG"
-fi
-
-[[ -f "$MERGED_LABELED" ]] || fail "Label generation failed"
-
-ATTACK_COUNT=$(python3 -c "
-import json; d=json.load(open('$MERGED_LABELED'))
-print(sum(1 for r in d if r.get('label',0)==1))" 2>/dev/null || echo "?")
-BENIGN_COUNT=$(python3 -c "
-import json; d=json.load(open('$MERGED_LABELED'))
-print(sum(1 for r in d if r.get('label',0)==0))" 2>/dev/null || echo "?")
-TOTAL_COUNT=$(python3 -c "
-import json; print(len(json.load(open('$MERGED_LABELED'))))" 2>/dev/null || echo "?")
-
-ATTACK_TYPES=$(python3 -c "
+LABEL_STATS=$(python3 -c "
 import json
 d = json.load(open('$MERGED_LABELED'))
-types = sorted(set(str(r.get('attack_family', r.get('attack_type','unknown'))) for r in d if r.get('label',0)==1))
-print(','.join(types) if types else 'none')" 2>/dev/null || echo "unknown")
+a = sum(1 for r in d if r.get('label', 0) == 1)
+b = sum(1 for r in d if r.get('label', 0) == 0)
+types = sorted({str(r.get('attack_family', r.get('attack_type', 'unknown'))) for r in d if r.get('label', 0) == 1})
+print(a, b, len(d), ','.join(types) or 'none')" 2>/dev/null || echo "? ? ? unknown")
+read -r ATTACK_COUNT BENIGN_COUNT TOTAL_COUNT ATTACK_TYPES <<< "$LABEL_STATS"
 
-ok "Labels: attacks=$ATTACK_COUNT  benign=$BENIGN_COUNT  total=$TOTAL_COUNT"
-ok "Attack types found: $ATTACK_TYPES"
-
-# Both classes are required — stop BEFORE any model artifact is overwritten.
+# Both classes are required — stop BEFORE any model file is overwritten.
 if [[ "$ATTACK_COUNT" == "0" || "$BENIGN_COUNT" == "0" ]]; then
-  fail "Training data has only one class (attacks=$ATTACK_COUNT, benign=$BENIGN_COUNT). \
-Add benign data (e.g. a benign capture converted with scripts/make_labeled_features.py --label 0). \
-Existing models were NOT changed."
+  fail "Only one class (attack=$ATTACK_COUNT, benign=$BENIGN_COUNT). Add data for the missing class — existing models were not changed."
 fi
+say "Labeled $ATTACK_COUNT attack / $BENIGN_COUNT benign · $LABEL_SRC (families: $ATTACK_TYPES)"
 
 # ══════════════════════════════════════════════════════════════
-#  STEP 2: TRAIN PATH A
+#  9. TRAIN PATH A  (supervised: RF + GBT, Transformer kept as a baseline)
 # ══════════════════════════════════════════════════════════════
 if [[ "$TRAIN_PATH_A" == true ]]; then
-  step "STEP 2 — Training Path A: RF + Transformer (8 features)"
-  info "Learns WHICH patterns are attacks vs benign (supervised)"
-  info "Dataset : $MERGED_LABELED ($TOTAL_COUNT records)"
-
-  python3 -m dns_detect.models.path_a \
-    --train     "$MERGED_LABELED" \
-    --rf-weight "$RF_WEIGHT" \
-    --tf-weight "$TF_WEIGHT" 2>&1 | tee -a "$TRAIN_LOG"
-
-  [[ $? -eq 0 ]] || fail "Path A training failed"
-
-  [[ -f "$MEM_RF" ]]        || fail "dns_tunnel_rf.pkl not saved"
-  [[ -f "$MEM_TF" ]]        || fail "dns_tunnel_transformer.keras not saved"
-  [[ -f "$MEM_SCALER" ]]    || fail "dns_scaler.pkl not saved"
-  [[ -f "$MEM_THRESHOLD" ]] || fail "dns_threshold.json not saved"
-
-  ok "Path A trained and saved to models/"
+  run_or_fail "Path A training failed" python3 -m dns_detect.models.path_a --train "$MERGED_LABELED"
+  for f in "$MEM_RF" "$MEM_TF" "$MEM_SCALER" "$MEM_THRESHOLD"; do
+    [[ -f "$f" ]] || fail "Path A did not save $(basename "$f")"
+  done
+  METRICS="$MODELS_DIR/evaluation_metrics.json"
+  say "Path A trained (F1 $(json_num "$METRICS" path_a.f1), PR-AUC $(json_num "$METRICS" path_a.pr_auc))"
 else
-  step "STEP 2 — Path A SKIPPED (using existing models)"
-  ok "Path A models already in models/"
+  say "Path A skipped (existing model kept)"
 fi
 
 # ══════════════════════════════════════════════════════════════
-#  STEP 3: TRAIN PATH B
+#  10. TRAIN PATH B  (unsupervised: Trafficformer on benign windows)
 # ══════════════════════════════════════════════════════════════
 if [[ "$TRAIN_PATH_B" == true ]]; then
-  step "STEP 3 — Training Path B: Trafficformer (sequence reconstruction)"
-  info "Learns WHAT normal traffic looks like (unsupervised)"
-  info "Window size: $N_DAYS timesteps"
-
-  python3 -m dns_detect.models.path_b_train \
-    --filename  "$MERGED_LABELED" \
-    --n_days    "$N_DAYS" \
-    --save_name "$PATH_B_MODEL" \
-    --data_dir  "/" 2>&1 | tee -a "$TRAIN_LOG"
-
-  [[ $? -eq 0 ]] || fail "Path B training failed"
-  [[ -f "$MEM_PATH_B" ]] || fail "Path B model not saved"
-
-  ok "Path B trained and saved to models/"
+  run_or_fail "Path B training failed" python3 -m dns_detect.models.path_b_train \
+    --filename "$MERGED_LABELED" --n_days "$N_DAYS" --save_name "$PATH_B_MODEL" --data_dir "/"
+  [[ -f "$MEM_PATH_B" ]] || fail "Path B did not save ${PATH_B_MODEL}.h5"
+  say "Path B trained (window $N_DAYS, anomaly threshold $(json_num "$MEM_PATH_B_THRESHOLD" threshold))"
 else
-  step "STEP 3 — Path B SKIPPED (using existing model)"
-  ok "Path B model already in models/"
+  say "Path B skipped (existing model kept)"
 fi
 
 # ══════════════════════════════════════════════════════════════
-#  WRITE RICH TRAINING METADATA
+#  SAVE TRAINING METADATA  (read by run_pipeline.sh and the monitor)
 # ══════════════════════════════════════════════════════════════
-step "Saving rich training memory"
-
 NOW=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
 
-python3 - <<PYEOF
-import json, os
+run python3 - <<PYEOF || later "Could not save training metadata (see log)"
+import json, statistics
 
 meta_path = "$MEM_METADATA"
 try:
     with open(meta_path) as f: meta = json.load(f)
-except:
+except Exception:
     meta = {}
-
 try:
     with open("$MEM_PROVENANCE") as f: prov = json.load(f)
-except:
+except Exception:
     prov = {}
 
+mode = "force" if "$FORCE_RETRAIN" == "true" else ("smart" if "$RETRAIN" == "true" else "initial")
 update = {
-    "last_trained":         "$NOW",
-    "training_data":        "$MERGED_FEATURES",
-    "total_samples":        "$TOTAL_COUNT",
-    "attack_samples":       "$ATTACK_COUNT",
-    "benign_samples":       "$BENIGN_COUNT",
-    "attack_types_seen":    "$ATTACK_TYPES".split(","),
-    "path_b_model_name":    "$PATH_B_MODEL",
-    "path_b_window_size":   $N_DAYS,
-    "rf_weight":            $RF_WEIGHT,
-    "tf_weight":            $TF_WEIGHT,
-    "retrain_mode":         "force" if "$FORCE_RETRAIN" == "true" else ("smart" if "$RETRAIN" == "true" else "initial"),
-    "new_files_this_run":   $NEW_FILES_FOUND,
+    "last_trained":           "$NOW",
+    "training_data":          "$MERGED_FEATURES",
+    "total_samples":          "$TOTAL_COUNT",
+    "attack_samples":         "$ATTACK_COUNT",
+    "benign_samples":         "$BENIGN_COUNT",
+    "attack_types_seen":      "$ATTACK_TYPES".split(","),
+    "label_source":           "$LABEL_SRC",
+    "path_b_model_name":      "$PATH_B_MODEL",
+    "path_b_window_size":     $N_DAYS,
+    "retrain_mode":           mode,
+    "new_files_this_run":     $NEW_FILES_FOUND,
     "skipped_files_this_run": $SKIPPED_ALREADY_TRAINED,
     "source_summary": {
         "total_source_files": len(prov.get("source_files", [])),
@@ -837,242 +684,66 @@ update = {
     },
     "feature_snapshot": {},
     "model_files": {
-        "rf":           "$MEM_RF",
-        "transformer":  "$MEM_TF",
-        "scaler":       "$MEM_SCALER",
-        "threshold":    "$MEM_THRESHOLD",
-        "trafficformer":"$MEM_PATH_B",
-        "tf_threshold": "$MEM_PATH_B_THRESHOLD",
-        "tf_norm":      "$MEM_PATH_B_NORM",
-        "provenance":   "$MEM_PROVENANCE",
-    }
+        "rf":            "$MEM_RF",
+        "transformer":   "$MEM_TF",
+        "scaler":        "$MEM_SCALER",
+        "threshold":     "$MEM_THRESHOLD",
+        "trafficformer": "$MEM_PATH_B",
+        "tf_threshold":  "$MEM_PATH_B_THRESHOLD",
+        "tf_norm":       "$MEM_PATH_B_NORM",
+        "provenance":    "$MEM_PROVENANCE",
+    },
 }
 
+# Feature snapshot for drift checks (mean/std/min/max of the first 12 numeric fields)
 try:
-    import statistics
     with open("$MERGED_LABELED") as f: data = json.load(f)
     numeric_keys = [k for k in (data[0].keys() if data else [])
-                    if isinstance(data[0].get(k), (int, float))
-                    and k not in ("label",)]
+                    if isinstance(data[0].get(k), (int, float)) and k != "label"]
     snap = {}
     for k in numeric_keys[:12]:
         vals = [r[k] for r in data if isinstance(r.get(k), (int, float))]
         if vals:
             snap[k] = {
-                "mean":   round(statistics.mean(vals), 4),
-                "stdev":  round(statistics.stdev(vals) if len(vals) > 1 else 0, 4),
-                "min":    round(min(vals), 4),
-                "max":    round(max(vals), 4),
+                "mean":  round(statistics.mean(vals), 4),
+                "stdev": round(statistics.stdev(vals) if len(vals) > 1 else 0, 4),
+                "min":   round(min(vals), 4),
+                "max":   round(max(vals), 4),
             }
     update["feature_snapshot"] = snap
 except Exception as e:
     print(f"  [warn] Feature snapshot skipped: {e}")
 
-if "$TRAIN_PATH_A" == "true":
-    update["path_a_trained"] = "$NOW"
-    update["path_a_prev"]    = meta.get("path_a_trained", "first time")
-else:
-    update["path_a_trained"] = meta.get("path_a_trained", "$NOW")
-
-if "$TRAIN_PATH_B" == "true":
-    update["path_b_trained"] = "$NOW"
-    update["path_b_prev"]    = meta.get("path_b_trained", "first time")
-else:
-    update["path_b_trained"] = meta.get("path_b_trained", "$NOW")
+for path, trained in (("a", "$TRAIN_PATH_A"), ("b", "$TRAIN_PATH_B")):
+    if trained == "true":
+        update[f"path_{path}_trained"] = "$NOW"
+        update[f"path_{path}_prev"]    = meta.get(f"path_{path}_trained", "first time")
+    else:
+        update[f"path_{path}_trained"] = meta.get(f"path_{path}_trained", "$NOW")
 
 history = meta.get("training_history", [])
 history.append({
-    "date":              "$NOW",
-    "total_samples":     "$TOTAL_COUNT",
-    "attack_samples":    "$ATTACK_COUNT",
-    "attack_types":      "$ATTACK_TYPES".split(","),
-    "source_files":      len(prov.get("source_files", [])),
-    "new_files":         $NEW_FILES_FOUND,
-    "skipped_files":     $SKIPPED_ALREADY_TRAINED,
-    "retrain_mode":      "force" if "$FORCE_RETRAIN" == "true" else ("smart" if "$RETRAIN" == "true" else "initial"),
-    "path_a":            "$TRAIN_PATH_A",
-    "path_b":            "$TRAIN_PATH_B",
+    "date":          "$NOW",
+    "total_samples": "$TOTAL_COUNT",
+    "attack_samples": "$ATTACK_COUNT",
+    "attack_types":  "$ATTACK_TYPES".split(","),
+    "source_files":  len(prov.get("source_files", [])),
+    "new_files":     $NEW_FILES_FOUND,
+    "skipped_files": $SKIPPED_ALREADY_TRAINED,
+    "retrain_mode":  mode,
+    "path_a":        "$TRAIN_PATH_A",
+    "path_b":        "$TRAIN_PATH_B",
 })
 update["training_history"] = history[-10:]
 
 meta.update(update)
 with open(meta_path, "w") as f:
     json.dump(meta, f, indent=2)
-print(f"  Metadata   → {meta_path}")
-print(f"  Provenance → $MEM_PROVENANCE")
+print(f"  Metadata -> {meta_path}")
 PYEOF
+flush_notes
 
-ok "Training memory saved"
-
-# ══════════════════════════════════════════════════════════════
-#  GENERATE: pipeline_awareness_check.sh
-# ══════════════════════════════════════════════════════════════
-step "Generating pipeline awareness check script"
-
-cat > "$SCRIPT_DIR/pipeline_awareness_check.sh" << 'AWARENESS_EOF'
-#!/bin/bash
-CYAN='\033[0;36m'; YELLOW='\033[1;33m'; RED='\033[0;31m'
-GREEN='\033[0;32m'; BOLD='\033[1m'; NC='\033[0m'
-
-# Lives in scripts/; training metadata lives in models/
-_MEM_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../models" && pwd)"
-_META="$_MEM_DIR/training_metadata.json"
-_PROV="$_MEM_DIR/training_provenance.json"
-_REG="$_MEM_DIR/trained_files_registry.json"
-
-pipeline_print_training_context() {
-  echo ""
-  echo -e "${BOLD}${CYAN}  ╔══════════════════════════════════════════════════════════╗${NC}"
-  echo -e "${BOLD}${CYAN}  ║   PIPELINE TRAINING CONTEXT                              ║${NC}"
-  echo -e "${BOLD}${CYAN}  ╚══════════════════════════════════════════════════════════╝${NC}"
-
-  if [[ ! -f "$_META" ]]; then
-    echo -e "${RED}  ❌ No training metadata found at $_META${NC}"
-    echo -e "${YELLOW}  ⚠  Run ./scripts/train_models.sh first before using the pipeline.${NC}"
-    echo ""
-    return 1
-  fi
-
-  python3 - <<PYEOF
-import json, os
-from datetime import datetime, timezone
-
-meta  = json.load(open("$_META"))
-try:   prov = json.load(open("$_PROV"))
-except: prov = {}
-try:   reg  = json.load(open("$_REG"))
-except: reg  = {"trained_files": []}
-
-now = datetime.now(timezone.utc)
-
-def age(ts):
-    try:
-        t = datetime.fromisoformat(ts.replace("Z","+00:00"))
-        d = (now - t).days
-        return f"{d}d ago" if d > 0 else "today"
-    except: return ts
-
-print(f"\n  {'Last trained':<22}: {meta.get('last_trained','?')}  ({age(meta.get('last_trained',''))})")
-print(f"  {'Retrain mode':<22}: {meta.get('retrain_mode', 'initial')}")
-print(f"  {'Path A trained':<22}: {meta.get('path_a_trained','?')}")
-print(f"  {'Path B trained':<22}: {meta.get('path_b_trained','?')}")
-print()
-print(f"  {'Total samples':<22}: {meta.get('total_samples','?')}")
-print(f"  {'Attack samples':<22}: {meta.get('attack_samples','?')}")
-print(f"  {'Benign samples':<22}: {meta.get('benign_samples','?')}")
-print(f"  {'Attack types seen':<22}: {', '.join(meta.get('attack_types_seen', ['?']))}")
-print()
-
-total_trained = len(reg.get("trained_files", []))
-print(f"  {'Files in registry':<22}: {total_trained} (all files ever trained on)")
-print()
-
-hist = meta.get("training_history", [])
-if len(hist) > 1:
-    print(f"  Training history (last {min(len(hist),5)} sessions):")
-    for h in hist[-5:]:
-        pa   = "A" if h.get("path_a") == "true" else "-"
-        pb   = "B" if h.get("path_b") == "true" else "-"
-        mode = h.get("retrain_mode", "?")
-        new  = h.get("new_files", "?")
-        skip = h.get("skipped_files", "?")
-        print(f"    {h['date']}  samples={h['total_samples']:<7} new={new:<4} skipped={skip:<4} mode={mode}  [{pa}{pb}]")
-    print()
-PYEOF
-  echo ""
-}
-
-pipeline_check_drift() {
-  local live_file="${1:-}"
-  [[ -f "$live_file" ]] || return 0
-  [[ -f "$_META"     ]] || return 0
-
-  python3 - <<PYEOF
-import json, statistics, sys
-
-meta  = json.load(open("$_META"))
-snap  = meta.get("feature_snapshot", {})
-if not snap:
-    sys.exit(0)
-
-try:
-    with open("$live_file") as f: live = json.load(f)
-except:
-    sys.exit(0)
-
-WARN  = '\033[1;33m'
-GREEN = '\033[0;32m'
-NC    = '\033[0m'
-
-warnings = []
-for feat, ref in snap.items():
-    vals = [r[feat] for r in live if isinstance(r.get(feat), (int, float))]
-    if not vals: continue
-    live_mean = statistics.mean(vals)
-    ref_mean  = ref["mean"]
-    ref_std   = ref["stdev"] if ref["stdev"] > 0 else 1
-    z = abs(live_mean - ref_mean) / ref_std
-    if z > 3:
-        warnings.append((feat, ref_mean, live_mean, z))
-
-if warnings:
-    print(f"\n{WARN}  ⚠  DATA DRIFT DETECTED — live traffic differs from training data:{NC}")
-    for feat, ref_m, live_m, z in warnings:
-        print(f"{WARN}     {feat:<30} train_mean={ref_m:.4f}  live_mean={live_m:.4f}  z={z:.1f}{NC}")
-    print(f"{WARN}  Run: ./scripts/train_models.sh --retrain  (only trains on new files){NC}\n")
-else:
-    print(f"\n{GREEN}  ✅ Live traffic features match training distribution (no drift){NC}\n")
-PYEOF
-}
-
-pipeline_print_training_context
-AWARENESS_EOF
-
-chmod +x "$SCRIPT_DIR/pipeline_awareness_check.sh"
-ok "Pipeline awareness check → $SCRIPT_DIR/pipeline_awareness_check.sh"
-
-# ══════════════════════════════════════════════════════════════
-#  FINAL SUMMARY
-# ══════════════════════════════════════════════════════════════
-END_TIME=$(date +%s)
-ELAPSED=$(( END_TIME - START_TIME ))
-MINS=$(( ELAPSED / 60 ))
-SECS=$(( ELAPSED % 60 ))
-
-echo ""
-printf "${BOLD}${GREEN}══════════════════════════════════════════════════════════════\n${NC}"
-printf "${BOLD}${GREEN}  ✅  ML MODEL TRAINING COMPLETE  (${MINS}m ${SECS}s)\n${NC}"
-printf "${BOLD}${GREEN}══════════════════════════════════════════════════════════════\n${NC}"
-echo ""
-echo -e "${BOLD}This run:${NC}"
-echo "  New files trained    : $NEW_FILES_FOUND"
-echo "  Files skipped        : $SKIPPED_ALREADY_TRAINED (already in registry)"
-echo "  Retrain mode         : $([ "$FORCE_RETRAIN" == "true" ] && echo "force (all data)" || ([ "$RETRAIN" == "true" ] && echo "smart (new data only)" || echo "initial"))"
-echo ""
-echo -e "${BOLD}Trained on:${NC}"
-echo "  Total samples   : $TOTAL_COUNT"
-echo "  Attack samples  : $ATTACK_COUNT"
-echo "  Benign samples  : $BENIGN_COUNT"
-echo "  Attack types    : $ATTACK_TYPES"
-echo ""
-echo -e "${BOLD}Model memory saved to:${NC}  $MODELS_DIR"
-[[ -f "$MEM_RF" ]]               && echo "  Random Forest          : dns_tunnel_rf.pkl"
-[[ -f "$MEM_TF" ]]               && echo "  Transformer            : dns_tunnel_transformer.keras"
-[[ -f "$MEM_SCALER" ]]           && echo "  Scaler                 : dns_scaler.pkl"
-[[ -f "$MEM_THRESHOLD" ]]        && echo "  Threshold              : dns_threshold.json"
-[[ -f "$MEM_PATH_B" ]]           && echo "  Trafficformer          : ${PATH_B_MODEL}.h5"
-[[ -f "$MEM_PATH_B_THRESHOLD" ]] && echo "  Trafficformer thresh   : ${PATH_B_MODEL}_threshold.json"
-[[ -f "$MEM_PROVENANCE" ]]       && echo "  Provenance             : training_provenance.json"
-[[ -f "$MEM_METADATA" ]]         && echo "  Metadata               : training_metadata.json"
-[[ -f "$TRAINED_FILES_REGISTRY" ]] && echo "  File registry          : trained_files_registry.json"
-echo "  Training log           : $TRAIN_LOG"
-echo ""
-echo -e "${BOLD}${CYAN}  ▶  Run detection:${NC}"
-echo -e "  ${BOLD}./scripts/run_pipeline.sh${NC}"
-echo ""
-echo -e "${CYAN}  Smart retrain (new files only):${NC}"
-echo -e "  ${BOLD}./scripts/train_models.sh --retrain${NC}"
-echo ""
-echo -e "${CYAN}  Force retrain everything:${NC}"
-echo -e "  ${BOLD}./scripts/train_models.sh --force-retrain${NC}"
-echo ""
+ELAPSED=$(( $(date +%s) - START_TIME ))
+printf "${GREEN}${BOLD}✓ Training complete${NC} in %dm %ds · models saved to models/ · next: ./scripts/run_pipeline.sh\n" \
+  $((ELAPSED / 60)) $((ELAPSED % 60))
+log "Training complete in ${ELAPSED}s"

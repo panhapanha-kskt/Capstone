@@ -1,0 +1,58 @@
+# Parent domains whose traffic is known-benign even when it looks like tunneling
+# (long / random / many unique subdomains). Used by Step 8 labeling (allowlisted → benign, vetoes attack votes).
+# One registrable domain per line; subdomains are covered automatically. Lines starting with # are ignored.
+# Research: AV/EDR reputation lookups, DNS blocklists and CDNs are the largest sources of tunneling look-alikes
+# (Elastic "Plight at the end of the tunnel"; Ozery et al. NDSS 2024 use global + peace-time allowlists).
+# Extend this list with domains seen in your own clean ("peace-time") traffic.
+
+# CDNs and cloud front ends
+akamai.net
+akamaiedge.net
+akamaihd.net
+edgekey.net
+edgesuite.net
+cloudfront.net
+cloudflare.net
+cloudflare.com
+fastly.net
+azureedge.net
+trafficmanager.net
+amazonaws.com
+googleusercontent.com
+gstatic.com
+googleapis.com
+1e100.net
+gvt1.com
+gvt2.com
+
+# OS / software update and telemetry
+windowsupdate.com
+microsoft.com
+msftncsi.com
+apple.com
+icloud.com
+mzstatic.com
+ubuntu.com
+debian.org
+mozilla.org
+mozilla.net
+
+# DNS blocklists (reputation lookups encode an IP/domain into the name)
+spamhaus.org
+spamcop.net
+sorbs.net
+barracudacentral.org
+surbl.org
+uribl.com
+
+# Antivirus / EDR cloud reputation lookups
+sophosxl.net
+mcafee.com
+trendmicro.com
+eset.com
+e5.sk
+avast.com
+avg.com
+kaspersky.com
+bitdefender.net
+crowdstrike.com

@@ -1,0 +1,1104 @@
+{
+  "generated_at": "2026-10-31 15:50",
+  "files": [
+    {
+      "file": "labeled_tunnels.json",
+      "path": "data/processed/labeled_tunnels.json",
+      "group": "labeled",
+      "status": "labeled",
+      "kind": "json",
+      "queries": 10000,
+      "error": null
+    },
+    {
+      "file": "labeled_benign.json",
+      "path": "data/processed/labeled_benign.json",
+      "group": "labeled",
+      "status": "labeled",
+      "kind": "json",
+      "queries": 8353,
+      "error": null
+    },
+    {
+      "file": "2026-03-18.log",
+      "path": "data/raw/2026-03-18.log",
+      "group": "unlabeled",
+      "status": "unlabeled",
+      "kind": "log",
+      "queries": 8152,
+      "error": null
+    },
+    {
+      "file": "2026-03-19.log",
+      "path": "data/raw/2026-03-19.log",
+      "group": "unlabeled",
+      "status": "unlabeled",
+      "kind": "log",
+      "queries": 0,
+      "error": null
+    },
+    {
+      "file": "2026-03-20.log",
+      "path": "data/raw/2026-03-20.log",
+      "group": "unlabeled",
+      "status": "unlabeled",
+      "kind": "log",
+      "queries": 0,
+      "error": null
+    }
+  ],
+  "totals": {
+    "rows": 26505,
+    "labeled_rows": 18353,
+    "unlabeled_rows": 8152
+  },
+  "all": {
+    "rows": 26505,
+    "files": 3,
+    "clients": 8,
+    "top_clients": [
+      {
+        "value": "192.168.197.135",
+        "count": 8152,
+        "share": 0.3076
+      },
+      {
+        "value": "192.168.223.132",
+        "count": 6790,
+        "share": 0.2562
+      },
+      {
+        "value": "198.41.0.127",
+        "count": 4000,
+        "share": 0.1509
+      },
+      {
+        "value": "198.41.0.128",
+        "count": 4000,
+        "share": 0.1509
+      },
+      {
+        "value": "192.168.0.164",
+        "count": 2000,
+        "share": 0.0755
+      }
+    ],
+    "first_seen": "2019-04-24T03:37:01.082909",
+    "last_seen": "2026-10-24T01:15:04.223463",
+    "duration_min": 3945458.1,
+    "query_types": [
+      {
+        "value": "A",
+        "count": 13456,
+        "share": 0.5077
+      },
+      {
+        "value": "TXT",
+        "count": 6000,
+        "share": 0.2264
+      },
+      {
+        "value": "KEY",
+        "count": 4000,
+        "share": 0.1509
+      },
+      {
+        "value": "MX",
+        "count": 1877,
+        "share": 0.0708
+      },
+      {
+        "value": "AAAA",
+        "count": 629,
+        "share": 0.0237
+      },
+      {
+        "value": "DNSKEY",
+        "count": 276,
+        "share": 0.0104
+      },
+      {
+        "value": "HTTPS",
+        "count": 248,
+        "share": 0.0094
+      },
+      {
+        "value": "DS",
+        "count": 15,
+        "share": 0.0006
+      }
+    ],
+    "tunnel_qtype_share": 0.3773,
+    "response_codes": [
+      {
+        "value": "unknown",
+        "count": 18353,
+        "share": 0.6924
+      },
+      {
+        "value": "NxDomain",
+        "count": 8148,
+        "share": 0.3074
+      },
+      {
+        "value": "NoError",
+        "count": 4,
+        "share": 0.0002
+      }
+    ],
+    "nxdomain_rate": 0.9995,
+    "top_parent_domains": [
+      {
+        "value": "lab.local",
+        "count": 8152,
+        "share": 0.3076
+      },
+      {
+        "value": "dns2tcp-key.com",
+        "count": 4000,
+        "share": 0.1509
+      },
+      {
+        "value": "dns2tcp-txt.com",
+        "count": 4000,
+        "share": 0.1509
+      },
+      {
+        "value": "daumel.xyz",
+        "count": 2000,
+        "share": 0.0755
+      },
+      {
+        "value": "googleapis.com",
+        "count": 264,
+        "share": 0.01
+      }
+    ],
+    "max_subdomains_per_parent": {
+      "parent": "lab.local",
+      "unique_subdomains": 8148
+    },
+    "unique_domains": 22030,
+    "duplicate_rows": 23,
+    "missing": {
+      "client_ip": 0.0,
+      "timestamp": 0.0,
+      "response_code": 0.6924,
+      "domain": 0.0
+    },
+    "answers_recorded": 1.0,
+    "long_labels": 2544,
+    "longest_names": [
+      "y7thimgicmozyk5jpgtd5cda+ex8yl6ejzzdjh2haod702o2qak+jgupdmiqf6a.4d1viqgfavwzpttfxl5c2eucfdvzi+hs7yx7cwbyywrua5fsj5l0fetcbclcyrv.opzfu2f2hcf7jpki0kpflo+7y88o2vq3o1i7umfzbtbhmwi/ev.dns2tcp-txt.com",
+      "y7thbwgfco+myakfabt88f/wfhw8yvgk3q/hjjyfsyeivtvaj1knionnfygetp5.z2ym54xzuuh0qjdf4k5b+i5obwack7ht1b5q5xlfnfqjo4g0/3wz7fyzwtms33e./vsyiuplzgr2r8tkpvy0xv02t32ry5dc1i9hozbvgkmg4pv8nx.dns2tcp-txt.com",
+      "y7thsmficjtsfvnglm+r+3jcoxorcxuyslincjjwegxd1zk1iu93czwktq/wklu.8okx9uf61zguxcowybkl5ipaxddoxnpnrwo9wuzlm53/mbd+ycs7x1imb96y0yu.7l5cydr+2nhskzwbqyj8vyegln7vxuqh0epwhb0vh+wfnyjq8e.dns2tcp-txt.com",
+      "y7thsgfgcaozk5qhouhq+id3zdsxtfba1qmull//ioxo54bc3zkstbxhmlba0ds.mmopaimxmavb+ihnrpzzmyvsuoaojt2ocnwlhlz+dsiqudpvvjejip3q9/kfmpn.s1gn4z359xeiuxlan36qbxkd7+dyn39wlu11vm8e7+n/yon6wt.dns2tcp-txt.com",
+      "y7thq2fbcji1g7lul+zrito4/ghffi/wt6r+atwl2ucg27yufo28chtbhz1gvvq.7pommhrbljjjbcnd1o2+s1xbgkl2kx8r++d86oaxnccywc6qt8ns9n+d6fbyonk.5pnrqon/ndifyijruondqcheqwusihuxwdnhtunbqdzz1idy57.dns2tcp-txt.com"
+    ],
+    "measures": {
+      "query_length": {
+        "mean": 38.7647,
+        "median": 25.0,
+        "p95": 194.0,
+        "min": 2.0,
+        "max": 194.0,
+        "std": 51.3705,
+        "skew": 2.5811,
+        "iqr_fence": 47.5,
+        "outliers_1_5_iqr": 2638,
+        "outliers_3_iqr": 2555
+      },
+      "longest_label": {
+        "mean": 15.4979,
+        "median": 11.0,
+        "p95": 63.0,
+        "min": 2.0,
+        "max": 63.0,
+        "std": 16.254,
+        "skew": 2.3206,
+        "iqr_fence": 22.0,
+        "outliers_1_5_iqr": 4748,
+        "outliers_3_iqr": 2563
+      },
+      "subdomain_count": {
+        "mean": 2.3238,
+        "median": 2.0,
+        "p95": 4.0,
+        "min": 0.0,
+        "max": 5.0,
+        "std": 0.9915,
+        "skew": 0.3302,
+        "iqr_fence": 4.5,
+        "outliers_1_5_iqr": 333,
+        "outliers_3_iqr": 0
+      },
+      "entropy": {
+        "mean": 3.7115,
+        "median": 3.6402,
+        "p95": 5.0886,
+        "min": 1.0,
+        "max": 5.2199,
+        "std": 0.7031,
+        "skew": 0.1134,
+        "iqr_fence": 5.4627,
+        "outliers_1_5_iqr": 291,
+        "outliers_3_iqr": 0
+      },
+      "digit_ratio": {
+        "mean": 0.0583,
+        "median": 0.0,
+        "p95": 0.225,
+        "min": 0.0,
+        "max": 0.6,
+        "std": 0.0781,
+        "skew": 1.3288,
+        "iqr_fence": 0.25,
+        "outliers_1_5_iqr": 635,
+        "outliers_3_iqr": 16
+      }
+    }
+  },
+  "labeled": {
+    "rows": 18353,
+    "class_balance": {
+      "attack": 10000,
+      "benign": 8353,
+      "attack_share": 0.5449
+    },
+    "per_file": [
+      {
+        "file": "labeled_benign.json",
+        "attack": 0,
+        "benign": 8353
+      },
+      {
+        "file": "labeled_tunnels.json",
+        "attack": 10000,
+        "benign": 0
+      }
+    ],
+    "attack_families": [
+      {
+        "value": "dns2tcp",
+        "count": 8000,
+        "share": 0.8
+      },
+      {
+        "value": "dnsexfiltrator",
+        "count": 2000,
+        "share": 0.2
+      }
+    ],
+    "per_class": {
+      "attack": {
+        "rows": 10000,
+        "files": 1,
+        "clients": 3,
+        "top_clients": [
+          {
+            "value": "198.41.0.127",
+            "count": 4000,
+            "share": 0.4
+          },
+          {
+            "value": "198.41.0.128",
+            "count": 4000,
+            "share": 0.4
+          },
+          {
+            "value": "192.168.0.164",
+            "count": 2000,
+            "share": 0.2
+          }
+        ],
+        "first_seen": "2019-04-24T03:37:01.082909",
+        "last_seen": "2024-12-10T02:27:24.591136",
+        "duration_min": 2962010.4,
+        "query_types": [
+          {
+            "value": "TXT",
+            "count": 6000,
+            "share": 0.6
+          },
+          {
+            "value": "KEY",
+            "count": 4000,
+            "share": 0.4
+          }
+        ],
+        "tunnel_qtype_share": 1.0,
+        "response_codes": [
+          {
+            "value": "unknown",
+            "count": 10000,
+            "share": 1.0
+          }
+        ],
+        "nxdomain_rate": null,
+        "top_parent_domains": [
+          {
+            "value": "dns2tcp-key.com",
+            "count": 4000,
+            "share": 0.4
+          },
+          {
+            "value": "dns2tcp-txt.com",
+            "count": 4000,
+            "share": 0.4
+          },
+          {
+            "value": "daumel.xyz",
+            "count": 2000,
+            "share": 0.2
+          }
+        ],
+        "max_subdomains_per_parent": {
+          "parent": "dns2tcp-key.com",
+          "unique_subdomains": 4000
+        },
+        "unique_domains": 9986,
+        "duplicate_rows": 0,
+        "missing": {
+          "client_ip": 0.0,
+          "timestamp": 0.0,
+          "response_code": 1.0,
+          "domain": 0.0
+        },
+        "answers_recorded": 1.0,
+        "long_labels": 2544,
+        "longest_names": [
+          "y7thimgicmozyk5jpgtd5cda+ex8yl6ejzzdjh2haod702o2qak+jgupdmiqf6a.4d1viqgfavwzpttfxl5c2eucfdvzi+hs7yx7cwbyywrua5fsj5l0fetcbclcyrv.opzfu2f2hcf7jpki0kpflo+7y88o2vq3o1i7umfzbtbhmwi/ev.dns2tcp-txt.com",
+          "y7thbwgfco+myakfabt88f/wfhw8yvgk3q/hjjyfsyeivtvaj1knionnfygetp5.z2ym54xzuuh0qjdf4k5b+i5obwack7ht1b5q5xlfnfqjo4g0/3wz7fyzwtms33e./vsyiuplzgr2r8tkpvy0xv02t32ry5dc1i9hozbvgkmg4pv8nx.dns2tcp-txt.com",
+          "y7thsmficjtsfvnglm+r+3jcoxorcxuyslincjjwegxd1zk1iu93czwktq/wklu.8okx9uf61zguxcowybkl5ipaxddoxnpnrwo9wuzlm53/mbd+ycs7x1imb96y0yu.7l5cydr+2nhskzwbqyj8vyegln7vxuqh0epwhb0vh+wfnyjq8e.dns2tcp-txt.com",
+          "y7thsgfgcaozk5qhouhq+id3zdsxtfba1qmull//ioxo54bc3zkstbxhmlba0ds.mmopaimxmavb+ihnrpzzmyvsuoaojt2ocnwlhlz+dsiqudpvvjejip3q9/kfmpn.s1gn4z359xeiuxlan36qbxkd7+dyn39wlu11vm8e7+n/yon6wt.dns2tcp-txt.com",
+          "y7thq2fbcji1g7lul+zrito4/ghffi/wt6r+atwl2ucg27yufo28chtbhz1gvvq.7pommhrbljjjbcnd1o2+s1xbgkl2kx8r++d86oaxnccywc6qt8ns9n+d6fbyonk.5pnrqon/ndifyijruondqcheqwusihuxwdnhtunbqdzz1idy57.dns2tcp-txt.com"
+        ],
+        "measures": {
+          "query_length": {
+            "mean": 72.1613,
+            "median": 26.0,
+            "p95": 194.0,
+            "min": 26.0,
+            "max": 194.0,
+            "std": 71.3249,
+            "skew": 1.1028,
+            "iqr_fence": 446.0,
+            "outliers_1_5_iqr": 0,
+            "outliers_3_iqr": 0
+          },
+          "longest_label": {
+            "mean": 26.6288,
+            "median": 11.0,
+            "p95": 63.0,
+            "min": 11.0,
+            "max": 63.0,
+            "std": 21.7367,
+            "skew": 0.9884,
+            "iqr_fence": 141.0,
+            "outliers_1_5_iqr": 0,
+            "outliers_3_iqr": 0
+          },
+          "subdomain_count": {
+            "mean": 2.9069,
+            "median": 2.0,
+            "p95": 4.0,
+            "min": 2.0,
+            "max": 4.0,
+            "std": 0.9957,
+            "skew": 0.187,
+            "iqr_fence": 7.0,
+            "outliers_1_5_iqr": 0,
+            "outliers_3_iqr": 0
+          },
+          "entropy": {
+            "mean": 4.42,
+            "median": 4.2868,
+            "p95": 5.129,
+            "min": 3.5364,
+            "max": 5.2199,
+            "std": 0.4386,
+            "skew": 0.519,
+            "iqr_fence": 6.3617,
+            "outliers_1_5_iqr": 0,
+            "outliers_3_iqr": 0
+          },
+          "digit_ratio": {
+            "mean": 0.1273,
+            "median": 0.125,
+            "p95": 0.25,
+            "min": 0.0417,
+            "max": 0.3846,
+            "std": 0.0684,
+            "skew": 0.6657,
+            "iqr_fence": 0.296,
+            "outliers_1_5_iqr": 205,
+            "outliers_3_iqr": 0
+          }
+        }
+      },
+      "benign": {
+        "rows": 8353,
+        "files": 1,
+        "clients": 4,
+        "top_clients": [
+          {
+            "value": "192.168.223.132",
+            "count": 6790,
+            "share": 0.8129
+          },
+          {
+            "value": "172.18.0.2",
+            "count": 1110,
+            "share": 0.1329
+          },
+          {
+            "value": "172.18.0.1",
+            "count": 302,
+            "share": 0.0362
+          },
+          {
+            "value": "127.0.0.1",
+            "count": 151,
+            "share": 0.0181
+          }
+        ],
+        "first_seen": "2026-10-23T23:15:26.382052",
+        "last_seen": "2026-10-24T01:15:04.223463",
+        "duration_min": 119.6,
+        "query_types": [
+          {
+            "value": "A",
+            "count": 5306,
+            "share": 0.6352
+          },
+          {
+            "value": "MX",
+            "count": 1877,
+            "share": 0.2247
+          },
+          {
+            "value": "AAAA",
+            "count": 627,
+            "share": 0.0751
+          },
+          {
+            "value": "DNSKEY",
+            "count": 276,
+            "share": 0.033
+          },
+          {
+            "value": "HTTPS",
+            "count": 248,
+            "share": 0.0297
+          },
+          {
+            "value": "DS",
+            "count": 15,
+            "share": 0.0018
+          },
+          {
+            "value": "PTR",
+            "count": 4,
+            "share": 0.0005
+          }
+        ],
+        "tunnel_qtype_share": 0.0,
+        "response_codes": [
+          {
+            "value": "unknown",
+            "count": 8353,
+            "share": 1.0
+          }
+        ],
+        "nxdomain_rate": null,
+        "top_parent_domains": [
+          {
+            "value": "googleapis.com",
+            "count": 264,
+            "share": 0.0316
+          },
+          {
+            "value": "example.org",
+            "count": 211,
+            "share": 0.0253
+          },
+          {
+            "value": "firefox.com",
+            "count": 183,
+            "share": 0.0219
+          },
+          {
+            "value": "mozilla.com",
+            "count": 182,
+            "share": 0.0218
+          },
+          {
+            "value": "google.com",
+            "count": 159,
+            "share": 0.019
+          }
+        ],
+        "max_subdomains_per_parent": {
+          "parent": "gov.in",
+          "unique_subdomains": 30
+        },
+        "unique_domains": 3896,
+        "duplicate_rows": 23,
+        "missing": {
+          "client_ip": 0.0,
+          "timestamp": 0.0,
+          "response_code": 1.0,
+          "domain": 0.0
+        },
+        "answers_recorded": 1.0,
+        "long_labels": 0,
+        "longest_names": [
+          "codeflow-studio.gallerycdn.vsassets.io.localdomain",
+          "codeontherocks.gallerycdn.vsassets.io.localdomain",
+          "singularityinc.gallerycdn.vsassets.io.localdomain",
+          "andrepimenta.gallerycdn.vsassets.io.localdomain",
+          "yuanzhixiang.gallerycdn.vsassets.io.localdomain"
+        ],
+        "measures": {
+          "query_length": {
+            "mean": 14.1149,
+            "median": 13.0,
+            "p95": 24.0,
+            "min": 2.0,
+            "max": 50.0,
+            "std": 5.9579,
+            "skew": 1.0508,
+            "iqr_fence": 27.5,
+            "outliers_1_5_iqr": 209,
+            "outliers_3_iqr": 18
+          },
+          "longest_label": {
+            "mean": 7.8456,
+            "median": 8.0,
+            "p95": 13.0,
+            "min": 2.0,
+            "max": 28.0,
+            "std": 3.3008,
+            "skew": 0.9886,
+            "iqr_fence": 16.0,
+            "outliers_1_5_iqr": 124,
+            "outliers_3_iqr": 25
+          },
+          "subdomain_count": {
+            "mean": 1.4544,
+            "median": 1.0,
+            "p95": 3.0,
+            "min": 0.0,
+            "max": 5.0,
+            "std": 0.7036,
+            "skew": 0.8673,
+            "iqr_fence": 3.5,
+            "outliers_1_5_iqr": 123,
+            "outliers_3_iqr": 0
+          },
+          "entropy": {
+            "mean": 3.1472,
+            "median": 3.2359,
+            "p95": 3.7772,
+            "min": 1.0,
+            "max": 4.2417,
+            "std": 0.4822,
+            "skew": -1.2854,
+            "iqr_fence": 4.2586,
+            "outliers_1_5_iqr": 355,
+            "outliers_3_iqr": 12
+          },
+          "digit_ratio": {
+            "mean": 0.0137,
+            "median": 0.0,
+            "p95": 0.1111,
+            "min": 0.0,
+            "max": 0.6,
+            "std": 0.0522,
+            "skew": 4.7495,
+            "iqr_fence": 0.0,
+            "outliers_1_5_iqr": 736,
+            "outliers_3_iqr": 736
+          }
+        }
+      }
+    },
+    "profile": {
+      "rows": 18353,
+      "files": 2,
+      "clients": 7,
+      "top_clients": [
+        {
+          "value": "192.168.223.132",
+          "count": 6790,
+          "share": 0.37
+        },
+        {
+          "value": "198.41.0.127",
+          "count": 4000,
+          "share": 0.2179
+        },
+        {
+          "value": "198.41.0.128",
+          "count": 4000,
+          "share": 0.2179
+        },
+        {
+          "value": "192.168.0.164",
+          "count": 2000,
+          "share": 0.109
+        },
+        {
+          "value": "172.18.0.2",
+          "count": 1110,
+          "share": 0.0605
+        }
+      ],
+      "first_seen": "2019-04-24T03:37:01.082909",
+      "last_seen": "2026-10-24T01:15:04.223463",
+      "duration_min": 3945458.1,
+      "query_types": [
+        {
+          "value": "TXT",
+          "count": 6000,
+          "share": 0.3269
+        },
+        {
+          "value": "A",
+          "count": 5306,
+          "share": 0.2891
+        },
+        {
+          "value": "KEY",
+          "count": 4000,
+          "share": 0.2179
+        },
+        {
+          "value": "MX",
+          "count": 1877,
+          "share": 0.1023
+        },
+        {
+          "value": "AAAA",
+          "count": 627,
+          "share": 0.0342
+        },
+        {
+          "value": "DNSKEY",
+          "count": 276,
+          "share": 0.015
+        },
+        {
+          "value": "HTTPS",
+          "count": 248,
+          "share": 0.0135
+        },
+        {
+          "value": "DS",
+          "count": 15,
+          "share": 0.0008
+        }
+      ],
+      "tunnel_qtype_share": 0.5449,
+      "response_codes": [
+        {
+          "value": "unknown",
+          "count": 18353,
+          "share": 1.0
+        }
+      ],
+      "nxdomain_rate": null,
+      "top_parent_domains": [
+        {
+          "value": "dns2tcp-key.com",
+          "count": 4000,
+          "share": 0.2179
+        },
+        {
+          "value": "dns2tcp-txt.com",
+          "count": 4000,
+          "share": 0.2179
+        },
+        {
+          "value": "daumel.xyz",
+          "count": 2000,
+          "share": 0.109
+        },
+        {
+          "value": "googleapis.com",
+          "count": 264,
+          "share": 0.0144
+        },
+        {
+          "value": "example.org",
+          "count": 211,
+          "share": 0.0115
+        }
+      ],
+      "max_subdomains_per_parent": {
+        "parent": "dns2tcp-key.com",
+        "unique_subdomains": 4000
+      },
+      "unique_domains": 13882,
+      "duplicate_rows": 23,
+      "missing": {
+        "client_ip": 0.0,
+        "timestamp": 0.0,
+        "response_code": 1.0,
+        "domain": 0.0
+      },
+      "answers_recorded": 1.0,
+      "long_labels": 2544,
+      "longest_names": [
+        "sisaaaalcgetc2hhmi1uaxn0cduyms1jzxj0lxywmubvcgvuc3nolmnvbsxzc2g.tzwqyntuxos1jzxj0lxywmubvcgvuc3nolmnvbsxly2rzys1zageylw5pc3rwmj.u2lgvjzhnhlxnoytitbmlzdhazodqszwnkc2etc2hhmi1uaxn0.dns2tcp-key.com",
+        "sisaiaa1cdwwmq5vrdm6ztuwronhvmkpwgylopligwid5lk033yw66zi5t3xrww.55lxfjtgj3lqeyclocfejqe80ncyizlyueakwshj11h8tefvoxmnkiya4lvkufy.4l77cpkw8h4jqtwwbnzw2fnovnsq7whcfn7obtui9iejlsknaj.dns2tcp-key.com",
+        "xasaaaahcg4tz3jvdxatzxhjagfuz2utc2hhmju2lgrpzmzpzs1ozwxsbwfulwd.yb3vwlwv4y2hhbmdllxnoyteszglmzmlllwhlbgxtyw4tz3jvdxaxnc1zagexlg.v4dc1pbmzvlwmaaaeic3nolxjzys1jzxj0lxywmubvcgvuc3no.dns2tcp-txt.com",
+        "0zellitecny0qvoxd8xncigdotndfn6ficufcjnj8iwspix4s2xlrwrd9zm5yco.9fj8qpqaqpanxzaqyoufn/lfzi852vch9gmybg+zy+iqoxndu6ky+fkjd7araye.jathax6r8irwcll7g2e/zx57vkn2lpr0r6+2e6mlmxhipo4cla.dns2tcp-key.com",
+        "0zej14nvcojextmwe/sols4zxeug0hkp1pi+zcz+fllw6pfcmiwn4zimlnbz2ah.dknqmfogjk1cfclcuh3npa7iaop9+ufn+yfvhivv9iag5rjlz0aafbxfja7tiom.qjvakon7+pqn7ppnziicuzrlfe8e6wnvmmlcnxplgegeffvs2s.dns2tcp-key.com"
+      ],
+      "measures": {
+        "query_length": {
+          "mean": 45.7427,
+          "median": 26.0,
+          "p95": 194.0,
+          "min": 2.0,
+          "max": 194.0,
+          "std": 60.1957,
+          "skew": 1.9802,
+          "iqr_fence": 69.0,
+          "outliers_1_5_iqr": 2544,
+          "outliers_3_iqr": 2534
+        },
+        "longest_label": {
+          "mean": 18.08,
+          "median": 11.0,
+          "p95": 63.0,
+          "min": 2.0,
+          "max": 63.0,
+          "std": 18.7053,
+          "skew": 1.8105,
+          "iqr_fence": 35.5,
+          "outliers_1_5_iqr": 2544,
+          "outliers_3_iqr": 2544
+        },
+        "subdomain_count": {
+          "mean": 2.2458,
+          "median": 2.0,
+          "p95": 4.0,
+          "min": 0.0,
+          "max": 5.0,
+          "std": 1.1352,
+          "skew": 0.4827,
+          "iqr_fence": 8.5,
+          "outliers_1_5_iqr": 0,
+          "outliers_3_iqr": 0
+        },
+        "entropy": {
+          "mean": 3.8407,
+          "median": 3.9312,
+          "p95": 5.1074,
+          "min": 1.0,
+          "max": 5.2199,
+          "std": 0.7826,
+          "skew": -0.2622,
+          "iqr_fence": 5.8731,
+          "outliers_1_5_iqr": 288,
+          "outliers_3_iqr": 0
+        },
+        "digit_ratio": {
+          "mean": 0.0756,
+          "median": 0.0417,
+          "p95": 0.2368,
+          "min": 0.0,
+          "max": 0.6,
+          "std": 0.0836,
+          "skew": 0.9522,
+          "iqr_fence": 0.329,
+          "outliers_1_5_iqr": 72,
+          "outliers_3_iqr": 2
+        }
+      }
+    },
+    "separability_auc": {
+      "query_length": 0.9835,
+      "longest_label": 0.9142,
+      "subdomain_count": 0.866,
+      "entropy": 0.9964,
+      "digit_ratio": 0.9495
+    },
+    "date_ranges": {
+      "attack": [
+        "2019-04-24 03:37:01.082909",
+        "2024-12-10 02:27:24.591136"
+      ],
+      "benign": [
+        "2026-10-23 23:15:26.382052",
+        "2026-10-24 01:15:04.223463"
+      ]
+    },
+    "same_period": false,
+    "gap_days": 682.9,
+    "files_with_both_classes": []
+  },
+  "unlabeled": {
+    "rows": 8152,
+    "per_file": [
+      {
+        "file": "2026-03-18.log",
+        "kind": "log",
+        "queries": 8152,
+        "lines": 8190,
+        "non_query_lines": 38,
+        "clients": 1,
+        "top_client_share": 1.0,
+        "nxdomain_rate": 0.9995,
+        "duration_min": 3.0,
+        "timeline_per_min": [
+          4,
+          8148
+        ]
+      },
+      {
+        "file": "2026-03-19.log",
+        "kind": "log",
+        "queries": 0,
+        "lines": 50,
+        "non_query_lines": 50
+      },
+      {
+        "file": "2026-03-20.log",
+        "kind": "log",
+        "queries": 0,
+        "lines": 9,
+        "non_query_lines": 9
+      }
+    ],
+    "profile": {
+      "rows": 8152,
+      "files": 1,
+      "clients": 1,
+      "top_clients": [
+        {
+          "value": "192.168.197.135",
+          "count": 8152,
+          "share": 1.0
+        }
+      ],
+      "first_seen": "2026-03-18T13:44:46",
+      "last_seen": "2026-03-18T13:47:49",
+      "duration_min": 3.0,
+      "query_types": [
+        {
+          "value": "A",
+          "count": 8150,
+          "share": 0.9998
+        },
+        {
+          "value": "AAAA",
+          "count": 2,
+          "share": 0.0002
+        }
+      ],
+      "tunnel_qtype_share": 0.0,
+      "response_codes": [
+        {
+          "value": "NxDomain",
+          "count": 8148,
+          "share": 0.9995
+        },
+        {
+          "value": "NoError",
+          "count": 4,
+          "share": 0.0005
+        }
+      ],
+      "nxdomain_rate": 0.9995,
+      "top_parent_domains": [
+        {
+          "value": "lab.local",
+          "count": 8152,
+          "share": 1.0
+        }
+      ],
+      "max_subdomains_per_parent": {
+        "parent": "lab.local",
+        "unique_subdomains": 8148
+      },
+      "unique_domains": 8148,
+      "duplicate_rows": 0,
+      "missing": {
+        "client_ip": 0.0,
+        "timestamp": 0.0,
+        "response_code": 0.0,
+        "domain": 0.0
+      },
+      "answers_recorded": 1.0,
+      "long_labels": 0,
+      "longest_names": [
+        "mobile-retail-vacheron-constantin-ext.mobile-retail-vancleefarpels-ext.lab.local",
+        "financial-services-onboarding-apigw.financial-services-payments-apigw.lab.local",
+        "searchrecommendations-service-staging.secure-canalplay-chromecast.lab.local",
+        "jdnow-api-contentapistoragest.jdnow-api-contentapistoragest-demo.lab.local",
+        "msr-cert2-cn-public-ubiservices.msr-dev-cn-public-ubiservices.lab.local"
+      ],
+      "measures": {
+        "query_length": {
+          "mean": 23.055,
+          "median": 22.0,
+          "p95": 38.0,
+          "min": 9.0,
+          "max": 80.0,
+          "std": 8.1232,
+          "skew": 1.4028,
+          "iqr_fence": 42.0,
+          "outliers_1_5_iqr": 206,
+          "outliers_3_iqr": 36
+        },
+        "longest_label": {
+          "mean": 9.6849,
+          "median": 9.0,
+          "p95": 19.0,
+          "min": 5.0,
+          "max": 44.0,
+          "std": 4.7413,
+          "skew": 1.6098,
+          "iqr_fence": 21.0,
+          "outliers_1_5_iqr": 214,
+          "outliers_3_iqr": 23
+        },
+        "subdomain_count": {
+          "mean": 2.4993,
+          "median": 2.0,
+          "p95": 3.0,
+          "min": 1.0,
+          "max": 3.0,
+          "std": 0.501,
+          "skew": -0.0088,
+          "iqr_fence": 4.5,
+          "outliers_1_5_iqr": 0,
+          "outliers_3_iqr": 0
+        },
+        "entropy": {
+          "mean": 3.4205,
+          "median": 3.4474,
+          "p95": 3.9113,
+          "min": 2.4116,
+          "max": 4.2221,
+          "std": 0.3263,
+          "skew": -0.3109,
+          "iqr_fence": 4.3681,
+          "outliers_1_5_iqr": 15,
+          "outliers_3_iqr": 0
+        },
+        "digit_ratio": {
+          "mean": 0.0194,
+          "median": 0.0,
+          "p95": 0.1053,
+          "min": 0.0,
+          "max": 0.45,
+          "std": 0.0435,
+          "skew": 3.0986,
+          "iqr_fence": 0.0,
+          "outliers_1_5_iqr": 1899,
+          "outliers_3_iqr": 1899
+        }
+      }
+    },
+    "nxdomain_rate_per_client": [
+      {
+        "client": "192.168.197.135",
+        "queries": 8152,
+        "nxdomain_rate": 0.9995
+      }
+    ],
+    "query_length_per_qtype": [
+      {
+        "qtype": "A",
+        "count": 8150,
+        "median": 22.0,
+        "p95": 38.0
+      },
+      {
+        "qtype": "AAAA",
+        "count": 2,
+        "median": 9.0,
+        "p95": 9.0
+      }
+    ],
+    "unique_subdomains_per_parent": [
+      {
+        "value": "lab.local",
+        "count": 8148,
+        "share": 1.0
+      }
+    ],
+    "labeling_plan": {
+      "method": "heuristic attack_count (circular)",
+      "share_of_all_rows": 0.3076
+    }
+  },
+  "comparison": {
+    "shift": {
+      "query_length": {
+        "psi": 1.619,
+        "ks": 0.2479,
+        "labeled_median": 26.0,
+        "unlabeled_median": 22.0
+      },
+      "longest_label": {
+        "psi": 2.376,
+        "ks": 0.2781,
+        "labeled_median": 11.0,
+        "unlabeled_median": 9.0
+      },
+      "subdomain_count": {
+        "psi": 5.2139,
+        "ks": 0.261,
+        "labeled_median": 2.0,
+        "unlabeled_median": 2.0
+      },
+      "entropy": {
+        "psi": 3.7093,
+        "ks": 0.4624,
+        "labeled_median": 3.9312,
+        "unlabeled_median": 3.4474
+      },
+      "digit_ratio": {
+        "psi": 0.9354,
+        "ks": 0.3801,
+        "labeled_median": 0.0417,
+        "unlabeled_median": 0.0
+      }
+    },
+    "nearest_profile": [
+      {
+        "file": "2026-03-18.log",
+        "distances": {
+          "attack": 0.991,
+          "benign": 0.448
+        },
+        "looks_like": "benign"
+      }
+    ]
+  },
+  "warnings": [
+    "'entropy' alone separates attack from benign (AUC 0.996) \u2014 the labeled data may be too easy.",
+    "'query_length' alone separates attack from benign (AUC 0.984) \u2014 the labeled data may be too easy.",
+    "Attack data (2019-04-24\u20262024-12-10) and benign data (2026-10-23\u20262026-10-24) were captured 683 days apart \u2014 the model could learn when, not what.",
+    "2026-03-18.log: one client (192.168.197.135) sends 100.0% of the queries.",
+    "2026-03-18.log: NXDOMAIN rate 99.95% (above 20% is high).",
+    "2026-03-19.log has 0 DNS queries (only server/status lines) \u2014 it adds nothing to training.",
+    "2026-03-20.log has 0 DNS queries (only server/status lines) \u2014 it adds nothing to training.",
+    "Unlabeled: 8148 unique subdomains under lab.local (over 50 is a tunneling sign).",
+    "Unlabeled data differs strongly from labeled data on query_length, longest_label, subdomain_count, entropy, digit_ratio (PSI > 0.25) \u2014 a model trained on the labeled part may not fit it."
+  ],
+  "implications": [
+    "Feature engineering: 'entropy' alone nearly separates the classes. High model scores will mostly reflect this one measure; add harder data (long benign names, short-name attacks) before trusting accuracy.",
+    "Bias: attack and benign data come from different periods. Keep time fields (timestamp, hour, day) out of the features, and test on data captured in the same period.",
+    "Feature engineering: labeled rows have no response codes / answers (PCAP queries only) while Technitium logs do. Don't rely on answer_count or RCODE features until both sources record them.",
+    "Feature engineering: 2026-03-18.log is one client producing mostly NXDOMAIN. Per-query features can't see that; per-client behavioural features (NXDOMAIN share, query rate, unique subdomains per parent) would.",
+    "Algorithm choice: length/count measures are strongly right-skewed with long tails. Tree models (Random Forest, Gradient Boosting) handle this without scaling; linear or distance-based models would need log scaling.",
+    "Algorithm choice: labeled class ratio is 1.2:1 \u2014 balanced enough; report PR-AUC alongside F1.",
+    "Garbage in: unlabeled rows will get heuristic labels from the same features the model learns. Add data/attack_manifest.csv for independent labels."
+  ]
+}

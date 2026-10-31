@@ -28,7 +28,6 @@ import joblib
 from pathlib import Path
 from collections import Counter
 from sklearn.ensemble import RandomForestClassifier, HistGradientBoostingClassifier
-from sklearn.model_selection import train_test_split
 from sklearn.metrics import (
     classification_report, precision_recall_curve, roc_auc_score,
     average_precision_score,
@@ -38,7 +37,8 @@ from tensorflow import keras
 from tensorflow.keras import layers
 
 # Import shared parser
-from dns_detect.parsing.dns_parser import load_as_dataframe, FEATURES_8
+from dns_detect.parsing.dns_parser import load_as_dataframe, FEATURES_8, feature_vector_key
+from dns_detect.models.splits import drop_conflicting_groups, grouped_split, overlap_share
 from dns_detect.utils.paths import PROJECT_ROOT
 
 SEQUENCE_LENGTH = 10
@@ -335,8 +335,15 @@ def run_training(input_path: str, rf_weight=0.5, tf_weight=0.5, shuffle_labels=F
     if "label" not in df.columns:
         raise ValueError(
             "Training data must have a 'label' column (0=benign, 1=attack). "
-            "For Week 3 data, run ml_bridge.py first to generate labels from attack_count."
+            "Run Step 8 labeling first: python -m dns_detect.ingest.labeling --input … --output …"
         )
+
+    # Rows without a label (abstained in Step 8) can't be used for supervised training.
+    unlabeled = df["label"].isna()
+    if unlabeled.any():
+        print(f"[*] Dropped {int(unlabeled.sum())} row(s) without a label")
+        df = df[~unlabeled].reset_index(drop=True)
+    df["label"] = df["label"].astype(int)
 
     print(f"[*] Dataset: {len(df)} records  |  "
           f"Benign: {(df['label']==0).sum()}  |  "
@@ -354,16 +361,28 @@ def run_training(input_path: str, rf_weight=0.5, tf_weight=0.5, shuffle_labels=F
         )
     # attack_family (from ground-truth manifest labeling) for per-family recall
     fam = df["attack_family"].values if "attack_family" in df.columns else np.array(["?"] * len(df))
+    # Trusted = real labels (file / provenance / manifest). Weak behaviour labels may train
+    # the model but never grade it.
+    trusted = (~df["label_source"].isin(["weak_behavioral"])).to_numpy() if "label_source" in df.columns \
+        else np.ones(len(df), dtype=bool)
 
     # ── STEP 1: SPLIT BEFORE SCALING (prevents data leakage) ──────
-    # 3-way stratified split: 70% train / 15% validation / 15% test.
-    X_train_raw, X_tmp_raw, y_train, y_tmp, _fam_tr, fam_tmp = train_test_split(
-        X, y, fam, test_size=0.30, random_state=42, stratify=y
-    )
-    X_val_raw, X_test_raw, y_val, y_test, _fam_val, fam_test = train_test_split(
-        X_tmp_raw, y_tmp, fam_tmp, test_size=0.50, random_state=42, stratify=y_tmp
-    )
-    print(f"[*] Split → train={len(X_train_raw)}  val={len(X_val_raw)}  test={len(X_test_raw)}")
+    # Identical feature vectors are one group and stay in ONE split; otherwise most test
+    # rows have an exact twin in training (79.8% on the Week 2 data) and the test score
+    # measures memorisation. Vectors seen with both labels are dropped first.
+    groups = feature_vector_key(df).to_numpy()
+    keep, n_conflicts = drop_conflicting_groups(y, groups)
+    if n_conflicts:
+        print(f"[*] Dropped {int((~keep).sum())} rows in {n_conflicts} feature vector(s) seen with both labels")
+        X, y, fam, groups, trusted = X[keep], y[keep], fam[keep], groups[keep], trusted[keep]
+    tr_idx, val_idx, te_idx, split_method = grouped_split(y, groups, seed=42)
+    X_train_raw, y_train = X[tr_idx], y[tr_idx]
+    X_val_raw, y_val = X[val_idx], y[val_idx]
+    X_test_raw, y_test, fam_test = X[te_idx], y[te_idx], fam[te_idx]
+    trusted_test = trusted[te_idx]
+    test_twin_share = overlap_share(groups, tr_idx, te_idx)
+    print(f"[*] Split ({split_method}) → train={len(X_train_raw)}  val={len(X_val_raw)}  test={len(X_test_raw)}  "
+          f"| distinct vectors: {len(np.unique(groups))}  | test rows with a twin in train: {test_twin_share:.1%}")
 
     # ── STEP 2: FIT SCALER ON TRAINING DATA ONLY ──────────────────
     scaler = StandardScaler()
@@ -426,6 +445,16 @@ def run_training(input_path: str, rf_weight=0.5, tf_weight=0.5, shuffle_labels=F
         for k, v in recall_by_family.items():
             print(f"  - {k}: recall={v['recall']:.3f}  (n={v['support']})")
 
+    # Same test set, real labels only (file / provenance / manifest) — the numbers to report
+    trusted_block = None
+    n_trusted = int(trusted_test.sum())
+    if n_trusted and len(np.unique(y_test[trusted_test])) == 2:
+        trusted_block = _metric_block(y_test[trusted_test], chosen_scores[trusted_test], threshold)
+        print(f"Trusted-label test rows: {n_trusted}/{len(y_test)}  →  F1={trusted_block['f1']:.4f}  "
+              f"PR-AUC={trusted_block['pr_auc']}")
+    else:
+        print(f"Trusted-label test rows: {n_trusted}/{len(y_test)} — not enough of both classes for metrics")
+
     # Transformer baseline metrics (not used in the decision)
     try:
         tf_scores = tf_model.predict(X_seq_te, verbose=0).flatten()
@@ -465,8 +494,16 @@ def run_training(input_path: str, rf_weight=0.5, tf_weight=0.5, shuffle_labels=F
         "shuffle_labels": shuffle_block,
         "recall_by_family": recall_by_family,
         "seed": 42,
+        "split": split_method,
         "split_sizes": {"train": int(len(X_train)), "val": int(len(X_val)), "test": int(len(X_test))},
+        "split_groups": {"train": int(len(np.unique(groups[tr_idx]))), "val": int(len(np.unique(groups[val_idx]))),
+                         "test": int(len(np.unique(groups[te_idx])))},
+        "test_rows_with_twin_in_train": test_twin_share,
+        "dropped_conflicting_vectors": int(n_conflicts),
         "test_support": {"benign": int((y_test == 0).sum()), "attack": int((y_test == 1).sum())},
+        # Metrics on test rows with real labels only; weak behaviour labels never grade the model
+        "test_trusted_labels": trusted_block,
+        "test_trusted_rows": n_trusted,
     }
     with open(metrics_path, "w") as f:
         json.dump(all_metrics, f, indent=2)

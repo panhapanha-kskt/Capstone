@@ -1,0 +1,113 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 920" role="img" aria-label="Training flow after Week 2: ten stages. Changed or new this week: find new data with labeled and unlabeled files, EDA number one, pre-process keeping unlabeled PCAPs, merge module with provenance and duplicate checks, the --eda-only exit, research-based labeling with abstain, and Path A's leak-free split with trusted-label scoring." font-family="Segoe UI, Helvetica, Arial, sans-serif">
+  <defs>
+    <marker id="a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#8a94a3"/></marker>
+    <marker id="ax" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#b3362d"/></marker>
+  </defs>
+  <rect width="900" height="920" fill="#ffffff"/>
+  <text x="40" y="38" font-size="18" font-weight="700" fill="#1d2430">train_models.sh after Week 2</text>
+  <text x="40" y="58" font-size="12" fill="#5f6b7a">[n/10] = the line each stage prints on screen. Green = new this week, amber = changed, grey = unchanged.</text>
+
+  <!-- vertical arrows between main boxes (x center 300) -->
+  <g stroke="#8a94a3" stroke-width="1.6" marker-end="url(#a)">
+    <line x1="300" y1="126" x2="300" y2="144"/>
+    <line x1="300" y1="194" x2="300" y2="212"/>
+    <line x1="300" y1="262" x2="300" y2="280"/>
+    <line x1="300" y1="330" x2="300" y2="348"/>
+    <line x1="300" y1="398" x2="300" y2="416"/>
+    <line x1="300" y1="466" x2="300" y2="484"/>
+    <line x1="300" y1="534" x2="300" y2="552"/>
+    <line x1="300" y1="602" x2="300" y2="620"/>
+    <line x1="300" y1="670" x2="300" y2="688"/>
+    <line x1="300" y1="738" x2="300" y2="756"/>
+  </g>
+
+  <g font-size="13">
+    <!-- 1-2 unchanged -->
+    <rect x="80" y="76" width="440" height="50" rx="8" fill="#f4f6f8" stroke="#8a94a3"/>
+    <text x="96" y="97" font-weight="600" fill="#1d2430">[1–2] Check models · environment</text>
+    <text x="96" y="115" font-size="11.5" fill="#5f6b7a">one short line per stage; full output in logs/training_&lt;time&gt;.log</text>
+
+    <!-- 3 changed -->
+    <rect x="80" y="144" width="440" height="50" rx="8" fill="#fdf4e3" stroke="#c27c0e" stroke-width="1.6"/>
+    <text x="96" y="165" font-weight="600" fill="#1d2430">[3] Find new data</text>
+    <text x="96" y="183" font-size="11.5" fill="#7a4f07">every file marked labeled or unlabeled; both kept</text>
+
+    <!-- 4 new -->
+    <rect x="80" y="212" width="440" height="50" rx="8" fill="#e6f4ea" stroke="#2c7a3a" stroke-width="2"/>
+    <text x="96" y="233" font-weight="700" fill="#1d2430">[4] EDA #1 · labeled · unlabeled · comparison</text>
+    <text x="96" y="251" font-size="11.5" fill="#1f5c2a">features/eda_data.py → eda_data_report.html / .json</text>
+
+    <!-- 5 changed -->
+    <rect x="80" y="280" width="440" height="50" rx="8" fill="#fdf4e3" stroke="#c27c0e" stroke-width="1.6"/>
+    <text x="96" y="301" font-weight="600" fill="#1d2430">[5] Pre-process logs and PCAPs</text>
+    <text x="96" y="319" font-size="11.5" fill="#7a4f07">PCAPs without --pcap-label kept as unlabeled data</text>
+
+    <!-- 6 new module -->
+    <rect x="80" y="348" width="440" height="50" rx="8" fill="#e6f4ea" stroke="#2c7a3a" stroke-width="2"/>
+    <text x="96" y="369" font-weight="700" fill="#1d2430">[6] Merge with safeguards</text>
+    <text x="96" y="387" font-size="11.5" fill="#1f5c2a">ingest/merge.py: source per row, schema check, duplicate key</text>
+
+    <!-- 7 renamed -->
+    <rect x="80" y="416" width="440" height="50" rx="8" fill="#fdf4e3" stroke="#c27c0e" stroke-width="1.6"/>
+    <text x="96" y="437" font-weight="600" fill="#1d2430">[7] EDA #2 · feature EDA</text>
+    <text x="96" y="455" font-size="11.5" fill="#7a4f07">existing features/eda.py, now the second EDA</text>
+
+    <!-- 8 new -->
+    <rect x="80" y="484" width="440" height="50" rx="8" fill="#e6f4ea" stroke="#2c7a3a" stroke-width="2"/>
+    <text x="96" y="505" font-weight="700" fill="#1d2430">[8] Label: file → manifest → behaviour → leave out</text>
+    <text x="96" y="523" font-size="11.5" fill="#1f5c2a">ingest/labeling.py: research-based rules, allowlist, abstain</text>
+
+    <!-- class check unchanged -->
+    <rect x="80" y="552" width="440" height="50" rx="8" fill="#f4f6f8" stroke="#8a94a3"/>
+    <text x="96" y="573" font-weight="600" fill="#1d2430">Both classes present?</text>
+    <text x="96" y="591" font-size="11.5" fill="#5f6b7a">stops before any model file is touched</text>
+
+    <!-- 9 changed -->
+    <rect x="80" y="620" width="440" height="50" rx="8" fill="#fdf4e3" stroke="#c27c0e" stroke-width="1.6"/>
+    <text x="96" y="641" font-weight="600" fill="#1d2430">[9] Train Path A (RF + GBT)</text>
+    <text x="96" y="659" font-size="11.5" fill="#7a4f07">split by feature vector (0 % leak); scored on real labels only</text>
+
+    <!-- 10 unchanged -->
+    <rect x="80" y="688" width="440" height="50" rx="8" fill="#f4f6f8" stroke="#8a94a3"/>
+    <text x="96" y="709" font-weight="600" fill="#1d2430">[10] Train Path B (Trafficformer)</text>
+    <text x="96" y="727" font-size="11.5" fill="#5f6b7a">benign per-client windows</text>
+
+    <rect x="80" y="756" width="440" height="50" rx="8" fill="#f4f6f8" stroke="#8a94a3"/>
+    <text x="96" y="777" font-weight="600" fill="#1d2430">Save metadata · summary</text>
+    <text x="96" y="795" font-size="11.5" fill="#5f6b7a">next: ./scripts/run_pipeline.sh</text>
+  </g>
+
+  <!-- side outputs / exits -->
+  <g font-size="12">
+    <line x1="520" y1="441" x2="566" y2="441" stroke="#b3362d" stroke-width="1.6" stroke-dasharray="4 3" marker-end="url(#ax)"/>
+    <rect x="568" y="418" width="292" height="46" rx="8" fill="#fbecea" stroke="#b3362d" stroke-dasharray="5 4" stroke-width="1.6"/>
+    <text x="584" y="437" font-weight="700" fill="#b3362d">--eda-only: stop here (new)</text>
+    <text x="584" y="454" font-size="11" fill="#7d2620">nothing labeled, trained or marked trained</text>
+
+    <line x1="520" y1="509" x2="566" y2="509" stroke="#8a94a3" stroke-width="1.6" stroke-dasharray="4 3" marker-end="url(#a)"/>
+    <rect x="568" y="486" width="292" height="46" rx="8" fill="#ffffff" stroke="#8a94a3" stroke-dasharray="5 4"/>
+    <text x="584" y="505" font-weight="600" fill="#1d2430">abstained_rows.json + report</text>
+    <text x="584" y="522" font-size="11" fill="#5f6b7a">rows left out of training, kept for review</text>
+
+    <line x1="520" y1="373" x2="566" y2="373" stroke="#8a94a3" stroke-width="1.6" stroke-dasharray="4 3" marker-end="url(#a)"/>
+    <rect x="568" y="350" width="292" height="46" rx="8" fill="#ffffff" stroke="#8a94a3" stroke-dasharray="5 4"/>
+    <text x="584" y="369" font-weight="600" fill="#1d2430">merge_report.json</text>
+    <text x="584" y="386" font-size="11" fill="#5f6b7a">duplicates, conflicts, single-label sources</text>
+
+    <rect x="568" y="144" width="292" height="118" rx="8" fill="#e6f4ea" stroke="#2c7a3a" stroke-dasharray="5 4"/>
+    <text x="584" y="166" font-weight="700" fill="#1f5c2a">run_all.sh --with-attack (new)</text>
+    <text x="584" y="186" font-size="11.5" fill="#1d2430">writes a row to data/attack_manifest.csv</text>
+    <text x="584" y="203" font-size="11.5" fill="#1d2430">for every attack run: family, window,</text>
+    <text x="584" y="220" font-size="11.5" fill="#1d2430">target domain, in the clock the</text>
+    <text x="584" y="237" font-size="11.5" fill="#1d2430">Technitium log uses → read in [8]</text>
+  </g>
+
+  <!-- legend -->
+  <g font-size="12" fill="#1d2430">
+    <rect x="80" y="842" width="14" height="14" rx="3" fill="#e6f4ea" stroke="#2c7a3a" stroke-width="2"/><text x="102" y="854">New this week</text>
+    <rect x="220" y="842" width="14" height="14" rx="3" fill="#fdf4e3" stroke="#c27c0e" stroke-width="1.6"/><text x="242" y="854">Changed</text>
+    <rect x="330" y="842" width="14" height="14" rx="3" fill="#f4f6f8" stroke="#8a94a3"/><text x="352" y="854">Unchanged</text>
+    <rect x="450" y="842" width="14" height="14" rx="3" fill="#fbecea" stroke="#b3362d" stroke-dasharray="3 2"/><text x="472" y="854">Early exit</text>
+    <text x="80" y="886" font-size="11.5" fill="#5f6b7a">Interactive version with every stage's inputs, outputs and known issues: AddingEDA/training_flow.html</text>
+  </g>
+</svg>

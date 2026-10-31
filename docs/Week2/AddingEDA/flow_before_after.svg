@@ -1,0 +1,123 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 920 760" role="img" aria-label="Training flow before and after adding EDA. Before: find new data, pre-process (unlabeled PCAPs dropped), merge, EDA, label, train Path A, train Path B. After: find new data split into labeled and unlabeled, new EDA #1 on labeled data, unlabeled data and their comparison, pre-process keeping unlabeled PCAPs, merge, feature EDA #2 with an --eda-only exit, label, train Path A, train Path B." font-family="Segoe UI, Helvetica, Arial, sans-serif">
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#8a94a3"/>
+    </marker>
+    <marker id="arrowExit" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#b3362d"/>
+    </marker>
+  </defs>
+  <rect width="920" height="760" fill="#ffffff"/>
+
+  <!-- Column headings -->
+  <text x="190" y="36" text-anchor="middle" font-size="17" font-weight="700" fill="#1d2430">Before</text>
+  <text x="190" y="54" text-anchor="middle" font-size="12" fill="#5f6b7a">train_models.sh · 9 stages</text>
+  <text x="620" y="36" text-anchor="middle" font-size="17" font-weight="700" fill="#1d2430">After</text>
+  <text x="620" y="54" text-anchor="middle" font-size="12" fill="#5f6b7a">train_models.sh · 10 stages</text>
+  <line x1="405" y1="20" x2="405" y2="680" stroke="#e1e5ea" stroke-width="1.5"/>
+
+  <!-- ───────── BEFORE (x 40..340) ───────── -->
+  <g font-size="13">
+    <!-- arrows -->
+    <line x1="190" y1="116" x2="190" y2="204" stroke="#8a94a3" stroke-width="1.6" marker-end="url(#arrow)"/>
+    <line x1="190" y1="252" x2="190" y2="272" stroke="#8a94a3" stroke-width="1.6" marker-end="url(#arrow)"/>
+    <line x1="190" y1="320" x2="190" y2="340" stroke="#8a94a3" stroke-width="1.6" marker-end="url(#arrow)"/>
+    <line x1="190" y1="388" x2="190" y2="476" stroke="#8a94a3" stroke-width="1.6" marker-end="url(#arrow)"/>
+    <line x1="190" y1="524" x2="190" y2="544" stroke="#8a94a3" stroke-width="1.6" marker-end="url(#arrow)"/>
+    <line x1="190" y1="592" x2="190" y2="612" stroke="#8a94a3" stroke-width="1.6" marker-end="url(#arrow)"/>
+
+    <rect x="40" y="70" width="300" height="46" rx="8" fill="#f4f6f8" stroke="#8a94a3"/>
+    <text x="56" y="90" font-weight="600" fill="#1d2430">Find new data</text>
+    <text x="56" y="107" font-size="11.5" fill="#5f6b7a">sorted by file type only, no label status</text>
+
+    <rect x="40" y="206" width="300" height="46" rx="8" fill="#f4f6f8" stroke="#8a94a3"/>
+    <text x="56" y="226" font-weight="600" fill="#1d2430">Pre-process</text>
+    <text x="56" y="243" font-size="11.5" fill="#b3362d">PCAPs without --pcap-label dropped</text>
+
+    <rect x="40" y="274" width="300" height="46" rx="8" fill="#f4f6f8" stroke="#8a94a3"/>
+    <text x="56" y="294" font-weight="600" fill="#1d2430">Merge</text>
+    <text x="56" y="311" font-size="11.5" fill="#5f6b7a">merged_features_all.json</text>
+
+    <rect x="40" y="342" width="300" height="46" rx="8" fill="#f4f6f8" stroke="#8a94a3"/>
+    <text x="56" y="362" font-weight="600" fill="#1d2430">EDA (only one)</text>
+    <text x="56" y="379" font-size="11.5" fill="#5f6b7a">all data mixed; classes guessed by heuristics</text>
+
+    <rect x="40" y="478" width="300" height="46" rx="8" fill="#f4f6f8" stroke="#8a94a3"/>
+    <text x="56" y="498" font-weight="600" fill="#1d2430">Label</text>
+    <text x="56" y="515" font-size="11.5" fill="#5f6b7a">attack manifest, else heuristics</text>
+
+    <rect x="40" y="546" width="300" height="46" rx="8" fill="#f4f6f8" stroke="#8a94a3"/>
+    <text x="56" y="566" font-weight="600" fill="#1d2430">Train Path A</text>
+    <text x="56" y="583" font-size="11.5" fill="#5f6b7a">Random Forest + Gradient Boosting</text>
+
+    <rect x="40" y="614" width="300" height="46" rx="8" fill="#f4f6f8" stroke="#8a94a3"/>
+    <text x="56" y="634" font-weight="600" fill="#1d2430">Train Path B</text>
+    <text x="56" y="651" font-size="11.5" fill="#5f6b7a">Trafficformer on benign windows</text>
+  </g>
+
+  <!-- ───────── AFTER (x 470..770) ───────── -->
+  <g font-size="13">
+    <line x1="620" y1="116" x2="620" y2="136" stroke="#8a94a3" stroke-width="1.6" marker-end="url(#arrow)"/>
+    <line x1="620" y1="184" x2="620" y2="204" stroke="#8a94a3" stroke-width="1.6" marker-end="url(#arrow)"/>
+    <line x1="620" y1="252" x2="620" y2="272" stroke="#8a94a3" stroke-width="1.6" marker-end="url(#arrow)"/>
+    <line x1="620" y1="320" x2="620" y2="340" stroke="#8a94a3" stroke-width="1.6" marker-end="url(#arrow)"/>
+    <line x1="620" y1="388" x2="620" y2="476" stroke="#8a94a3" stroke-width="1.6" marker-end="url(#arrow)"/>
+    <line x1="620" y1="524" x2="620" y2="544" stroke="#8a94a3" stroke-width="1.6" marker-end="url(#arrow)"/>
+    <line x1="620" y1="592" x2="620" y2="612" stroke="#8a94a3" stroke-width="1.6" marker-end="url(#arrow)"/>
+
+    <!-- changed -->
+    <rect x="470" y="70" width="300" height="46" rx="8" fill="#fdf4e3" stroke="#c27c0e" stroke-width="1.6"/>
+    <text x="486" y="90" font-weight="600" fill="#1d2430">[3] Find new data</text>
+    <text x="486" y="107" font-size="11.5" fill="#7a4f07">labeled + unlabeled, both kept</text>
+
+    <!-- new -->
+    <rect x="470" y="138" width="300" height="46" rx="8" fill="#e6f4ea" stroke="#2c7a3a" stroke-width="2"/>
+    <text x="486" y="158" font-weight="700" fill="#1d2430">[4] EDA #1</text>
+    <text x="486" y="175" font-size="11.5" fill="#1f5c2a">labeled · unlabeled · comparison</text>
+
+    <!-- changed -->
+    <rect x="470" y="206" width="300" height="46" rx="8" fill="#fdf4e3" stroke="#c27c0e" stroke-width="1.6"/>
+    <text x="486" y="226" font-weight="600" fill="#1d2430">[5] Pre-process</text>
+    <text x="486" y="243" font-size="11.5" fill="#7a4f07">unlabeled PCAPs kept (--unlabeled)</text>
+
+    <rect x="470" y="274" width="300" height="46" rx="8" fill="#f4f6f8" stroke="#8a94a3"/>
+    <text x="486" y="294" font-weight="600" fill="#1d2430">[6] Merge</text>
+    <text x="486" y="311" font-size="11.5" fill="#5f6b7a">merged_features_all.json</text>
+
+    <!-- changed -->
+    <rect x="470" y="342" width="300" height="46" rx="8" fill="#fdf4e3" stroke="#c27c0e" stroke-width="1.6"/>
+    <text x="486" y="362" font-weight="600" fill="#1d2430">[7] EDA #2 · Feature EDA</text>
+    <text x="486" y="379" font-size="11.5" fill="#7a4f07">same eda.py, now the second EDA</text>
+
+    <!-- new exit -->
+    <line x1="770" y1="365" x2="796" y2="365" stroke="#b3362d" stroke-width="1.6" stroke-dasharray="4 3" marker-end="url(#arrowExit)"/>
+    <rect x="798" y="342" width="108" height="46" rx="8" fill="#fbecea" stroke="#b3362d" stroke-dasharray="5 4" stroke-width="1.6"/>
+    <text x="852" y="361" text-anchor="middle" font-size="12" font-weight="700" fill="#b3362d">--eda-only</text>
+    <text x="852" y="377" text-anchor="middle" font-size="11" fill="#7d2620">stop here</text>
+
+    <rect x="470" y="478" width="300" height="46" rx="8" fill="#f4f6f8" stroke="#8a94a3"/>
+    <text x="486" y="498" font-weight="600" fill="#1d2430">[8] Label</text>
+    <text x="486" y="515" font-size="11.5" fill="#5f6b7a">unlabeled rows: manifest, else heuristics</text>
+
+    <rect x="470" y="546" width="300" height="46" rx="8" fill="#f4f6f8" stroke="#8a94a3"/>
+    <text x="486" y="566" font-weight="600" fill="#1d2430">[9] Train Path A</text>
+    <text x="486" y="583" font-size="11.5" fill="#5f6b7a">Random Forest + Gradient Boosting</text>
+
+    <rect x="470" y="614" width="300" height="46" rx="8" fill="#f4f6f8" stroke="#8a94a3"/>
+    <text x="486" y="634" font-weight="600" fill="#1d2430">[10] Train Path B</text>
+    <text x="486" y="651" font-size="11.5" fill="#5f6b7a">Trafficformer on benign windows</text>
+  </g>
+
+  <!-- Legend -->
+  <g font-size="12" fill="#1d2430">
+    <rect x="40" y="700" width="14" height="14" rx="3" fill="#e6f4ea" stroke="#2c7a3a" stroke-width="2"/>
+    <text x="62" y="712">New stage</text>
+    <rect x="160" y="700" width="14" height="14" rx="3" fill="#fdf4e3" stroke="#c27c0e" stroke-width="1.6"/>
+    <text x="182" y="712">Changed</text>
+    <rect x="270" y="700" width="14" height="14" rx="3" fill="#f4f6f8" stroke="#8a94a3"/>
+    <text x="292" y="712">Unchanged</text>
+    <rect x="390" y="700" width="14" height="14" rx="3" fill="#fbecea" stroke="#b3362d" stroke-dasharray="3 2"/>
+    <text x="412" y="712">New early exit</text>
+    <text x="40" y="742" font-size="11.5" fill="#5f6b7a">[n] = the stage number printed on screen ([n/10]). Stages 1–2 (check models, environment) are unchanged and not shown.</text>
+  </g>
+</svg>

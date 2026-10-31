@@ -7,6 +7,7 @@ Supports: .pcap / .pcapng / .cap / .json / .jsonl / .ndjson / .log / .csv / .tra
 Single source of truth — no duplication across files.
 """
 
+import hashlib
 import json
 import math
 import numpy as np
@@ -216,9 +217,11 @@ def parse_week3_json_to_df(path: str) -> pd.DataFrame:
     print(f"[*] Reading Week 3 features JSON: {path}")
     records = _load_json_records(path)
     print(f"[*] Loaded {len(records)} Week 3 feature records.")
+    return week3_frame_to_features(pd.DataFrame(records))
 
-    df = pd.DataFrame(records)
 
+def week3_frame_to_features(df: pd.DataFrame) -> pd.DataFrame:
+    """Week 3 feature records (DataFrame) → same frame with FEATURES_8 columns added."""
     # Remap Week 3 column names → model feature names
     rename_map = {
         "entropy":         "query_entropy",
@@ -259,6 +262,30 @@ def parse_week3_json_to_df(path: str) -> pd.DataFrame:
             df[col] = 0
 
     return df
+
+
+def is_week3_record(record) -> bool:
+    """Same format check load_as_dataframe uses on a JSON file's first record."""
+    return isinstance(record, dict) and ("entropy" in record or "subdomain_depth" in record
+                                         or "first_label" in record)
+
+
+def records_to_feature_frame(records: list) -> pd.DataFrame:
+    """Records → DataFrame with FEATURES_8, built the way load_as_dataframe would for one JSON file."""
+    if records and is_week3_record(records[0]):
+        return week3_frame_to_features(pd.DataFrame(records))
+    return pd.DataFrame([extract_features_from_record(r) for r in records], columns=FEATURES_8)
+
+
+def feature_vector_key(df: pd.DataFrame) -> pd.Series:
+    """
+    Stable short hash of each row's FEATURES_8 vector — the input the model actually sees.
+    Rows with the same key are identical to the model: they must stay on the same side of a
+    train/test split, otherwise the test set measures memorisation.
+    """
+    vals = df[FEATURES_8].apply(pd.to_numeric, errors="coerce").fillna(0).astype(float).round(6)
+    joined = vals.astype(str).agg("|".join, axis=1)
+    return joined.map(lambda s: hashlib.sha1(s.encode()).hexdigest()[:16])
 
 
 def parse_week3_json_to_array(path: str) -> np.ndarray:

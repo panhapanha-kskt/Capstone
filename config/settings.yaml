@@ -43,6 +43,24 @@ ensemble:
   tf_weight: 0.4
   combined_threshold: 0.5
 
+labeling:
+  # Step 8 of train_models.sh (src/dns_detect/ingest/labeling.py).
+  # Behavioural labeling functions per parent domain; thresholds from DNS-tunneling research
+  # (Farnham/SANS, Nadler et al. 2019, Ozery et al. NDSS 2024, Elastic/Zeek rules).
+  manifest_skew_seconds: 2          # widen manifest windows for clock drift
+  min_unique_subdomains: 50         # many_unique_subdomains / nxdomain_enumeration
+  min_unique_ratio: 0.8             # unique subdomains ÷ queries (tunnel subdomains are queried once)
+  min_information_chars: 4096       # high_information: unique chars sent through subdomains
+  long_label_chars: 52              # long_encoded_labels: a label longer than this …
+  long_subdomain_chars: 40          # … or a subdomain part at least this long …
+  min_subdomain_entropy: 4.0        # … with at least this entropy (bits/char)
+  min_share: 0.5                    # share of a parent's queries for long_encoded_labels / tunnel_record_types
+  tunnel_record_min_subdomains: 20  # tunnel_record_types also needs this many unique subdomains
+  nxdomain_share: 0.8               # nxdomain_enumeration: NXDOMAIN share for one client
+  ordinary_max_subdomains: 10       # ordinary_domain (benign): few subdomains …
+  ordinary_max_p95_length: 40       # … and short names
+  min_attack_votes: 2               # attack needs this many attack LFs to agree
+
 detection:
   zscore_threshold: 2.0
   nxdomain_threshold: 200

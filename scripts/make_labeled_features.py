@@ -2,6 +2,9 @@
 """
 make_labeled_features.py — Turn a capture into labeled feature records (provenance labels).
 
+With --unlabeled it writes the same records without a label (for captures whose content is
+unknown); the training pipeline labels them later from the attack manifest or heuristics.
+
 Use this when you know what a WHOLE capture is: a tunneling-tool pcap is all attack
 traffic, and a quiet benign-only capture is all benign. That is ground truth by
 provenance — the same way benchmark datasets (CIC-*) label separately captured benign and
@@ -143,8 +146,12 @@ def main():
         description="Convert pcap/pcapng/Technitium-log captures into labeled feature records."
     )
     ap.add_argument("--input", nargs="+", required=True, help="one or more .pcap/.pcapng/.log files")
-    ap.add_argument("--label", type=int, choices=[0, 1], required=True,
-                    help="ground-truth label for EVERY query in these files (1=attack, 0=benign)")
+    lab = ap.add_mutually_exclusive_group(required=True)
+    lab.add_argument("--label", type=int, choices=[0, 1],
+                     help="ground-truth label for EVERY query in these files (1=attack, 0=benign)")
+    lab.add_argument("--unlabeled", action="store_true",
+                     help="no label known: write the same feature records without label/attack_family "
+                          "(labeled later from the attack manifest or heuristics)")
     ap.add_argument("--family", default=None,
                     help="attack family (default: filename prefix for attacks, 'benign' for label 0)")
     ap.add_argument("--domain", default=None,
@@ -160,7 +167,10 @@ def main():
     ex = DNSFeatureExtractor()
     all_recs = []
     print("=" * 70)
-    print(f"PROVENANCE LABELING — every query labelled {'ATTACK' if args.label else 'BENIGN'}")
+    if args.unlabeled:
+        print("UNLABELED — features only, labels are added later")
+    else:
+        print(f"PROVENANCE LABELING — every query labelled {'ATTACK' if args.label else 'BENIGN'}")
     print("=" * 70)
     for path in args.input:
         if not os.path.isfile(path):
@@ -181,12 +191,18 @@ def main():
             recs = [recs[i] for i in keep]
             print(f"    (sampled {len(recs)} of {total_in_file} queries, seed={args.seed})")
 
-        family = args.family or ("benign" if args.label == 0 else _family_from_name(path))
-        for r in recs:
-            r["label"] = args.label
-            r["attack_family"] = family
-            r["label_source"] = "provenance"
-            r["source_file"] = os.path.basename(path)
+        if args.unlabeled:
+            family = "-"
+            for r in recs:
+                r["label_source"] = "none"
+                r["source_file"] = os.path.basename(path)
+        else:
+            family = args.family or ("benign" if args.label == 0 else _family_from_name(path))
+            for r in recs:
+                r["label"] = args.label
+                r["attack_family"] = family
+                r["label_source"] = "provenance"
+                r["source_file"] = os.path.basename(path)
         clients = len({r.get("client_ip") for r in recs})
         print(f"  {os.path.basename(path):<34} {len(recs):>7} queries  "
               f"family={family}  clients={clients}")
@@ -198,7 +214,7 @@ def main():
     os.makedirs(os.path.dirname(os.path.abspath(args.output)), exist_ok=True)
     with open(args.output, "w", encoding="utf-8") as f:
         json.dump(all_recs, f, indent=2, default=str)
-    print(f"\n✅ {len(all_recs)} labeled records → {args.output}")
+    print(f"\n✅ {len(all_recs)} {'unlabeled' if args.unlabeled else 'labeled'} records → {args.output}")
 
 
 if __name__ == "__main__":

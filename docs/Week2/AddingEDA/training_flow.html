@@ -1,0 +1,356 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Training Flow Map</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root {
+  /* Layout: top-to-bottom SVG flow on the left, sticky detail panel on the right. */
+  --bg: #f2f4f6;
+  --surface: #ffffff;
+  --ink: #1d2430;
+  --muted: #5f6b7a;
+  --line: #c9d0d9;
+  --accent: #2459c4;
+  --c-pipe: #3d4757;
+  --c-data: #a8650a;
+  --c-a: #0f7f7a;
+  --c-b: #7046c2;
+  --c-out: #2c7a3a;
+  --c-exit: #b3362d;
+  --c-prop: #2459c4;
+  --warn: #c27c0e;
+  --warn-bg: #fdf4e3;
+  --font-body: "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, "Cascadia Mono", Consolas, monospace;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #12161c; --surface: #1b2129; --ink: #e4e8ee; --muted: #9aa5b3; --line: #39424f;
+    --accent: #7ea6f2; --c-pipe: #a7b2c2; --c-data: #e0a347; --c-a: #3fc1b9; --c-b: #a98af0;
+    --c-out: #5fbf6f; --c-exit: #ee7a70; --c-prop: #7ea6f2; --warn: #f0b54a; --warn-bg: #2b2414;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #12161c; --surface: #1b2129; --ink: #e4e8ee; --muted: #9aa5b3; --line: #39424f;
+  --accent: #7ea6f2; --c-pipe: #a7b2c2; --c-data: #e0a347; --c-a: #3fc1b9; --c-b: #a98af0;
+  --c-out: #5fbf6f; --c-exit: #ee7a70; --c-prop: #7ea6f2; --warn: #f0b54a; --warn-bg: #2b2414;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; }
+body { background: var(--bg); color: var(--ink); font-family: var(--font-body); font-size: 15px; line-height: 1.5; }
+.wrap { max-width: 1320px; margin: 0 auto; padding: 28px 20px 48px; display: grid; gap: 18px; }
+header { display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: 14px; }
+h1 { font-size: 1.5rem; margin: 0; font-weight: 600; text-wrap: balance; }
+h1 code { font-family: var(--font-mono); font-size: 0.85em; font-weight: 500; }
+.sub { margin: 4px 0 0; color: var(--muted); max-width: 62ch; }
+.controls { display: flex; flex-wrap: wrap; gap: 14px; align-items: center; }
+.legend { display: flex; flex-wrap: wrap; gap: 6px 14px; font-size: 13px; color: var(--muted); }
+.legend span { display: inline-flex; align-items: center; gap: 6px; }
+.sw { width: 11px; height: 11px; border-radius: 3px; display: inline-block; }
+.sw.dash { background: transparent !important; border: 1.5px dashed var(--c-prop); }
+.sw.warn { border-radius: 50%; }
+.toggle { display: inline-flex; align-items: center; gap: 8px; font-size: 14px; cursor: pointer; padding: 6px 12px; border: 1px solid var(--line); border-radius: 999px; background: var(--surface); }
+.toggle input { accent-color: var(--accent); width: 15px; height: 15px; margin: 0; }
+.toggle:focus-within { outline: 2px solid var(--accent); outline-offset: 2px; }
+.main { display: grid; grid-template-columns: minmax(0, 1fr) 380px; gap: 18px; align-items: start; }
+figure { margin: 0; background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 14px; overflow-x: auto; }
+figcaption { font-size: 13px; color: var(--muted); padding: 8px 4px 0; }
+svg { display: block; width: 100%; height: auto; min-width: 640px; }
+.panel { position: sticky; top: 16px; background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 20px 22px; display: grid; gap: 14px; max-height: calc(100vh - 32px); overflow-y: auto; }
+.tag { font-family: var(--font-mono); font-size: 12px; letter-spacing: 0.08em; color: var(--muted); text-transform: uppercase; }
+.panel h2 { margin: 0; font-size: 1.3rem; font-weight: 600; text-wrap: balance; }
+.file { font-family: var(--font-mono); font-size: 13px; color: var(--muted); word-break: break-word; }
+.panel p { margin: 0; }
+.kv h3 { margin: 0 0 4px; font-family: var(--font-mono); font-size: 11.5px; letter-spacing: 0.1em; color: var(--muted); font-weight: 500; text-transform: uppercase; }
+.kv ul { margin: 0; padding-left: 18px; display: grid; gap: 3px; }
+.kv code, .panel p code { font-family: var(--font-mono); font-size: 0.86em; background: var(--bg); padding: 1px 5px; border-radius: 4px; }
+.watch { background: var(--warn-bg); border-left: 3px solid var(--warn); border-radius: 6px; padding: 10px 12px 10px 14px; }
+.watch h3 { color: var(--warn); }
+.hint { font-size: 13px; color: var(--muted); }
+/* SVG marks */
+.node { cursor: pointer; }
+.node rect.box { fill: var(--surface); stroke-width: 1.4; }
+.node rect.stripe { stroke: none; }
+.node:hover rect.box { stroke-width: 2.2; }
+.node.sel rect.box { stroke-width: 3; }
+.node:focus { outline: none; }
+.node:focus-visible rect.box { stroke-width: 3; stroke-dasharray: 5 3; }
+.node .t-tag { font-family: var(--font-mono); font-size: 10.5px; letter-spacing: 0.06em; fill: var(--muted); }
+.node .t-title { font-size: 14px; font-weight: 600; fill: var(--ink); }
+.node .t-file { font-family: var(--font-mono); font-size: 11px; fill: var(--muted); }
+.node.exit rect.box { stroke-dasharray: 5 4; }
+.node.prop rect.box { stroke-dasharray: 6 4; }
+.badge circle { fill: var(--warn); }
+.badge text { fill: #fff; font-size: 11px; font-weight: 600; font-family: var(--font-body); }
+.edge { fill: none; stroke: var(--line); stroke-width: 1.6; }
+.edge.exit { stroke: var(--c-exit); stroke-dasharray: 4 4; opacity: 0.75; }
+.edge.prop { stroke: var(--c-prop); stroke-dasharray: 6 4; }
+.elabel { font-family: var(--font-mono); font-size: 11px; fill: var(--muted); }
+.elabel.exit { fill: var(--c-exit); }
+.elabel.prop { fill: var(--c-prop); }
+.arrowhead { fill: var(--line); }
+.arrowhead.exit { fill: var(--c-exit); }
+.arrowhead.prop { fill: var(--c-prop); }
+.hidden { display: none; }
+@media (max-width: 980px) {
+  .main { grid-template-columns: 1fr; }
+  .panel { position: static; max-height: none; }
+}
+@media (prefers-reduced-motion: no-preference) {
+  .node rect.box { transition: stroke-width 0.12s ease; }
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div>
+      <h1>Training flow of <code>scripts/train_models.sh</code></h1>
+      <p class="sub">Every stage the script runs, in order, with the files it reads and writes. Click a box for details. Amber numbers count known issues in that step.</p>
+    </div>
+    <div class="controls">
+      <label class="toggle" for="showProp"><input type="checkbox" id="showProp"> Show proposed EDA #2 upgrade</label>
+    </div>
+  </header>
+  <div class="legend" aria-label="Legend">
+    <span><i class="sw" style="background:var(--c-pipe)"></i>Pipeline stage</span>
+    <span><i class="sw" style="background:var(--c-data)"></i>Data input / pre-process</span>
+    <span><i class="sw" style="background:var(--c-a)"></i>Path A</span>
+    <span><i class="sw" style="background:var(--c-b)"></i>Path B</span>
+    <span><i class="sw" style="background:var(--c-out)"></i>Output / memory</span>
+    <span><i class="sw" style="background:var(--c-exit)"></i>Early exit</span>
+    <span><i class="sw dash"></i>Proposed (not built yet)</span>
+    <span><i class="sw warn" style="background:var(--warn)"></i>Issues found</span>
+  </div>
+  <div class="main">
+    <figure>
+      <svg id="flow" viewBox="0 0 1000 1490" role="img" aria-label="train_models.sh runs: parse flags, check existing models, preflight, find new data split into labeled and unlabeled files, EDA #1 on labeled data, unlabeled data and their comparison, pre-process logs and PCAPs, merge, feature EDA, label, check both classes, train Path A and Path B, save metadata, and print a summary. Early exits: nothing to train, no new files, --eda-only, and only one class."></svg>
+      <figcaption>Order follows the code from top to bottom; [n/10] is the line each stage prints. Path A and Path B train one after the other (Path A first); either is skipped when its models exist and no retrain flag is set.</figcaption>
+    </figure>
+    <aside class="panel" id="panel" aria-live="polite"></aside>
+  </div>
+</div>
+
+<script>
+const NODES = [
+  { id:"start", kind:"pipe", x:330, y:20, w:340, h:64, tag:"START", title:"Parse flags", file:"train_models.sh:108-253",
+    what:"Reads the command-line options, sets every path, creates <code>data/processed/</code>, <code>logs/</code> and <code>models/</code>, and opens a timestamped training log. From here on each stage prints one line (<code>[n/10] …</code>); the full output goes to the log, or also to the screen with <code>--verbose</code>.",
+    reads:["Flags: <code>--data-dir</code>, <code>--files</code>, <code>--pcap-label 0|1</code>, <code>--retrain</code>, <code>--force-retrain</code>, <code>--path-a-only</code>, <code>--path-b-only</code>, <code>--n-days</code>, <code>--eda-only</code>, <code>--verbose</code>"],
+    writes:["<code>logs/training_&lt;time&gt;.log</code>","<code>models/trained_files_registry.json</code> (empty on first run)"], issues:[] },
+
+  { id:"check", kind:"pipe", x:330, y:120, w:340, h:64, tag:"PRE-CHECK", title:"Check existing models", file:"train_models.sh:257-280 · [1/10]",
+    what:"Looks in <code>models/</code> for the Path A files (RF, Transformer, scaler, threshold) and the Path B files (model, threshold, norm). A path is trained if its files are missing or if <code>--retrain</code> / <code>--force-retrain</code> is set. With <code>--eda-only</code> nothing is trained, so it never exits here.",
+    reads:["<code>models/*.pkl</code>, <code>*.keras</code>, <code>*.h5</code>, <code>*.json</code>"], writes:["Decides <code>TRAIN_PATH_A</code> and <code>TRAIN_PATH_B</code>"],
+    issues:["Path A only counts as trained if the Transformer file exists, even though the Transformer is never used for decisions."] },
+
+  { id:"exitTrained", kind:"exit", x:790, y:120, w:190, h:64, tag:"EXIT 0", title:"Nothing to do", file:"train_models.sh:269-272",
+    what:"Both paths already have models, no retrain flag and no <code>--eda-only</code> was given. Stops.", reads:[], writes:[], issues:[] },
+
+  { id:"preflight", kind:"pipe", x:330, y:220, w:340, h:64, tag:"PREFLIGHT", title:"Preflight checks", file:"train_models.sh:282-297 · [2/10]",
+    what:"Checks for python3, the <code>dns_detect</code> package, and pandas / numpy / scikit-learn / tensorflow / joblib. Installs any missing package with pip.",
+    reads:[], writes:[],
+    issues:["<code>pip install --break-system-packages</code> changes the system Python instead of a virtual environment."] },
+
+  { id:"discover", kind:"pipe", x:330, y:320, w:340, h:64, tag:"STEP 3 · SOURCE DISCOVERY", title:"Find new data (labeled + unlabeled)", file:"train_models.sh:299-427 · [3/10]",
+    what:"Collects files from <code>--data-dir</code> (3 folders deep) and <code>--files</code> (fallback: <code>data/raw/</code>) and gives every file a <b>label status</b>: <code>.json</code>/<code>.csv</code> are labeled when their rows carry <code>label</code> 0/1 (partial files count per row), <code>.pcap</code> is labeled with <code>--pcap-label</code>, <code>.log</code> is always unlabeled. Both kinds go forward; nothing is dropped for lack of a label. The stage line shows the split, e.g. <code>2 labeled (2 json), 3 unlabeled (2 log, 1 pcap)</code>, plus how the unlabeled part will be labeled later (manifest or heuristics).",
+    reads:["<code>--data-dir</code>, <code>--files</code>, or <code>data/raw/</code>","<code>models/trained_files_registry.json</code> (with <code>--retrain</code>)"], writes:["Lists: <code>SRC_LABELED</code>, <code>SRC_UNLABELED</code> (and per type: LOG, PCAP, JSON, CSV)"],
+    issues:["<code>--retrain</code> collects only NEW files, and the models are then trained from scratch on those files alone. The new models lose everything they learned from earlier data.",
+            "The <code>data/raw/</code> fallback doesn't look for <code>.pcap</code> files."] },
+
+  { id:"exitNoNew", kind:"exit", x:790, y:320, w:190, h:64, tag:"EXIT 0", title:"No new data", file:"train_models.sh:358-361",
+    what:"<code>--retrain</code> found only files that are already in the registry, so there is nothing new to train on.", reads:[], writes:[], issues:[] },
+
+  { id:"eda1", kind:"pipe", x:330, y:440, w:340, h:64, tag:"STEP 4 · EDA #1", title:"EDA: labeled · unlabeled · comparison", file:"features/eda_data.py · [4/10]",
+    what:"Reads every discovered file into one per-query table (same measures for every format) and analyses it before any pre-processing. <b>A · Labeled:</b> class balance per file and family, attack vs benign per measure, single-measure AUC (warns above 0.95), outliers, and attack/benign captured in different periods. <b>B · Unlabeled:</b> empty files, unparseable lines, clients, NXDOMAIN rate, outliers, and how it will be labeled. <b>C · Comparison:</b> labeled → unlabeled shift (PSI, KS) and whether each unlabeled file looks like attack, benign or neither. <b>D · Implications</b> for features and model choice. Only warns; never stops training.",
+    reads:["All files from Step 3, split into labeled and unlabeled"], writes:["<code>data/processed/eda_data_report.json</code>","<code>data/processed/eda_data_report.html</code> (charts)"], issues:[] },
+
+  { id:"logA", kind:"data", x:120, y:570, w:220, h:72, tag:"STEP 5 · LOGS", title:"Pre-process logs", file:"features/extractor.py · [5/10]",
+    what:"Each Technitium <code>.log</code> becomes a features JSON: per-query features (length, entropy, subdomain depth, digit ratio…) plus heuristic flags (<code>attack_count</code>, <code>attack_signature</code>). Logs are unlabeled data.",
+    reads:["<code>*.log</code>"], writes:["<code>data/processed/extracted_&lt;name&gt;_&lt;time&gt;.json</code>"],
+    issues:["The log file is registered as \"trained\" right after extraction, before any model is trained. If training fails later, <code>--retrain</code> skips this file for good (only <code>--force-retrain</code> brings it back). <code>--eda-only</code> never registers anything."] },
+
+  { id:"pcapB", kind:"data", x:390, y:570, w:220, h:72, tag:"STEP 5 · PCAPS", title:"Pre-process PCAPs", file:"make_labeled_features.py",
+    what:"Reads each <code>.pcap</code> with scapy. With <code>--pcap-label</code> every query gets that label (1 = attack capture, 0 = benign capture). Without it the PCAP is now <b>kept as unlabeled data</b> (<code>--unlabeled</code>) and labeled later in Step 8, like a log.",
+    reads:["<code>*.pcap</code> / <code>*.pcapng</code>"], writes:["<code>data/processed/pcap_feat_&lt;name&gt;_&lt;time&gt;.json</code>"],
+    issues:["Registered as \"trained\" before training runs, the same problem as the logs.",
+            "PCAPs hold only the queries, so <code>answer_count</code> is always 0 here, while real Technitium logs have actual answer counts."] },
+
+  { id:"jsoncsv", kind:"data", x:660, y:570, w:220, h:72, tag:"PASS-THROUGH", title:"JSON / CSV files", file:"no processing",
+    what:"Feature files that were already extracted go straight to the merge, labeled or not. A <code>label</code> field is kept.",
+    reads:["<code>*.json</code>, <code>*.csv</code>"], writes:[], issues:[] },
+
+  { id:"merge", kind:"pipe", x:330, y:700, w:340, h:64, tag:"STEP 6", title:"Merge", file:"ingest/merge.py · train_models.sh:520-550 · [6/10]",
+    what:"Joins every feature file into one training table, with safeguards. Every row gets <code>source_file</code> (the original log or capture), <code>source_type</code>, <code>label_source</code> and <code>dup_key</code> (hash of the 8 model features). The merge report lists distinct feature vectors and duplicated rows, vectors seen with both labels, sources that hold only one class, and model features that are missing or constant in one source type (e.g. <code>answer_count</code> always 0 in PCAP rows). Rows are kept; Path A splits by <code>dup_key</code>. With <code>--eda-only</code> the trained-files registry is left untouched.",
+    reads:["All feature JSON + CSV (converted files mapped to their original log / capture)"], writes:["<code>merged_features_all.json</code>","<code>data/processed/merge_report.json</code>","<code>models/training_provenance.json</code>","registry update (full SHA-256)"],
+    issues:["Duplicates are reported, not removed: on the current data 81 % of rows repeat another row's feature vector."] },
+
+  { id:"eda", kind:"pipe", x:330, y:800, w:340, h:64, tag:"STEP 7 · EDA #2", title:"Feature EDA", file:"features/eda.py · [7/10]",
+    what:"Profiles the merged feature file: record count, missing values, per-feature mean/std/min/max, highly correlated feature pairs, and constant features. It only reports; it never stops training. With <code>--eda-only</code> the run stops here.",
+    reads:["<code>merged_features_all.json</code>"], writes:["<code>data/processed/eda_report.json</code>"],
+    issues:["Runs before labeling, so the class balance it reports comes from the heuristic <code>attack_count</code> (EDA #1 already shows the real labeled balance)."] },
+
+  { id:"exitEda", kind:"exit", x:790, y:800, w:190, h:64, tag:"EXIT 0", title:"EDA only", file:"train_models.sh:619-626",
+    what:"<code>--eda-only</code> was given: both EDA reports are written, nothing is labeled, trained or marked as trained. Read the reports, then run again without the flag.", reads:[], writes:[], issues:[] },
+
+  { id:"manifest", kind:"pipe", x:150, y:920, w:300, h:72, tag:"STEP 8 · GROUND TRUTH", title:"Label from manifest", file:"ingest/labeling.py",
+    what:"Every row is labeled in this order: <b>1)</b> a label already in the file (labeled JSON, <code>--pcap-label</code>) is kept; <b>2)</b> <code>data/attack_manifest.csv</code>: a query is attack when it falls inside a recorded attack window (± 2 s clock skew), comes from <code>source_ip</code> if given, and is under <code>target_domain</code> if given. Other queries from the attacker host in that window are left out as background. <code>run_all.sh --with-attack</code> now writes these manifest rows automatically, using the clock the Technitium log uses.",
+    reads:["<code>merged_features_all.json</code>","<code>data/attack_manifest.csv</code>"], writes:["<code>merged_features_labeled.json</code>","<code>data/processed/labeling_report.json</code>"], issues:[] },
+
+  { id:"heur", kind:"pipe", x:550, y:920, w:300, h:72, tag:"STEP 8 · BEHAVIOUR", title:"Behaviour labels or abstain", file:"ingest/labeling.py",
+    what:"For rows still without a label: research-based rules over the traffic of the row's <b>parent domain</b> (not single queries): many unique subdomains each queried once, a lot of information sent through subdomains, long encoded labels, tunnel record types (TXT/NULL/KEY/…), and NXDOMAIN enumeration per client. Attack only when ≥ 2 rules agree (or NXDOMAIN enumeration); benign for allowlisted parents (<code>config/dns_allowlist.txt</code>: CDNs, AV reputation, DNS blocklists) or ordinary domains; otherwise the row is <b>left out</b> of training (<code>abstained_rows.json</code>). On the provenance data: 0 wrong labels vs 1,094 for the old <code>attack_count</code> rule; DNSExfiltrator 100 % vs 71.7 %.",
+    reads:["<code>merged_features_all.json</code>","<code>config/dns_allowlist.txt</code>"], writes:["<code>merged_features_labeled.json</code>","<code>data/processed/abstained_rows.json</code>"],
+    issues:["Still weak labels: Path A trains on them but is graded only on real labels (file / manifest)."] },
+
+  { id:"gate", kind:"pipe", x:330, y:1040, w:340, h:64, tag:"CHECK", title:"Both classes present?", file:"train_models.sh:573-618 · [8/10]",
+    what:"Counts attack and benign rows and lists the attack families. Stops if one class is missing, before any model file is touched.",
+    reads:["<code>merged_features_labeled.json</code>"], writes:[], issues:[] },
+
+  { id:"exitFail", kind:"exit", x:790, y:1040, w:190, h:64, tag:"EXIT 1", title:"Only one class", file:"train_models.sh:615-617",
+    what:"The data is all attack or all benign. Existing models stay untouched. Add data for the missing class and run again.", reads:[], writes:[], issues:[] },
+
+  { id:"pathA", kind:"a", x:110, y:1160, w:340, h:84, tag:"STEP 9 · SUPERVISED", title:"Train Path A", file:"models/path_a.py · [9/10]",
+    what:"Split ≈ 70/15/15 <b>by feature vector</b> (<code>StratifiedGroupKFold</code> on <code>dup_key</code>): identical vectors never land in both train and test, and vectors seen with both labels are dropped first. Both classes in every part. The scaler is fitted on the training split only. Trains Random Forest and Gradient Boosting, plus a Transformer kept only as a comparison baseline. Thresholds are tuned on validation, then the script chooses RF-only or RF+GBT. Skipped with <code>--path-b-only</code>, or when the models exist and no retrain flag is set.",
+    reads:["<code>merged_features_labeled.json</code> (8 features)"],
+    writes:["<code>dns_tunnel_rf.pkl</code>, <code>dns_tunnel_gbt.pkl</code>","<code>dns_tunnel_transformer.keras</code> (baseline)","<code>dns_scaler.pkl</code>, <code>dns_threshold.json</code>","<code>evaluation_metrics.json</code> → path_a"],
+    issues:["The choice between RF-only and RF+GBT is made on the test set, and that same test score is then reported.",
+            "Even with the leak-free split (identical feature vectors never in both train and test) the score stays at F1 1.0: the current labeled data is simply too easy (entropy alone: AUC 0.996).",
+            "The Transformer baseline gets 10 shuffled, unrelated rows per \"sequence\", so its comparison isn't fair."] },
+
+  { id:"pathB", kind:"b", x:550, y:1160, w:340, h:84, tag:"STEP 10 · UNSUPERVISED", title:"Train Path B", file:"models/path_b_train.py · [10/10]",
+    what:"Splits each class 70/15/15 in time order, then cuts per-client windows of 20 queries (<code>--n-days</code>). The Trafficformer learns to rebuild benign windows only. The threshold is the 99th percentile of benign validation error. Skipped with <code>--path-a-only</code>, or when the model exists and no retrain flag is set.",
+    reads:["<code>merged_features_labeled.json</code> (5 features)"],
+    writes:["<code>dns_trafficformer.h5</code>","<code>dns_trafficformer_norm.json</code>, <code>_threshold.json</code>","<code>evaluation_metrics.json</code> → path_b"],
+    issues:["Residual connections let the model copy its input straight through, so attacks may be rebuilt almost as well as benign traffic.",
+            "Clients with fewer than 20 queries produce no windows, so the model never trains or scores on them."] },
+
+  { id:"meta", kind:"out", x:330, y:1300, w:340, h:64, tag:"MEMORY", title:"Save training metadata", file:"inline Python · train_models.sh:697-793",
+    what:"Saves when each path was trained, sample counts, attack families, where the labels came from, a summary of the source files, the last 10 training runs, and a feature snapshot (mean/std/min/max) used for drift checks.",
+    reads:["<code>training_provenance.json</code>","<code>merged_features_labeled.json</code>"], writes:["<code>models/training_metadata.json</code>"],
+    issues:["The snapshot takes the first 12 numeric fields, attack rows included, and doesn't use the feature names the monitor looks for (FEATURES_8). Drift checks can end up comparing the wrong columns."] },
+
+  { id:"summary", kind:"out", x:330, y:1400, w:340, h:64, tag:"DONE", title:"Summary → run_pipeline.sh", file:"train_models.sh:796-799",
+    what:"Prints one line: how long training took, where the models are, and the next command.",
+    reads:[], writes:["Console output"], issues:[] },
+
+  { id:"eda2", kind:"prop", x:30, y:800, w:250, h:64, tag:"PROPOSED", title:"Upgrade EDA #2", file:"features/eda.py (extended)",
+    what:"Next step for the feature-level EDA: feature correlation heatmap, attack vs benign per model feature, per-source breakdown (needs Merge to tag each row with <code>source_file</code>), and single-feature AUC on the merged set.",
+    reads:["<code>merged_features_all.json</code>"], writes:["<code>data/processed/eda_report.json</code>"], issues:[] },
+];
+
+const EDGES = [
+  ["start","check"], ["check","preflight","something to train"],
+  ["check","exitTrained","nothing to train","exit"],
+  ["preflight","discover"],
+  ["discover","exitNoNew","no new files","exit"],
+  ["discover","eda1","labeled + unlabeled files"],
+  ["eda1","logA",".log (unlabeled)"], ["eda1","pcapB",".pcap (labeled or not)"], ["eda1","jsoncsv",".json / .csv"],
+  ["logA","merge"], ["pcapB","merge"], ["jsoncsv","merge"],
+  ["merge","eda","merged_features_all.json"],
+  ["eda","exitEda","--eda-only","exit"],
+  ["eda","manifest","1 file · 2 manifest"], ["eda","heur","3 behaviour · 4 abstain"],
+  ["manifest","gate"], ["heur","gate"],
+  ["gate","exitFail","one class","exit"],
+  ["gate","pathA","TRAIN_PATH_A"], ["gate","pathB","TRAIN_PATH_B"],
+  ["pathA","meta"], ["pathB","meta"],
+  ["meta","summary"],
+  ["eda2","eda","upgrades","prop"],
+];
+
+const COLOR = { pipe:"var(--c-pipe)", data:"var(--c-data)", a:"var(--c-a)", b:"var(--c-b)", out:"var(--c-out)", exit:"var(--c-exit)", prop:"var(--c-prop)" };
+const NS = "http://www.w3.org/2000/svg";
+const svg = document.getElementById("flow");
+const byId = Object.fromEntries(NODES.map(n => [n.id, n]));
+const el = (tag, attrs, parent) => { const e = document.createElementNS(NS, tag); for (const k in attrs) e.setAttribute(k, attrs[k]); if (parent) parent.appendChild(e); return e; };
+
+function drawEdge([from, to, label, kind]) {
+  const a = byId[from], b = byId[to];
+  const g = el("g", { class: "edge-g" + (kind === "prop" ? " propItem" : "") }, svg);
+  const cls = "edge" + (kind ? " " + kind : "");
+  let d, lx, ly, anchor = "start", head;
+  if (kind === "exit" || (kind === "prop" && Math.abs((a.y + a.h/2) - (b.y + b.h/2)) < 2)) {
+    // horizontal side edge
+    const leftward = b.x < a.x;
+    const y = a.y + a.h / 2;
+    const x1 = leftward ? a.x : a.x + a.w;
+    const x2 = leftward ? b.x + b.w : b.x;
+    d = `M${x1},${y} H${x2}`;
+    lx = (x1 + x2) / 2; ly = y - 8; anchor = "middle";
+    head = leftward ? [x2, y, "left"] : [x2, y, "right"];
+  } else {
+    const x1 = a.x + a.w / 2, y1 = a.y + a.h;
+    const x2 = b.x + b.w / 2, y2 = b.y;
+    const ym = Math.round((y1 + y2) / 2);
+    d = x1 === x2 ? `M${x1},${y1} V${y2}` : `M${x1},${y1} V${ym} H${x2} V${y2}`;
+    lx = x2 + 8; ly = y2 - 7;
+    head = [x2, y2, "down"];
+  }
+  el("path", { d, class: cls }, g);
+  const [hx, hy, dir] = head;
+  const pts = dir === "down" ? `${hx-5},${hy-8} ${hx+5},${hy-8} ${hx},${hy}`
+            : dir === "right" ? `${hx-8},${hy-5} ${hx-8},${hy+5} ${hx},${hy}`
+            : `${hx+8},${hy-5} ${hx+8},${hy+5} ${hx},${hy}`;
+  el("polygon", { points: pts, class: "arrowhead" + (kind ? " " + kind : "") }, g);
+  if (label) {
+    const t = el("text", { x: lx, y: ly, "text-anchor": anchor, class: "elabel" + (kind ? " " + kind : "") }, g);
+    t.textContent = label;
+  }
+}
+
+function drawNode(n) {
+  const g = el("g", { class: "node " + n.kind + (n.kind === "prop" ? " propItem" : ""), tabindex: "0", role: "button", "aria-label": `${n.tag}: ${n.title}`, "data-id": n.id }, svg);
+  el("rect", { class: "box", x: n.x, y: n.y, width: n.w, height: n.h, rx: 9, stroke: COLOR[n.kind] }, g);
+  el("rect", { class: "stripe", x: n.x, y: n.y + 8, width: 4, height: n.h - 16, rx: 2, fill: COLOR[n.kind] }, g);
+  const tx = n.x + 16;
+  const top = n.y + (n.h - 52) / 2;
+  el("text", { x: tx, y: top + 12, class: "t-tag" }, g).textContent = n.tag;
+  el("text", { x: tx, y: top + 31, class: "t-title" }, g).textContent = n.title;
+  el("text", { x: tx, y: top + 48, class: "t-file" }, g).textContent = n.file;
+  if (n.issues.length) {
+    const b = el("g", { class: "badge" }, g);
+    el("circle", { cx: n.x + n.w - 14, cy: n.y + 14, r: 9 }, b);
+    el("text", { x: n.x + n.w - 14, y: n.y + 18, "text-anchor": "middle" }, b).textContent = n.issues.length;
+  }
+  g.addEventListener("click", () => select(n.id));
+  g.addEventListener("keydown", e => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); select(n.id); } });
+}
+
+EDGES.forEach(drawEdge);
+NODES.forEach(drawNode);
+
+const panel = document.getElementById("panel");
+const list = (title, items, extra) => items.length
+  ? `<div class="kv ${extra || ""}"><h3>${title}</h3><ul>${items.map(i => `<li>${i}</li>`).join("")}</ul></div>` : "";
+
+function select(id) {
+  const n = byId[id];
+  svg.querySelectorAll(".node").forEach(g => g.classList.toggle("sel", g.dataset.id === id));
+  panel.innerHTML = `
+    <div class="tag">${n.tag}</div>
+    <h2>${n.title}</h2>
+    <div class="file">${n.file}</div>
+    <p>${n.what}</p>
+    ${list("Reads", n.reads)}
+    ${list("Writes", n.writes)}
+    ${list("Watch out", n.issues, "watch")}
+    <p class="hint">Click another box to compare.</p>`;
+}
+
+const toggle = document.getElementById("showProp");
+function applyToggle() {
+  svg.querySelectorAll(".propItem").forEach(g => g.classList.toggle("hidden", !toggle.checked));
+  const cur = svg.querySelector(".node.sel");
+  if (!toggle.checked && cur && byId[cur.dataset.id].kind === "prop") select("discover");
+}
+toggle.addEventListener("change", applyToggle);
+applyToggle();
+select("discover");
+</script>
+</body>
+</html>

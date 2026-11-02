@@ -47,5 +47,5 @@ data/processed/*
 !data/processed/.gitkeep
 !data/processed/*.json
 
-# Claude Code local config / skills (per-developer, not shared)
-.claude/
+# Claude Code: share skills in the repo, keep machine-local settings out
+.claude/settings.local.json

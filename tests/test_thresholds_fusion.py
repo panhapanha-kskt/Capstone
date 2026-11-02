@@ -65,3 +65,55 @@ def test_fusion_inputs_rule_hits_and_coverage():
     assert X.shape == (2, 4)
     assert X[0, 2] == 0.0 and X[1, 2] == 1.0         # has_score_B
     assert X[0, 3] == 2.0 and X[1, 3] == 0.0         # R3 + R4 hits
+
+
+def _bridge_frame():
+    return pd.DataFrame({"ml_score_A": [0.95, 0.10, 0.60], "ml_label_A": [1, 0, 0],
+                         "query_length": [30, 30, 30], "entropy": [2.0, 2.0, 2.0],
+                         "subdomain_depth": [1, 1, 1]})
+
+
+def test_merge_lr_mode_uses_stacker(monkeypatch, tmp_path):
+    from dns_detect.fusion import bridge, stacker
+    X = pd.DataFrame({"ml_score_A": [0.0, 0.1, 0.9, 1.0], "ml_score_B": [0.0, 0.2, 0.8, 1.0],
+                      "query_length": [10] * 4, "entropy": [1.0] * 4, "subdomain_depth": [1] * 4})
+    lr, meta = stacker.fit(X, np.array([0, 0, 1, 1]), 0.0)
+    monkeypatch.setattr(stacker, "MODEL_FUSION", str(tmp_path / "f.pkl"))
+    monkeypatch.setattr(stacker, "META_FUSION", str(tmp_path / "f.json"))
+    stacker.save(lr, meta)
+    monkeypatch.setattr(bridge, "_fusion_mode", lambda: "lr")
+    out = bridge.merge_ml_scores(_bridge_frame(), pd.Series([0.0, 0.0, 0.9]),
+                                 pd.Series([0, 0, 1]), decision_threshold=0.5)
+    assert out["ml_combined_label_or"].tolist() == [1, 0, 1]   # OR decision kept for audit
+    assert out["ml_combined_score"].between(0, 1).all()
+
+
+def test_merge_lr_mode_falls_back_to_or_without_model(monkeypatch, tmp_path):
+    from dns_detect.fusion import bridge, stacker
+    monkeypatch.setattr(stacker, "MODEL_FUSION", str(tmp_path / "missing.pkl"))
+    monkeypatch.setattr(stacker, "META_FUSION", str(tmp_path / "missing.json"))
+    monkeypatch.setattr(bridge, "_fusion_mode", lambda: "lr")
+    out = bridge.merge_ml_scores(_bridge_frame(), pd.Series([0.0, 0.0, 0.9]),
+                                 pd.Series([0, 0, 1]), decision_threshold=0.5)
+    assert "ml_combined_label_or" not in out.columns
+    assert out["ml_combined_label"].tolist() == [1, 0, 1]
+
+
+def test_allowlist_suppresses_alarm_but_keeps_score(monkeypatch):
+    from dns_detect.fusion import bridge
+    monkeypatch.setattr(bridge, "_fusion_mode", lambda: "or")
+    df = _bridge_frame()
+    df["domain"] = ["a1b2.gallerycdn.vsassets.io", "x.example.com", "notvsassets.io"]
+    df["ml_label_A"] = [1, 0, 1]
+    out = bridge.merge_ml_scores(df, pd.Series([0.0, 0.0, 0.0]), pd.Series([0, 0, 0]),
+                                 decision_threshold=0.5, allowlist={"vsassets.io"})
+    assert out["ml_combined_label"].tolist() == [0, 0, 1]          # label boundary respected
+    assert out["suppressed_by_allowlist"].tolist() == [True, False, False]
+    assert out.loc[0, "ml_combined_score"] == 0.95                 # score kept for audit
+
+
+def test_detection_allowlist_file_has_no_dynamic_dns():
+    from dns_detect.fusion.bridge import load_detection_allowlist
+    allow = load_detection_allowlist()
+    assert "vsassets.io" in allow
+    assert not allow & {"duckdns.org", "no-ip.com", "ngrok.io", "trycloudflare.com", "blogspot.com"}

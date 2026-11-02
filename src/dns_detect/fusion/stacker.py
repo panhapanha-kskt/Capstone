@@ -20,11 +20,11 @@ import pandas as pd
 from sklearn.linear_model import LogisticRegression
 
 from dns_detect.models.thresholds import threshold_for_fpr
-from dns_detect.utils.paths import PROJECT_ROOT
+from dns_detect.utils.paths import MODELS_DIR
 
 FUSION_INPUTS = ["ml_score_A", "ml_score_B", "has_score_B", "rule_hits"]
-MODEL_FUSION = os.path.join(str(PROJECT_ROOT / "models"), "fusion_lr.pkl")
-META_FUSION = os.path.join(str(PROJECT_ROOT / "models"), "fusion_lr.json")
+MODEL_FUSION = os.path.join(str(MODELS_DIR), "fusion_lr.pkl")
+META_FUSION = os.path.join(str(MODELS_DIR), "fusion_lr.json")
 
 
 def _detection_setting(name, default):

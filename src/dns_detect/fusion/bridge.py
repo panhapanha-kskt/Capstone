@@ -51,8 +51,9 @@ from dns_detect.models.path_a import (
     load_threshold, score_frame, MODEL_RF, MODEL_GBT, MODEL_SCALER
 )
 from dns_detect.fusion import stacker
+from dns_detect.ingest.labeling import load_allowlist
 from dns_detect.models.path_b_predict import score_records
-from dns_detect.utils.paths import PROJECT_ROOT
+from dns_detect.utils.paths import PROJECT_ROOT, MODELS_DIR
 
 
 # ─────────────────────────────────────────────
@@ -158,7 +159,7 @@ def run_path_a(week3_json_path: str) -> pd.DataFrame:
 def run_path_b(week3_json_path: str, save_name: str,
                model_dir: str = None):
     if model_dir is None:
-        model_dir = str(PROJECT_ROOT / "models")
+        model_dir = str(MODELS_DIR)
     """
     Run Path B (multi-feature Trafficformer) on Week 3 features JSON.
     Windows are built per client in time order; each window's score lands on
@@ -192,12 +193,36 @@ def _fusion_mode() -> str:
         return "or"
 
 
+def load_detection_allowlist() -> set:
+    """Suffixes from detection.allowlist_path (config/detect_allowlist.txt); empty if unset."""
+    try:
+        from dns_detect.config import settings
+        path = getattr(settings.detection, "allowlist_path", None)
+    except Exception:
+        path = None
+    if not path:
+        return set()
+    p = Path(path)
+    return load_allowlist(str(p if p.is_absolute() else PROJECT_ROOT / p))
+
+
+def allowlisted(domains: pd.Series, allowlist: set) -> np.ndarray:
+    """True where the domain is an allowlisted suffix or under one, matched per DNS label."""
+    def hit(d):
+        labels = str(d).lower().rstrip(".").split(".")
+        return any(".".join(labels[i:]) in allowlist for i in range(len(labels)))
+    if not allowlist:
+        return np.zeros(len(domains), dtype=bool)
+    return domains.map(hit).to_numpy(dtype=bool)
+
+
 def merge_ml_scores(df_path_a: pd.DataFrame,
                     score_b: pd.Series,
                     label_b: pd.Series,
                     weight_a: float = 0.6,
                     weight_b: float = 0.4,
-                    decision_threshold: float = None) -> pd.DataFrame:
+                    decision_threshold: float = None,
+                    allowlist: set = None) -> pd.DataFrame:
     df = df_path_a.copy()
     df["ml_score_B"] = score_b.values
     df["ml_label_B"] = label_b.values
@@ -242,6 +267,17 @@ def merge_ml_scores(df_path_a: pd.DataFrame,
             df["ml_combined_label"] = label
             print(f"   Fusion: logistic regression (threshold {loaded[1]['threshold']:.4f}) — "
                   f"{int(label.sum())} attack vs {int(df['ml_combined_label_or'].sum())} with the OR rule")
+
+    # Detection allowlist: known CDN / telemetry names never raise an alarm. The score stays,
+    # so suppressed rows can still be audited.
+    if allowlist is None:
+        allowlist = load_detection_allowlist()
+    domains = df["domain"] if "domain" in df.columns else pd.Series([""] * len(df), index=df.index)
+    suppressed = allowlisted(domains, allowlist) & (df["ml_combined_label"].to_numpy() == 1)
+    df["suppressed_by_allowlist"] = suppressed
+    df.loc[suppressed, "ml_combined_label"] = 0
+    if suppressed.any():
+        print(f"   Allowlist: {int(suppressed.sum())} alarm(s) suppressed (score kept)")
 
     df["ml_combined_verdict"] = df["ml_combined_label"].map({
         1: "ML_ATTACK", 0: "ml_benign"

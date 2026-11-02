@@ -46,7 +46,7 @@ ensemble:
   transformer_in_decision: false
   # "or": alarm if Path A or Path B fires. "lr": learned logistic-regression fusion
   # (scripts/train_fusion.py → models/fusion_lr.pkl); falls back to "or" if not trained.
-  fusion: or
+  fusion: lr
   # Path A / Path B fusion weights used by fusion/bridge.py (ml_combined_score)
   rf_weight: 0.6
   tf_weight: 0.4
@@ -88,3 +88,5 @@ detection:
   tunneling_entropy_threshold: 4.0
   subdomain_depth_threshold: 5
   ml_score_threshold: 0.7
+  # Domains whose ML alarms are suppressed after fusion (score kept). Empty = no suppression.
+  allowlist_path: config/detect_allowlist.txt

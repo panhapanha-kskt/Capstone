@@ -51,3 +51,19 @@ def test_generate_splits_halves_and_slows_time():
     a = [r for r in rows if r["evasion_variant"] == "a_aaaa"]
     assert {r["query_type"] for r in a} == {"A", "AAAA"}
     assert all(r["label"] == 1 for r in rows)
+
+
+def test_mix_with_benign_shares_client_and_time_span():
+    import pandas as pd
+    attack = pd.DataFrame(_attack_rows(10) + [dict(r, client_ip="10.0.0.2") for r in _attack_rows(10)])
+    benign = pd.DataFrame([{"label": 0, "domain": f"site{i}.example.org", "query_type": "A",
+                            "client_ip": "192.168.1.5", "timestamp": f"2020-05-05T10:00:{i * 3:02d}"}
+                           for i in range(3)])     # 6 s of benign, tunnel runs 9 s → repeated
+    mixed = ev.mix_with_benign(attack, benign)
+    assert (~mixed["mixed_benign"]).sum() == 20                    # every attack row kept
+    added = mixed[mixed["mixed_benign"]]
+    assert set(added["client_ip"]) == {"10.0.0.1", "10.0.0.2"}     # benign rides on the tunnel's client
+    assert (added["label"] == 0).all()
+    ts = pd.to_datetime(added["timestamp"])
+    assert ts.min() >= pd.Timestamp("2026-01-01T00:00:00") and ts.max() <= pd.Timestamp("2026-01-01T00:00:09")
+    assert len(added) == 2 * 4                                      # 0,3,6 s then 7 s (repeat) per client

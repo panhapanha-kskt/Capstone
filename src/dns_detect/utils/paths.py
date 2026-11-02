@@ -18,3 +18,14 @@ def find_project_root() -> Path:
 
 
 PROJECT_ROOT = find_project_root()
+
+
+def _models_dir() -> Path:
+    """models/, or DNS_DETECT_MODELS_DIR (relative to the project root) for experiments."""
+    env = os.environ.get("DNS_DETECT_MODELS_DIR")
+    p = Path(env) if env else PROJECT_ROOT / "models"
+    return p if p.is_absolute() else PROJECT_ROOT / p
+
+
+# Where every model is trained to and loaded from.
+MODELS_DIR = _models_dir()

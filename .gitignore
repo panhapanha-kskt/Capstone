@@ -49,3 +49,6 @@ data/processed/*
 
 # Claude Code: share skills in the repo, keep machine-local settings out
 .claude/settings.local.json
+
+# Experiment model folders (DNS_DETECT_MODELS_DIR)
+models_*/

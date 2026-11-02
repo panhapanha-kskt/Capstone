@@ -1,0 +1,36 @@
+# Detection-time allowlist: alarms on these domains (and their subdomains) are suppressed in
+# fusion/bridge.py. The ML score is kept for audit (suppressed_by_allowlist = True).
+# Used at DETECTION time, unlike config/dns_allowlist.txt, which only shapes training labels.
+#
+# Keep this list SHORT. Every entry is a blind spot. Only add a domain when:
+#   - it caused a reviewed false alarm, and
+#   - nobody outside its operator can run a DNS zone under it.
+# NEVER add dynamic-DNS or free-subdomain services (duckdns.org, no-ip.com, ngrok.io,
+# trycloudflare.com, …): anyone can delegate a subdomain there and run a tunnel under it.
+# Free-hosting sites (blogspot.com, github.io, …) need no entry: the Public Suffix List already
+# makes each site its own parent domain (ingest/labeling.parent_domain).
+#
+# Matching is per DNS label: "vsassets.io" covers "a.gallerycdn.vsassets.io", not "notvsassets.io".
+# Research: CDN and telemetry names are the main false-positive source for distinct-subdomain
+# and entropy detectors (Elastic "Plight at the end of the tunnel"; dnsink / flowscope CDN lists).
+
+# Seen as false alarms in the Week-3 test report (late-capture lab traffic, CIC capture 3)
+vsassets.io
+sharepoint.com
+events.data.microsoft.com
+localdomain
+
+# CDN front ends (operator-controlled zones)
+akamaiedge.net
+akamaihd.net
+edgekey.net
+cloudfront.net
+fastly.net
+azureedge.net
+googleusercontent.com
+gstatic.com
+1e100.net
+
+# OS update and telemetry
+windowsupdate.com
+msftncsi.com

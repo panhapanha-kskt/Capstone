@@ -38,6 +38,7 @@ from dns_detect.models.path_b_predict import score_records  # noqa: E402
 from dns_detect.models.splits import load_manifest_indices  # noqa: E402
 from dns_detect.models.thresholds import rates  # noqa: E402
 from dns_detect.fusion import stacker  # noqa: E402
+from dns_detect.utils.paths import MODELS_DIR  # noqa: E402
 
 
 def _by_family(y, pred, fam):
@@ -88,7 +89,7 @@ def main():
               f"{r['precision']:10.3f}")
 
     stacker.save(lr, {**meta, "split": os.path.basename(args.split_manifest), "test_rows": int(len(te))})
-    metrics_path = ROOT / "models" / "evaluation_metrics.json"
+    metrics_path = MODELS_DIR / "evaluation_metrics.json"
     try:
         allm = json.loads(metrics_path.read_text())
     except Exception:

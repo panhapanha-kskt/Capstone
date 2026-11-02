@@ -37,7 +37,7 @@ import numpy as np
 import pandas as pd
 
 from dns_detect.parsing.dns_parser import FEATURES_8
-from dns_detect.utils.paths import PROJECT_ROOT
+from dns_detect.utils.paths import PROJECT_ROOT, MODELS_DIR
 
 PSI_MODERATE = 0.10
 PSI_MAJOR = 0.25
@@ -86,7 +86,7 @@ def _load_df(path: str) -> pd.DataFrame:
 
 
 def _load_training_baseline() -> dict:
-    meta_path = PROJECT_ROOT / "models" / "training_metadata.json"
+    meta_path = MODELS_DIR / "training_metadata.json"
     if not meta_path.exists():
         return {}
     try:

@@ -34,7 +34,7 @@ from dns_detect.models.path_a import transformer_encoder
 from dns_detect.models.path_b_predict import (
     build_client_windows, normalize_features, compute_reconstruction_errors,
 )
-from dns_detect.utils.paths import PROJECT_ROOT
+from dns_detect.utils.paths import MODELS_DIR
 
 
 def _default_percentile() -> float:
@@ -128,7 +128,7 @@ def compute_threshold(errors: np.ndarray, method: str = "percentile",
 
 def save_metrics_block(key: str, block: dict):
     """Merge a metrics block into models/evaluation_metrics.json."""
-    metrics_path = os.path.join(str(PROJECT_ROOT / "models"), "evaluation_metrics.json")
+    metrics_path = os.path.join(str(MODELS_DIR), "evaluation_metrics.json")
     try:
         with open(metrics_path) as f:
             all_metrics = json.load(f)
@@ -166,7 +166,10 @@ if __name__ == "__main__":
                         help="Shared split (data/processed/splits/*.json); use a 'time' manifest for Path B")
     parser.add_argument("--latent-dim", type=int, default=8, help="Bottleneck size (default: 8)")
     parser.add_argument("--epochs", type=int, default=200)
+    parser.add_argument("--seed", type=int, default=42,
+                        help="Seed for weight init, noise, shuffling and the Isolation Forest (default: 42)")
     args = parser.parse_args()
+    tf.keras.utils.set_random_seed(args.seed)
 
     DATA_PATH = Path(args.data_dir) / args.filename
     SAVE_NAME = args.save_name
@@ -230,7 +233,7 @@ if __name__ == "__main__":
     norm = {"min": f_min.astype(np.float32), "range": f_rng.astype(np.float32)}
     Xn = normalize_features(X, norm)
 
-    _models_dir = str(PROJECT_ROOT / "models")
+    _models_dir = str(MODELS_DIR)
     os.makedirs(_models_dir, exist_ok=True)
     norm_path = os.path.join(_models_dir, f"{SAVE_NAME}_norm.json")
     with open(norm_path, "w") as f:
@@ -346,7 +349,7 @@ if __name__ == "__main__":
         # Baseline (Arp et al. P6): Isolation Forest on the same windows, flattened, benign-only,
         # with its threshold at the same benign-validation percentile → same false-alarm rate.
         flat = lambda w: w.reshape(len(w), -1)
-        iso = IsolationForest(n_estimators=200, random_state=42, n_jobs=-1).fit(flat(x_train_ben))
+        iso = IsolationForest(n_estimators=200, random_state=args.seed, n_jobs=-1).fit(flat(x_train_ben))
         iso_val = -iso.score_samples(flat(x_valid_ben))
         iso_thr = float(np.percentile(iso_val, args.percentile))
         iso_test = -iso.score_samples(flat(x_test))
@@ -372,6 +375,7 @@ if __name__ == "__main__":
             "threshold_method": method,
             "window_size": N_DAYS,
             "latent_dim": args.latent_dim,
+            "seed": args.seed,
             "features":  PATH_B_FEATURES,
             "split": split_name,
             "autoencoder": ae,

@@ -46,10 +46,10 @@ from dns_detect.models.splits import (
 )
 from dns_detect.models.thresholds import threshold_for_fpr
 from dns_detect.utils.dataset_hash import dataset_hash
-from dns_detect.utils.paths import PROJECT_ROOT
+from dns_detect.utils.paths import PROJECT_ROOT, MODELS_DIR
 
 SEQUENCE_LENGTH = 10
-_MODELS_DIR = str(PROJECT_ROOT / "models")
+_MODELS_DIR = str(MODELS_DIR)
 MODEL_RF   = os.path.join(_MODELS_DIR, "dns_tunnel_rf.pkl")
 MODEL_GBT  = os.path.join(_MODELS_DIR, "dns_tunnel_gbt.pkl")
 MODEL_TF   = os.path.join(_MODELS_DIR, "dns_tunnel_transformer.keras")  # baseline only (not in decision)
@@ -184,21 +184,21 @@ def load_path_a_meta() -> dict:
 # LEARNERS
 # ─────────────────────────────────────────────
 
-def train_random_forest(X_train, y_train, X_val, y_val):
+def train_random_forest(X_train, y_train, X_val, y_val, seed: int = 42):
     print("\n── Random Forest ──────────────────────────────────────────────")
-    rf = RandomForestClassifier(n_estimators=200, class_weight="balanced", random_state=42, n_jobs=-1)
+    rf = RandomForestClassifier(n_estimators=200, class_weight="balanced", random_state=seed, n_jobs=-1)
     rf.fit(X_train, y_train)
     print("   validation report (uncalibrated):")
     print(classification_report(y_val, rf.predict(X_val), target_names=["benign", "attack"], zero_division=0))
     return rf
 
 
-def train_gradient_boosting(X_train, y_train, X_val, y_val):
+def train_gradient_boosting(X_train, y_train, X_val, y_val, seed: int = 42):
     """Second tree learner; relies on features differently from RF (two-opinion ensemble)."""
     print("\n── Gradient Boosting (HistGradientBoosting) ────────────────────")
     gbt = HistGradientBoostingClassifier(
         learning_rate=0.1, max_iter=300, early_stopping=True, validation_fraction=0.15,
-        class_weight="balanced", random_state=42,
+        class_weight="balanced", random_state=seed,
     )
     gbt.fit(X_train, y_train)
     print("   validation report (uncalibrated):")
@@ -345,7 +345,7 @@ def _model_vector_key(df: pd.DataFrame, features) -> np.ndarray:
 # ─────────────────────────────────────────────
 
 def run_training(input_path: str, rf_weight=0.5, tf_weight=0.5, shuffle_labels=False,
-                 split_manifest: str = None, with_transformer: bool = True):
+                 split_manifest: str = None, with_transformer: bool = True, seed: int = 42):
     print(f"\n[*] Loading training data: {input_path}")
     df = load_as_dataframe(input_path)
     for col in FEATURES_8:
@@ -413,7 +413,7 @@ def run_training(input_path: str, rf_weight=0.5, tf_weight=0.5, shuffle_labels=F
             raise SystemExit("[error] manifest has no validation rows — Path A needs them for calibration")
     else:
         kept = np.where(keep)[0]
-        tr_r, val_r, te_r, split_method = grouped_split(y[kept], groups[kept], seed=42)
+        tr_r, val_r, te_r, split_method = grouped_split(y[kept], groups[kept], seed=seed)
         tr_idx, val_idx, te_idx = kept[tr_r], kept[val_r], kept[te_r]
     test_twin_share = overlap_share(groups, tr_idx, te_idx)
     print(f"[*] Split ({split_method}) → train={len(tr_idx)}  val={len(val_idx)}  test={len(te_idx)}  "
@@ -430,8 +430,8 @@ def run_training(input_path: str, rf_weight=0.5, tf_weight=0.5, shuffle_labels=F
     y_train, y_val, y_test = y[tr_idx], y[val_idx], y[te_idx]
     fam_test, trusted_test = fam[te_idx], trusted[te_idx]
 
-    rf_raw = train_random_forest(X_train, y_train, X_val, y_val)
-    gbt_raw = train_gradient_boosting(X_train, y_train, X_val, y_val)
+    rf_raw = train_random_forest(X_train, y_train, X_val, y_val, seed)
+    gbt_raw = train_gradient_boosting(X_train, y_train, X_val, y_val, seed)
 
     transformer_block = None
     if with_transformer:
@@ -446,7 +446,7 @@ def run_training(input_path: str, rf_weight=0.5, tf_weight=0.5, shuffle_labels=F
 
     # ── STEP 3: CALIBRATE, GATE AND SET THE THRESHOLD ON VALIDATION ─
     print("\n── Calibration + decision gate (validation only) ─────────────")
-    cal_rel, thr_rel = _split_validation(np.arange(len(val_idx)), groups[val_idx], y_val)
+    cal_rel, thr_rel = _split_validation(np.arange(len(val_idx)), groups[val_idx], y_val, seed)
     rf_model = calibrate(rf_raw, X_val[cal_rel], y_val[cal_rel])
     gbt_model = calibrate(gbt_raw, X_val[cal_rel], y_val[cal_rel])
     print(f"   calibration rows={len(cal_rel)}  threshold rows={len(thr_rel)}")
@@ -503,9 +503,9 @@ def run_training(input_path: str, rf_weight=0.5, tf_weight=0.5, shuffle_labels=F
     shuffle_block = None
     if shuffle_labels:
         print("\n── Label-shuffle check (train on permuted labels) ────────────")
-        y_shuf = np.random.default_rng(42).permutation(y_train)
+        y_shuf = np.random.default_rng(seed).permutation(y_train)
         rf_s = RandomForestClassifier(n_estimators=200, class_weight="balanced",
-                                      random_state=42, n_jobs=-1).fit(X_train, y_shuf)
+                                      random_state=seed, n_jobs=-1).fit(X_train, y_shuf)
         shuffle_block = _metric_block(y_test, rf_s.predict_proba(X_test)[:, 1], 0.5)
         print(f"   Shuffled PR-AUC={shuffle_block['pr_auc']} (baseline≈{shuffle_block['pr_auc_baseline']:.3f})")
 
@@ -525,7 +525,7 @@ def run_training(input_path: str, rf_weight=0.5, tf_weight=0.5, shuffle_labels=F
         "transformer_baseline": transformer_block,
         "shuffle_labels": shuffle_block,
         "recall_by_family": recall_by_family,
-        "seed": 42,
+        "seed": seed,
         "split": split_method,
         "dataset_version": dv,
         "split_sizes": {"train": int(len(tr_idx)), "val": int(len(val_idx)), "test": int(len(te_idx))},
@@ -591,11 +591,14 @@ def main():
     parser.add_argument("--tf-weight", type=float, default=0.5, help="(deprecated)")
     parser.add_argument("--shuffle-labels", action="store_true",
                         help="Also run a label-shuffle/permutation leakage check")
+    parser.add_argument("--seed", type=int, default=42,
+                        help="Seed for the tree learners and the validation halves (default: 42)")
     args = parser.parse_args()
 
     if args.train:
         run_training(args.train, args.rf_weight, args.tf_weight, shuffle_labels=args.shuffle_labels,
-                     split_manifest=args.split_manifest, with_transformer=not args.no_transformer)
+                     split_manifest=args.split_manifest, with_transformer=not args.no_transformer,
+                     seed=args.seed)
     if args.infer:
         run_inference(args.infer, args.rf_weight, args.tf_weight, args.output_json)
     if not args.train and not args.infer:

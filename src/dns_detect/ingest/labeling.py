@@ -36,8 +36,19 @@ import os
 import sys
 from collections import Counter
 from datetime import timedelta
+from functools import lru_cache
 
 import pandas as pd
+
+try:
+    import tldextract
+    # Offline: the Public Suffix List snapshot bundled with tldextract, so results are
+    # reproducible and no network is needed. The PSL private section (blogspot.com,
+    # github.io, cloudfront.net, …) counts as a suffix: every user site there is its own
+    # registered domain instead of one parent with thousands of "unique subdomains".
+    _PSL = tldextract.TLDExtract(suffix_list_urls=(), include_psl_private_domains=True, cache_dir=None)
+except ImportError:  # pragma: no cover - tldextract is in requirements.txt
+    _PSL = None
 
 try:
     from dateutil.parser import parse as _parse_dt
@@ -118,8 +129,15 @@ def entropy(s: str) -> float:
     return -sum(c / n * math.log2(c / n) for c in Counter(s).values())
 
 
+@lru_cache(maxsize=200_000)
 def parent_domain(domain: str) -> str:
+    """Registered domain (eTLD+1) from the Public Suffix List, private section included.
+    Names with no known suffix (host.localdomain, wpad) fall back to the last two labels."""
     labels = [p for p in str(domain).lower().rstrip(".").split(".") if p]
+    if _PSL is not None and len(labels) > 1:
+        r = _PSL(".".join(labels))
+        if r.suffix and r.domain:
+            return f"{r.domain}.{r.suffix}"
     if len(labels) <= 2:
         return ".".join(labels)
     if ".".join(labels[-2:]) in SECOND_LEVEL:

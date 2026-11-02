@@ -29,7 +29,7 @@ import tensorflow as tf
 from pathlib import Path
 
 from dns_detect.parsing.dns_parser import load_multifeature_with_meta, PATH_B_FEATURES
-from dns_detect.utils.paths import PROJECT_ROOT
+from dns_detect.utils.paths import PROJECT_ROOT, MODELS_DIR
 
 
 # ─────────────────────────────────────────────
@@ -43,7 +43,7 @@ def load_model_artifacts(save_name: str, model_dir: str = None):
     `norm` is {"min": [...F], "range": [...F]} (per-feature).
     """
     if model_dir is None:
-        model_dir = str(PROJECT_ROOT / "models")
+        model_dir = str(MODELS_DIR)
     threshold_path = os.path.join(model_dir, f"{save_name}_threshold.json")
     norm_path      = os.path.join(model_dir, f"{save_name}_norm.json")
 
@@ -78,6 +78,7 @@ def load_model_artifacts(save_name: str, model_dir: str = None):
         )
         model.load_weights(model_path)
         print(f"[*] Legacy .h5 — architecture rebuilt in code (latent_dim={latent}), weights loaded")
+        print("[warn] .h5 models are deprecated under Keras 3 — retrain with path_b_train to save .keras")
 
     if td:
         threshold   = float(td["threshold"])

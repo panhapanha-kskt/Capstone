@@ -45,6 +45,19 @@ def test_parent_domain():
     assert parent_domain("www.mha.gov.in") == "mha.gov.in"
 
 
+def test_parent_domain_psl_private_suffixes():
+    # Free-hosting sites are separate registered domains, not subdomains of one parent
+    assert parent_domain("myblog.blogspot.com") == "myblog.blogspot.com"
+    assert parent_domain("user.github.io") == "user.github.io"
+    assert parent_domain("abc.def.cloudfront.net") == "def.cloudfront.net"
+    # A tunnel under a private suffix still fans out under its own parent
+    assert parent_domain("aGVsbG8.dGVzdA.evil.duckdns.org") == "evil.duckdns.org"
+    # No known suffix → last two labels
+    assert parent_domain("host.localdomain") == "host.localdomain"
+    assert parent_domain("a.b.host.localdomain") == "host.localdomain"
+    assert parent_domain("wpad") == "wpad"
+
+
 def test_file_label_never_overwritten():
     rows = tunnel_rows(n=60)
     rows[0]["label"] = 0

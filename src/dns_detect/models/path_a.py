@@ -36,7 +36,7 @@ from tensorflow import keras
 from tensorflow.keras import layers
 
 from dns_detect.parsing.dns_parser import (
-    load_as_dataframe, FEATURES_8, PATH_A_FEATURES, feature_vector_key,
+    load_as_dataframe, FEATURES_8, PATH_A_FEATURES, feature_vector_key, missing_value_report,
 )
 from dns_detect.features.aggregates import (
     BigramModel, WINDOW_SECONDS, add_aggregate_features, domain_series,
@@ -167,12 +167,35 @@ def feature_matrix(df: pd.DataFrame, features) -> np.ndarray:
     return df[list(features)].apply(pd.to_numeric, errors="coerce").fillna(0.0).to_numpy(dtype=float)
 
 
+def fit_clip_bounds(X: np.ndarray, q) -> dict | None:
+    """
+    Per-feature caps at the q / (1-q) quantiles, fit on TRAIN rows only. Tunnels are the
+    extreme tail, so outliers are capped, never removed: no row is lost, but one extreme
+    value can no longer stretch the scaler. q of 0/None turns capping off.
+    """
+    if not q or len(X) == 0:
+        return None
+    q = float(q)
+    low, high = np.quantile(X, [1.0 - q, q], axis=0)
+    return {"quantile": q, "low": low.tolist(), "high": high.tolist()}
+
+
+def apply_clip(X: np.ndarray, bounds: dict | None):
+    """(capped X, number of capped values per column). No bounds → X unchanged."""
+    if not bounds:
+        return X, np.zeros(X.shape[1], dtype=int)
+    low, high = np.asarray(bounds["low"], dtype=float), np.asarray(bounds["high"], dtype=float)
+    return np.clip(X, low, high), ((X < low) | (X > high)).sum(axis=0)
+
+
 def load_path_a_meta() -> dict:
     """Feature list + bigram model the saved Path A was trained with (old models: FEATURES_8)."""
-    meta = {"features": list(FEATURES_8), "bigram": None}
+    meta = {"features": list(FEATURES_8), "bigram": None, "clip": None}
     if os.path.exists(MODEL_THRESHOLD):
         with open(MODEL_THRESHOLD) as f:
-            meta["features"] = list(json.load(f).get("features", FEATURES_8))
+            saved = json.load(f)
+        meta["features"] = list(saved.get("features", FEATURES_8))
+        meta["clip"] = saved.get("clip")       # absent for models trained before capping
     if "bigram_logprob" in meta["features"]:
         if not os.path.exists(MODEL_BIGRAM):
             raise FileNotFoundError(f"{MODEL_BIGRAM} missing — retrain Path A")
@@ -229,7 +252,8 @@ def score_frame(df: pd.DataFrame):
     rf_model, gbt_model, scaler, threshold, decision = load_path_a_models()
     meta = load_path_a_meta()
     feats = build_feature_frame(df, meta["features"], meta["bigram"])
-    X = scaler.transform(feature_matrix(feats, meta["features"]))
+    X, _ = apply_clip(feature_matrix(feats, meta["features"]), meta["clip"])
+    X = scaler.transform(X)
     scores = tree_ensemble_scores(rf_model, gbt_model, X, decision)
     return scores, (scores >= threshold).astype(int), threshold, decision
 
@@ -348,6 +372,10 @@ def run_training(input_path: str, rf_weight=0.5, tf_weight=0.5, shuffle_labels=F
                  split_manifest: str = None, with_transformer: bool = True, seed: int = 42):
     print(f"\n[*] Loading training data: {input_path}")
     df = load_as_dataframe(input_path)
+    # Counted before any fill so a stored 0 and a filled 0 stay distinguishable in the report.
+    missing_at_load = missing_value_report(df, FEATURES_8)
+    for f, m in missing_at_load.items():
+        print(f"[*] {f}: {m['missing']} value(s) {'absent' if m['absent'] else 'empty or non-numeric'} → filled with 0")
     for col in FEATURES_8:
         if col not in df.columns:
             df[col] = 0
@@ -424,7 +452,14 @@ def run_training(input_path: str, rf_weight=0.5, tf_weight=0.5, shuffle_labels=F
     if "bigram_logprob" in features:
         bigram = BigramModel().fit(domain_series(df.iloc[tr_idx][y[tr_idx] == 0]))
         df["bigram_logprob"] = bigram.score_many(domain_series(df))
+    missing_inputs = missing_value_report(df, features)
     X_all = feature_matrix(df, features)
+    clip = fit_clip_bounds(X_all[tr_idx], _training_setting("path_a_clip_quantile", 0.999))
+    X_all, clipped = apply_clip(X_all, clip)
+    clipped_values = {f: int(c) for f, c in zip(features, clipped) if c}
+    if clip:
+        print(f"[*] Outliers capped at the train {clip['quantile']:.1%} quantiles (rows kept): "
+              + (", ".join(f"{f}={c}" for f, c in clipped_values.items()) or "none"))
     scaler = StandardScaler().fit(X_all[tr_idx])
     X_train, X_val, X_test = (scaler.transform(X_all[i]) for i in (tr_idx, val_idx, te_idx))
     y_train, y_val, y_test = y[tr_idx], y[val_idx], y[te_idx]
@@ -477,7 +512,7 @@ def run_training(input_path: str, rf_weight=0.5, tf_weight=0.5, shuffle_labels=F
             "threshold": threshold, "decision": decision, "features": features,
             "fpr_budget": max_fpr, "calibrated": True, "window_seconds": WINDOW_SECONDS,
             "val_recall": candidates[decision]["recall"], "val_fpr": candidates[decision]["fpr"],
-            "dataset_version": dv, "split": split_method,
+            "dataset_version": dv, "split": split_method, "clip": clip,
         }, f, indent=2)
     print(f"Saved → {MODEL_RF}, {MODEL_GBT}, {MODEL_SCALER}, {MODEL_THRESHOLD}"
           + (f", {MODEL_BIGRAM}" if bigram is not None else ""))
@@ -531,6 +566,9 @@ def run_training(input_path: str, rf_weight=0.5, tf_weight=0.5, shuffle_labels=F
         "split_sizes": {"train": int(len(tr_idx)), "val": int(len(val_idx)), "test": int(len(te_idx))},
         "test_rows_with_twin_in_train": test_twin_share,
         "conflicting_vectors": int(n_conflicts),
+        "missing_filled": {"at_load": missing_at_load, "model_inputs": missing_inputs},
+        "clipped_values": clipped_values,
+        "clip_quantile": clip["quantile"] if clip else None,
         "test_support": {"benign": int((y_test == 0).sum()), "attack": int((y_test == 1).sum())},
         "test_trusted_labels": trusted_block,
         "test_trusted_rows": n_trusted,

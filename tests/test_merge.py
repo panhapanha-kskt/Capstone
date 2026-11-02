@@ -130,3 +130,24 @@ def test_drop_conflicting_groups():
     groups = np.array(["g1", "g1", "g2", "g3"])
     keep, n = drop_conflicting_groups(y, groups)
     assert n == 1 and keep.tolist() == [False, False, True, True]
+
+
+def test_duplicate_input_file_is_skipped(tmp_path):
+    a = write(tmp_path / "a.json", [rec("a.com", 0, "a.pcap"), rec("x1y2.tun.net", 1, "a.pcap")])
+    copy = write(tmp_path / "copy_of_a.json", json.loads((tmp_path / "a.json").read_text(encoding="utf-8")))
+    rep = merge([a, copy], str(tmp_path / "m.json"), report_path=str(tmp_path / "r.json"))
+    assert rep["rows"] == 2
+    assert rep["cleaning"]["skipped_duplicate_inputs"][0]["path"] == copy
+    assert any("same content" in w for w in rep["warnings"])
+
+
+def test_cleaning_quarantines_invalid_rows(tmp_path):
+    bad = rec("ok.com", 0, "a.pcap")
+    bad["domain"] = "x" * 64 + ".com"
+    a = write(tmp_path / "a.json", [rec("ok.com", 0, "a.pcap"), rec("x1y2.tun.net", 1, "a.pcap"), bad])
+    out = tmp_path / "m.json"
+    rep = merge([a], str(out))
+    assert rep["rows"] == 2 and rep["cleaning"]["rejected_by_reason"] == {"label_too_long": 1}
+    rejected = json.loads((tmp_path / "rejected_rows.json").read_text(encoding="utf-8"))
+    assert [r["reject_reason"] for r in rejected] == ["label_too_long"]
+    assert "missing_values" in rep

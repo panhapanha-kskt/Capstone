@@ -70,6 +70,26 @@ PATH_B_BASE_FEATURES = [
 ]
 PATH_B_FEATURES = [f for f in PATH_B_BASE_FEATURES + FEATURES_WINDOW if f not in _excluded_features()]
 
+# Identity, time and provenance columns. On this data benign and attack rows come from
+# different years and client IPs, so any of these alone separates the classes — a shortcut,
+# not traffic behaviour. They may drive windows and splits but never be a model input.
+FORBIDDEN_FEATURES = {
+    "client_ip", "client_port", "timestamp", "hour_of_day", "day_of_week",
+    "source_file", "source_type", "input_file", "label_source", "attack_family", "dup_key", "label",
+}
+
+
+def check_model_features(features) -> None:
+    """Raise if a model feature list contains an identity / time / provenance column."""
+    bad = sorted(set(features) & FORBIDDEN_FEATURES)
+    if bad:
+        raise ValueError(f"model features include identity/time/provenance column(s) {bad} — "
+                         f"they encode the capture, not the traffic")
+
+
+check_model_features(PATH_A_FEATURES)
+check_model_features(PATH_B_FEATURES)
+
 # Week 3 feature names that map to FEATURES_8 (for bridge alignment)
 WEEK3_TO_MODEL_MAP = {
     "query_length":    "query_length",      # direct match
@@ -297,6 +317,21 @@ def records_to_feature_frame(records: list) -> pd.DataFrame:
     if records and is_week3_record(records[0]):
         return week3_frame_to_features(pd.DataFrame(records))
     return pd.DataFrame([extract_features_from_record(r) for r in records], columns=FEATURES_8)
+
+
+def missing_value_report(df: pd.DataFrame, features) -> dict:
+    """
+    Per feature, the values the loaders' fillna(0) will turn into 0: the whole column when it
+    is absent, otherwise empty / non-numeric cells. Run it BEFORE filling. Features with
+    nothing missing are left out, so an empty dict means a complete table.
+    """
+    n, out = len(df), {}
+    for f in features:
+        missing = n if f not in df.columns else int(pd.to_numeric(df[f], errors="coerce").isna().sum())
+        if missing:
+            out[f] = {"absent": f not in df.columns, "missing": missing,
+                      "share": round(missing / n, 4) if n else 0.0}
+    return out
 
 
 def feature_vector_key(df: pd.DataFrame) -> pd.Series:

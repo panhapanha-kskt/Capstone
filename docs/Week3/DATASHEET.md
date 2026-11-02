@@ -33,6 +33,42 @@ In the format of Gebru et al., *Datasheets for Datasets* (`arxiv.org/abs/1803.09
 - **Config fingerprint.** `labeling_report.json → labeling_config_hash` stores a sha256 of the frozen labeling settings slice plus the sorted allowlist.
 - **Dataset fingerprint.** `src/dns_detect/utils/dataset_hash.py` computes a sha256 over the sorted (relpath, size, content-sha256) tuples of the inputs mixed with the sorted `FEATURES_8` schema; this is the `dataset_version` key in `training_metadata.json` (Need-Improve.md N14).
 
+## Data cleaning
+
+Cleaning runs inside `ingest/merge.py` (`ingest/cleaning.py`, thresholds under `cleaning:` in `config/settings.yaml`), before `dup_key` and labeling. Generic recipes — fix invalid characters, delete outliers, drop duplicate rows — would remove the attack signal from DNS-tunnel data, so the rules are DNS-specific:
+
+1. **Never change what a query means.** Normalisation is only strip, lowercase and the trailing root dot (plus upper-case `query_type` / `protocol`).
+2. **Reject only what cannot be real DNS**, into a quarantine file with a `reject_reason` — never a silent delete.
+3. **Drop only capture artefacts**: an input file whose content was already merged, and identical copies of one packet. Repeated queries are real traffic frequency.
+4. **Fit every data-dependent fix on train rows only**, save it with the model, apply it unchanged at inference.
+5. **Report every change in numbers** (`merge_report.json → cleaning`, `missing_values`; `evaluation_metrics.json → path_a.missing_filled`, `clipped_values`).
+6. **Never drop rows at inference.** Detection scores malformed names too — they may be the attack.
+
+| Cleaning step (GeeksforGeeks "Data Cleaning") | Where | Decision on this data |
+|---|---|---|
+| Assess quality | `features/eda_data.py`, `merge.py` report | Duplicates, missing values, unparseable lines, outliers (IQR), constant features, label conflicts are reported |
+| Remove irrelevant data | `cleaning.py`, `PATH_A_FEATURES` | Only model features reach the model; `answer_count` (always 0) is excluded from Path A |
+| Remove duplicates | `merge.py`, `cleaning.py` | Duplicate input files skipped; identical packet copies (name, timestamp, client IP **and port**, qtype, protocol) dropped. Repeated queries kept; `dup_key` keeps copies on one side of every split |
+| Fix structural errors | `cleaning.py`, parsers | Case and trailing dot normalised; Week-3 field names mapped to model names |
+| Incorrect data types | `dns_parser.py` | `pd.to_numeric(errors="coerce")` on every feature |
+| Invalid values | `cleaning.py` | Rejected: empty name, name > 253 chars, label > 63 (RFC 1035), label ∉ {0, 1}, infinite feature, negative length/count, ratio outside [0, 1] |
+| Missing data | `dns_parser.missing_value_report` | Filled with 0 (unchanged), but counted before the fill so a stored 0 and a filled 0 stay distinguishable |
+| Outliers | `models/path_a.py` (`fit_clip_bounds` / `apply_clip`) | **Capped, never removed**, at the train 0.1 % / 99.9 % quantiles (`training.path_a_clip_quantile`); caps stored in `dns_threshold.json`. Tunnels are the extreme tail, so deleting outliers would delete attacks |
+| Label noise | `ingest/labeling.py`, `path_a.py` | Unconfident rows abstain (`abstained_rows.json`); feature vectors with both labels are kept out of training (`conflicts.json`) |
+| Validation | `dns_parser.check_model_features` | Identity / time / provenance columns (`client_ip`, `timestamp`, `hour_of_day`, `source_file`, …) can never be model inputs — import fails if they are |
+| Scaling | `path_a.py` | `StandardScaler` fit on train rows only, after capping |
+
+**Kept on purpose, with counts from the current build** (18,353 rows → 18,349 after cleaning, 0 rejected, 4 packet copies dropped):
+
+- **3,100 names with characters outside `[a-z0-9-_.]`, all attack** — base64 payload such as `sisaqgc/ba.dns2tcp-key.com`. Flagged `non_hostname_chars`, never fixed.
+- **461 infrastructure queries, all benign** — `*.arpa` reverse lookups and bare TLDs (DNSSEC `DS`/`DNSKEY` for `com`, `org`). Real resolver traffic that live detection also sees. Flagged `infra_query`.
+- **19 same-name, same-timestamp queries from different source ports** — a resolver's parallel queries, not copies.
+- **Outliers** — capping at the 99.9 % quantile touched 9–67 values per feature (of 13,105 train rows); test PR-AUC, recall and false alarms were identical with and without capping on this data.
+
+**Shortcut found while cleaning.** Benign rows are from 2026 and attack rows from 2019–2024, and the two classes share no client IP. Either column alone separates the classes, which is why they are on the forbidden-feature list rather than cleaned.
+
+**Outputs.** `data/processed/rejected_rows.json` (quarantine, written on every merge), `data/processed/conflicts.json` (label conflicts), `data/processed/abstained_rows.json` (no confident label).
+
 ## Known limitations
 
 Each item is cross-referenced with Need-Improve.md.

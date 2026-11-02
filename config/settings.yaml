@@ -37,6 +37,10 @@ training:
   # parsing/dns_parser.py). tunnel_rr_share_5m is off while benign data has no TXT/KEY/NULL
   # queries: on this data it re-encodes the record-type shortcut (ML_IMPROVEMENT_GUIDE Step 6).
   exclude_features: [tunnel_rr_share_5m]
+  # Outlier capping for Path A: per-feature caps at the 0.1% / 99.9% quantiles of the TRAIN
+  # rows, saved in dns_threshold.json and applied at inference. Rows are never removed —
+  # tunnels are the extreme tail. 0 turns capping off.
+  path_a_clip_quantile: 0.999
 
 ensemble:
   # Path A production decision = RF + HistGradientBoosting soft-vote (50/50),
@@ -51,6 +55,14 @@ ensemble:
   rf_weight: 0.6
   tf_weight: 0.4
   combined_threshold: 0.5
+
+cleaning:
+  # ingest/cleaning.py, run inside ingest/merge.py. Rejects only what cannot be a real DNS query;
+  # odd characters (base64 tunnel payloads) and repeated queries are kept on purpose.
+  max_name_length: 253              # RFC 1035
+  max_label_length: 63
+  drop_exact_packet_copies: true    # same name, timestamp, client IP + port, qtype, protocol
+  ratio_features: [digit_ratio, numeric_ratio, unique_char_ratio]   # must lie in [0, 1]
 
 labeling:
   # Step 8 of train_models.sh (src/dns_detect/ingest/labeling.py).

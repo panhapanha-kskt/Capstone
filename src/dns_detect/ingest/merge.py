@@ -16,10 +16,14 @@ traceable and its problems are visible. Besides concatenating the records this m
                     both train and test.
   4. Labels       — feature vectors seen with both labels, and whether every source
                     holds only one class (source == label → shortcut risk).
+  5. Cleaning     — an input whose content was already merged is skipped; every record
+                    goes through ingest/cleaning.py (normalise, reject impossible DNS,
+                    flag, drop identical packet copies). Rejected rows go to a quarantine
+                    file next to the output; values the loaders will fill with 0 are counted.
 
-Outputs: the merged JSON (same file as before), training_provenance.json (same format,
-plus per-source summary), a merge report JSON, and — only with --registry — the
-trained-files registry update.
+Outputs: the merged JSON (same file as before), the rejected rows (rejected_rows.json next
+to it, or --rejected), training_provenance.json (same format, plus per-source summary), a
+merge report JSON, and — only with --registry — the trained-files registry update.
 
 Usage:
   python -m dns_detect.ingest.merge \
@@ -41,8 +45,10 @@ from pathlib import Path
 
 import pandas as pd
 
+from dns_detect.ingest.cleaning import clean_records, load_settings as load_cleaning_settings
 from dns_detect.parsing.dns_parser import (
     FEATURES_8, PATH_B_BASE_FEATURES, _load_json_records, records_to_feature_frame, feature_vector_key,
+    missing_value_report,
 )
 
 # Week-3 field names that map to model feature names (same map as dns_parser)
@@ -116,7 +122,7 @@ def _present_features(records: list) -> set:
     return keys
 
 
-def build_report(records: list, feats: pd.DataFrame, inputs: list) -> dict:
+def build_report(records: list, feats: pd.DataFrame, inputs: list, cleaning: dict = None) -> dict:
     df = feats.copy()
     df["source_file"] = [r["source_file"] for r in records]
     df["source_type"] = [r["source_type"] for r in records]
@@ -173,10 +179,26 @@ def build_report(records: list, feats: pd.DataFrame, inputs: list) -> dict:
         warnings.append("Every labeled source file holds only one class — the source decides the label, so "
                         "capture differences can become a shortcut for the model.")
 
+    # ── cleaning ──────────────────────────────────────────────
+    cleaning = cleaning or {}
+    for s in cleaning.get("skipped_duplicate_inputs", []):
+        warnings.append(f"{s['path']} has the same content as {s['same_as']} — skipped, not counted twice.")
+    if cleaning.get("rejected_rows"):
+        why = ", ".join(f"{k}={v}" for k, v in sorted(cleaning["rejected_by_reason"].items()))
+        warnings.append(f"{cleaning['rejected_rows']} row(s) are not valid DNS queries ({why}) — "
+                        f"moved to the rejected-rows file.")
+
     # ── schema ────────────────────────────────────────────────
     schema = {}
     # Per-record features only; window/bigram features are computed from traffic at training time.
     model_feats = list(dict.fromkeys(FEATURES_8 + PATH_B_BASE_FEATURES))
+    # Stored values that will be filled with 0; features derived from the name are never missing.
+    raw = pd.DataFrame(records).rename(columns=lambda c: RENAME.get(c, c))
+    raw = raw.loc[:, ~raw.columns.duplicated()]
+    missing = missing_value_report(raw, [f for f in model_feats if f in raw.columns])
+    for f, m in missing.items():
+        if m["share"] > 0.05:
+            warnings.append(f"'{f}' is empty or non-numeric in {m['share']:.1%} of rows (filled with 0).")
     for stype in sorted(df["source_type"].unique()):
         recs = [r for r in records if r["source_type"] == stype]
         present = _present_features(recs)
@@ -211,18 +233,27 @@ def build_report(records: list, feats: pd.DataFrame, inputs: list) -> dict:
         "duplicates": duplicates,
         "labels": labels,
         "schema": schema,
+        "missing_values": missing,
+        "cleaning": cleaning,
         "warnings": warnings,
     }
 
 
 def merge(input_specs: list, output: str, provenance: str = None, report_path: str = None,
-          registry: str = None) -> dict:
-    records, inputs = [], []
+          registry: str = None, rejected: str = None) -> dict:
+    records, inputs, skipped, seen = [], [], [], {}
     for spec in input_specs:
         path, original = parse_input(spec)
         if not path or not os.path.isfile(path):
             print(f"  [warn] input not found, skipped: {path}", file=sys.stderr)
             continue
+        checksum = _sha256(path, short=True)
+        if checksum in seen:
+            # The same capture listed twice (or copied under another name) would double its rows.
+            print(f"  [warn] {path} has the same content as {seen[checksum]}, skipped", file=sys.stderr)
+            skipped.append({"path": path, "same_as": seen[checksum], "checksum": checksum})
+            continue
+        seen[checksum] = path
         try:
             recs = load_input(path, original)
         except Exception as e:
@@ -230,9 +261,19 @@ def merge(input_specs: list, output: str, provenance: str = None, report_path: s
             continue
         ext = Path(path).suffix.lower()
         inputs.append({"path": path, "original": original, "type": "csv" if ext == ".csv" else "json",
-                       "records": len(recs), "checksum": _sha256(path, short=True)})
+                       "records": len(recs), "checksum": checksum})
         records.extend(recs)
         print(f"  [{inputs[-1]['type']}] {len(recs):>7} records  <- {path}" + (f"  (from {original})" if original else ""))
+
+    records, rejected_rows, cleaning = clean_records(records, load_cleaning_settings())
+    cleaning["skipped_duplicate_inputs"] = skipped
+    rejected = rejected or os.path.join(os.path.dirname(os.path.abspath(output)), "rejected_rows.json")
+    os.makedirs(os.path.dirname(os.path.abspath(rejected)), exist_ok=True)
+    with open(rejected, "w", encoding="utf-8") as f:
+        json.dump(rejected_rows, f, default=str)   # written even when empty, so no stale file survives
+    cleaning["rejected_file"] = rejected
+    print(f"  Cleaning: {cleaning['input_rows']} in → {cleaning['kept_rows']} kept  ·  "
+          f"{cleaning['rejected_rows']} rejected  ·  {cleaning['exact_packet_copies_dropped']} packet copies dropped")
 
     if not records:
         raise SystemExit("ERROR: merged dataset is empty")
@@ -246,7 +287,7 @@ def merge(input_specs: list, output: str, provenance: str = None, report_path: s
     with open(output, "w", encoding="utf-8") as f:
         json.dump(records, f, default=str)
 
-    rep = build_report(records, feats, inputs)
+    rep = build_report(records, feats, inputs, cleaning)
 
     if provenance:
         os.makedirs(os.path.dirname(os.path.abspath(provenance)), exist_ok=True)
@@ -303,8 +344,10 @@ def main():
     ap.add_argument("--provenance", default=None, help="training_provenance.json path")
     ap.add_argument("--report", default=None, help="merge report JSON path")
     ap.add_argument("--registry", default=None, help="trained-files registry to update (omit to leave it untouched)")
+    ap.add_argument("--rejected", default=None,
+                    help="where rows that are not valid DNS queries go (default: rejected_rows.json next to --output)")
     args = ap.parse_args()
-    merge(args.input, args.output, args.provenance, args.report, args.registry)
+    merge(args.input, args.output, args.provenance, args.report, args.registry, args.rejected)
 
 
 if __name__ == "__main__":

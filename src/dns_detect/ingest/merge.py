@@ -42,7 +42,7 @@ from pathlib import Path
 import pandas as pd
 
 from dns_detect.parsing.dns_parser import (
-    FEATURES_8, PATH_B_FEATURES, _load_json_records, records_to_feature_frame, feature_vector_key,
+    FEATURES_8, PATH_B_BASE_FEATURES, _load_json_records, records_to_feature_frame, feature_vector_key,
 )
 
 # Week-3 field names that map to model feature names (same map as dns_parser)
@@ -175,7 +175,8 @@ def build_report(records: list, feats: pd.DataFrame, inputs: list) -> dict:
 
     # ── schema ────────────────────────────────────────────────
     schema = {}
-    model_feats = list(dict.fromkeys(FEATURES_8 + PATH_B_FEATURES))
+    # Per-record features only; window/bigram features are computed from traffic at training time.
+    model_feats = list(dict.fromkeys(FEATURES_8 + PATH_B_BASE_FEATURES))
     for stype in sorted(df["source_type"].unique()):
         recs = [r for r in records if r["source_type"] == stype]
         present = _present_features(recs)

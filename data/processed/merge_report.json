@@ -1,0 +1,121 @@
+{
+  "merged_at": "2026-11-02T05:02:37Z",
+  "rows": 18353,
+  "inputs": [
+    {
+      "path": "data/processed/labeled_tunnels.json",
+      "original": null,
+      "type": "json",
+      "records": 10000,
+      "checksum": "831aab545e62e154"
+    },
+    {
+      "path": "data/processed/labeled_benign.json",
+      "original": null,
+      "type": "json",
+      "records": 8353,
+      "checksum": "d3ebd6cfe9d53494"
+    }
+  ],
+  "per_source": [
+    {
+      "source_file": "benign_dns.pcap",
+      "source_type": "pcap",
+      "rows": 8353,
+      "labeled_rows": 8353,
+      "attack": 0,
+      "benign": 8353
+    },
+    {
+      "source_file": "dns2tcp_key_down.pcapng",
+      "source_type": "pcap",
+      "rows": 2000,
+      "labeled_rows": 2000,
+      "attack": 2000,
+      "benign": 0
+    },
+    {
+      "source_file": "dns2tcp_key_up.pcapng",
+      "source_type": "pcap",
+      "rows": 2000,
+      "labeled_rows": 2000,
+      "attack": 2000,
+      "benign": 0
+    },
+    {
+      "source_file": "dns2tcp_txt_down.pcapng",
+      "source_type": "pcap",
+      "rows": 2000,
+      "labeled_rows": 2000,
+      "attack": 2000,
+      "benign": 0
+    },
+    {
+      "source_file": "dns2tcp_txt_up.pcapng",
+      "source_type": "pcap",
+      "rows": 2000,
+      "labeled_rows": 2000,
+      "attack": 2000,
+      "benign": 0
+    },
+    {
+      "source_file": "dnsexfiltrator_txt_up.pcap",
+      "source_type": "pcap",
+      "rows": 2000,
+      "labeled_rows": 2000,
+      "attack": 2000,
+      "benign": 0
+    }
+  ],
+  "duplicates": {
+    "distinct_feature_vectors": 4778,
+    "rows_in_duplicated_vectors": 14926,
+    "duplicated_share": 0.8133,
+    "vectors_shared_across_sources": 119,
+    "exact_duplicate_queries": 23,
+    "largest_groups": [
+      {
+        "dup_key": "ddde4a42f608cd4b",
+        "rows": 308
+      },
+      {
+        "dup_key": "2c49713667f4d186",
+        "rows": 248
+      },
+      {
+        "dup_key": "68789cc674d10059",
+        "rows": 243
+      },
+      {
+        "dup_key": "d05274f0f6d3bf4d",
+        "rows": 231
+      },
+      {
+        "dup_key": "e1febadd029d6a87",
+        "rows": 220
+      }
+    ]
+  },
+  "labels": {
+    "labeled_rows": 18353,
+    "unlabeled_rows": 0,
+    "attack": 10000,
+    "benign": 8353,
+    "conflicting_vectors": 0,
+    "rows_in_conflicting_vectors": 0
+  },
+  "schema": {
+    "pcap": {
+      "rows": 18353,
+      "missing_features": [],
+      "constant_features": {
+        "answer_count": 0.0
+      }
+    }
+  },
+  "warnings": [
+    "81% of rows repeat another row's exact feature vector (4778 distinct of 18353) \u2014 split by feature vector, not by row.",
+    "Every labeled source file holds only one class \u2014 the source decides the label, so capture differences can become a shortcut for the model.",
+    "'answer_count' is 0 in every row \u2014 it carries no information."
+  ]
+}

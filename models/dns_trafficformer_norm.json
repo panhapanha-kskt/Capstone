@@ -1,0 +1,41 @@
+{
+  "features": [
+    "query_length",
+    "query_entropy",
+    "subdomain_count",
+    "digit_ratio",
+    "longest_label",
+    "uniq_subdomains_5m",
+    "uniq_ratio_5m",
+    "info_chars_per_min",
+    "nxdomain_share_5m",
+    "qpm_client_5m",
+    "iat_std_5m"
+  ],
+  "min": [
+    4.0,
+    1.7925000190734863,
+    1.0,
+    0.0,
+    1.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.20000000298023224,
+    -1.0
+  ],
+  "range": [
+    190.0,
+    3.4274001121520996,
+    4.0,
+    0.6000000238418579,
+    62.0,
+    2000.0,
+    1.0,
+    46907.19921875,
+    1.0,
+    1145.60009765625,
+    126.6270980834961
+  ]
+}

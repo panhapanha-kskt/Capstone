@@ -1,0 +1,1529 @@
+
+[0;36m  ℹ  Script dir    : /home/ounnha/Documents/Capstone/scripts[0m
+[0;36m  ℹ  Model memory  : /home/ounnha/Documents/Capstone/models[0m
+[0;36m  ℹ  Data dir      : /home/ounnha/Documents/Capstone/data/processed[0m
+[0;36m  ℹ  Log file      : /home/ounnha/Documents/Capstone/logs/training_20261023_211211.log[0m
+[0;36m  ℹ  Training mode — RETRAIN: false  |  FORCE_RETRAIN: false[0m
+[0;36m  ℹ  Training needed — Path A: true  |  Path B: true[0m
+================================================================================
+DNS FEATURE EXTRACTION FROM TECHNITIUM LOGS - WEEK 3
+Enhanced for Attack Tool Detection
+================================================================================
+
+📁 Single file mode: /home/ounnha/Documents/Capstone/data/raw/2026-03-18.log
+Processing log file: /home/ounnha/Documents/Capstone/data/raw/2026-03-18.log
+  Completed: 8190 lines processed, 8152 DNS queries extracted
+
+================================================================================
+DNS FEATURE EXTRACTION SUMMARY - WEEK 3 (ATTACK DETECTION FOCUS)
+================================================================================
+Total queries processed: 8152
+
+🔴 ATTACK DETECTION SUMMARY:
+   Suspicious queries: 2264 (27.8%)
+
+   Attack Type Breakdown:
+     • ENCODING: 1988
+     • NXDOMAIN_FLOOD: 351
+     • HIGH_ENTROPY: 38
+     • RANDOM_SUBDOMAIN: 2
+
+📅 Date range: 2026-03-18 to 2026-03-18
+   Unique domains: 8148
+   Unique client IPs: 1
+
+🎯 ATTACK TOOL PATTERNS DETECTED:
+   NXDOMAIN flood patterns: 351
+   Random subdomain patterns: 2
+   Amplification attempts: 0
+   Cache poisoning attempts: 0
+   High entropy domains: 38
+   Encoding patterns: 3201
+
+📊 FEATURE STATISTICS (for baseline establishment):
+------------------------------------------------------------
+
+entropy:
+  Mean: 3.4205
+  Std: 0.3263
+  Min: 2.4116
+  Max: 4.2221
+
+subdomain_depth:
+  Mean: 2.4993
+  Std: 0.5010
+  Min: 1.0000
+  Max: 3.0000
+
+query_length:
+  Mean: 23.0550
+  Std: 8.1227
+  Min: 9.0000
+  Max: 80.0000
+
+numeric_ratio:
+  Mean: 0.0194
+  Std: 0.0435
+  Min: 0.0000
+  Max: 0.4500
+
+first_label_entropy:
+  Mean: 2.5043
+  Std: 0.6946
+  Min: 0.0000
+  Max: 3.9620
+
+first_label_length:
+  Mean: 8.3706
+  Std: 4.8946
+  Min: 1.0000
+  Max: 44.0000
+
+⚠  TOP 10 MOST SUSPICIOUS DOMAINS:
+  1. 4fdaayvm7rrh2cz8-cdn.lab.local
+     Attacks: NXDOMAIN_FLOOD,HIGH_ENTROPY,ENCODING | Entropy: 4.12 | Length: 30
+  2. hul-performance-highlights.linode.lab.local
+     Attacks: NXDOMAIN_FLOOD,HIGH_ENTROPY,ENCODING | Entropy: 4.09 | Length: 43
+  3. financial-services-onboarding-apigw.financial-services-payments-apigw.lab.local
+     Attacks: NXDOMAIN_FLOOD,HIGH_ENTROPY,ENCODING | Entropy: 4.09 | Length: 79
+  4. capositivecovidtestreporting-staging.cp01.lab.local
+     Attacks: NXDOMAIN_FLOOD,HIGH_ENTROPY,ENCODING | Entropy: 4.07 | Length: 51
+  5. searchrecommendations-service-staging.secure-canalplay-chromecast.lab.local
+     Attacks: NXDOMAIN_FLOOD,HIGH_ENTROPY,ENCODING | Entropy: 4.07 | Length: 75
+  6. streaming5-shared-ln.streaming5-shared-ny.lab.local
+     Attacks: NXDOMAIN_FLOOD,HIGH_ENTROPY,ENCODING | Entropy: 4.06 | Length: 51
+  7. streaming5-shared-eu.lab.local
+     Attacks: NXDOMAIN_FLOOD,HIGH_ENTROPY,ENCODING | Entropy: 4.06 | Length: 30
+  8. watchesofswitzerland-uat.wifi-uat.lab.local
+     Attacks: NXDOMAIN_FLOOD,HIGH_ENTROPY,ENCODING | Entropy: 4.04 | Length: 43
+  9. webreconditioning-service-qa-staging.lab.local
+     Attacks: NXDOMAIN_FLOOD,HIGH_ENTROPY,ENCODING | Entropy: 4.02 | Length: 46
+  10. tj-pod3-smp-device-asset.workplacebenefits.lab.local
+     Attacks: NXDOMAIN_FLOOD,HIGH_ENTROPY | Entropy: 4.21 | Length: 52
+
+✅ Features exported to JSON: /home/ounnha/Documents/Capstone/data/processed/extracted_2026-03-18_1792818763.json
+   Total records: 8152
+================================================================================
+DNS FEATURE EXTRACTION FROM TECHNITIUM LOGS - WEEK 3
+Enhanced for Attack Tool Detection
+================================================================================
+
+📁 Single file mode: /home/ounnha/Documents/Capstone/data/raw/2026-03-19.log
+Processing log file: /home/ounnha/Documents/Capstone/data/raw/2026-03-19.log
+  Completed: 50 lines processed, 0 DNS queries extracted
+
+❌ No features extracted.
+================================================================================
+DNS FEATURE EXTRACTION FROM TECHNITIUM LOGS - WEEK 3
+Enhanced for Attack Tool Detection
+================================================================================
+
+📁 Single file mode: /home/ounnha/Documents/Capstone/data/raw/2026-03-20.log
+Processing log file: /home/ounnha/Documents/Capstone/data/raw/2026-03-20.log
+  Completed: 9 lines processed, 0 DNS queries extracted
+
+❌ No features extracted.
+  [json]   8152 records  ← /home/ounnha/Documents/Capstone/data/processed/extracted_2026-03-18_1792818763.json
+
+  Merged 8152 total records from 1 source file(s)
+  Provenance saved → /home/ounnha/Documents/Capstone/models/training_provenance.json
+  Registry updated → /home/ounnha/Documents/Capstone/models/trained_files_registry.json  (2 total trained files)
+
+======================================================================
+EXPLORATORY DATA ANALYSIS
+======================================================================
+Input: /home/ounnha/Documents/Capstone/data/processed/merged_features_all.json
+[*] Reading Week 3 features JSON: /home/ounnha/Documents/Capstone/data/processed/merged_features_all.json
+[*] Loaded 8152 Week 3 feature records.
+
+[*] Records: 8152
+[*] Columns: 36
+
+── Class balance (from attack_count) ─────────────────
+   attack = 2264  |  benign = 5888  |  attack rate = 27.8%
+
+── Missing values (model features) ───────────────────
+
+── Feature statistics ────────────────────────────────
+   feature                     mean       std       min       max
+   query_length              23.055     8.123     9.000    80.000
+   query_entropy              3.421     0.326     2.412     4.222
+   has_digits                 0.233     0.423     0.000     1.000
+   answer_count               0.000     0.016     0.000     1.000
+   subdomain_count            2.499     0.501     1.000     3.000
+   longest_label              8.371     4.895     1.000    44.000
+   digit_ratio                0.019     0.044     0.000     0.450
+   unique_char_ratio          0.566     0.086     0.237     0.773
+
+── Highly correlated feature pairs (|r| > 0.9) ───────
+   none
+
+── Warnings ──────────────────────────────────────────
+   ✅ none
+
+✅ EDA report saved → /home/ounnha/Documents/Capstone/data/processed/eda_report.json
+WARNING: All log messages before absl::InitializeLog() is called are written to STDERR
+I0000 00:00:1792818768.773817   36513 port.cc:153] oneDNN custom operations are on. You may see slightly different numerical results due to floating-point round-off errors from different computation orders. To turn them off, set the environment variable `TF_ENABLE_ONEDNN_OPTS=0`.
+I0000 00:00:1792818768.774155   36513 cudart_stub.cc:31] Could not find cuda drivers on your machine, GPU will not be used.
+I0000 00:00:1792818768.817999   36513 cpu_feature_guard.cc:227] This TensorFlow binary is optimized to use available CPU instructions in performance-critical operations.
+To enable the following instructions: AVX2 AVX_VNNI FMA, in other operations, rebuild TensorFlow with the appropriate compiler flags.
+WARNING: All log messages before absl::InitializeLog() is called are written to STDERR
+I0000 00:00:1792818769.765803   36513 port.cc:153] oneDNN custom operations are on. You may see slightly different numerical results due to floating-point round-off errors from different computation orders. To turn them off, set the environment variable `TF_ENABLE_ONEDNN_OPTS=0`.
+I0000 00:00:1792818769.777365   36513 cudart_stub.cc:31] Could not find cuda drivers on your machine, GPU will not be used.
+ERROR: Loading module scapy.layers.dcerpc
+Traceback (most recent call last):
+  File "/usr/lib/python3/dist-packages/scapy/main.py", line 312, in _load
+    mod = importlib.import_module(module)
+  File "/usr/lib/python3.13/importlib/__init__.py", line 88, in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+           ~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "<frozen importlib._bootstrap>", line 1387, in _gcd_import
+  File "<frozen importlib._bootstrap>", line 1360, in _find_and_load
+  File "<frozen importlib._bootstrap>", line 1331, in _find_and_load_unlocked
+  File "<frozen importlib._bootstrap>", line 935, in _load_unlocked
+  File "<frozen importlib._bootstrap_external>", line 1023, in exec_module
+  File "<frozen importlib._bootstrap>", line 488, in _call_with_frames_removed
+  File "/usr/lib/python3/dist-packages/scapy/layers/dcerpc.py", line 98, in <module>
+    from scapy.layers.kerberos import (
+    ...<2 lines>...
+    )
+  File "/usr/lib/python3/dist-packages/scapy/layers/kerberos.py", line 163, in <module>
+    from scapy.layers.tls.crypto.groups import _ffdh_groups
+  File "/usr/lib/python3/dist-packages/scapy/layers/tls/crypto/groups.py", line 49, in <module>
+    class modp768(_FFDHParams):
+    ...<6 lines>...
+        mLen = 768
+  File "/usr/lib/python3/dist-packages/scapy/layers/tls/crypto/groups.py", line 40, in __new__
+    params = pn.parameters(default_backend())
+ValueError: Invalid DH parameters
+ERROR: Loading module scapy.layers.kerberos
+Traceback (most recent call last):
+  File "/usr/lib/python3/dist-packages/scapy/main.py", line 312, in _load
+    mod = importlib.import_module(module)
+  File "/usr/lib/python3.13/importlib/__init__.py", line 88, in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+           ~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "<frozen importlib._bootstrap>", line 1387, in _gcd_import
+  File "<frozen importlib._bootstrap>", line 1360, in _find_and_load
+  File "<frozen importlib._bootstrap>", line 1331, in _find_and_load_unlocked
+  File "<frozen importlib._bootstrap>", line 935, in _load_unlocked
+  File "<frozen importlib._bootstrap_external>", line 1023, in exec_module
+  File "<frozen importlib._bootstrap>", line 488, in _call_with_frames_removed
+  File "/usr/lib/python3/dist-packages/scapy/layers/kerberos.py", line 163, in <module>
+    from scapy.layers.tls.crypto.groups import _ffdh_groups
+  File "/usr/lib/python3/dist-packages/scapy/layers/tls/crypto/groups.py", line 49, in <module>
+    class modp768(_FFDHParams):
+    ...<6 lines>...
+        mLen = 768
+  File "/usr/lib/python3/dist-packages/scapy/layers/tls/crypto/groups.py", line 40, in __new__
+    params = pn.parameters(default_backend())
+ValueError: Invalid DH parameters
+ERROR: Loading module scapy.layers.msrpce.rpcclient
+Traceback (most recent call last):
+  File "/usr/lib/python3/dist-packages/scapy/main.py", line 312, in _load
+    mod = importlib.import_module(module)
+  File "/usr/lib/python3.13/importlib/__init__.py", line 88, in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+           ~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "<frozen importlib._bootstrap>", line 1387, in _gcd_import
+  File "<frozen importlib._bootstrap>", line 1360, in _find_and_load
+  File "<frozen importlib._bootstrap>", line 1331, in _find_and_load_unlocked
+  File "<frozen importlib._bootstrap>", line 935, in _load_unlocked
+  File "<frozen importlib._bootstrap_external>", line 1023, in exec_module
+  File "<frozen importlib._bootstrap>", line 488, in _call_with_frames_removed
+  File "/usr/lib/python3/dist-packages/scapy/layers/msrpce/rpcclient.py", line 16, in <module>
+    from scapy.layers.dcerpc import (
+    ...<28 lines>...
+    )
+  File "/usr/lib/python3/dist-packages/scapy/layers/dcerpc.py", line 98, in <module>
+    from scapy.layers.kerberos import (
+    ...<2 lines>...
+    )
+  File "/usr/lib/python3/dist-packages/scapy/layers/kerberos.py", line 163, in <module>
+    from scapy.layers.tls.crypto.groups import _ffdh_groups
+  File "/usr/lib/python3/dist-packages/scapy/layers/tls/crypto/groups.py", line 49, in <module>
+    class modp768(_FFDHParams):
+    ...<6 lines>...
+        mLen = 768
+  File "/usr/lib/python3/dist-packages/scapy/layers/tls/crypto/groups.py", line 40, in __new__
+    params = pn.parameters(default_backend())
+ValueError: Invalid DH parameters
+ERROR: Loading module scapy.layers.msrpce.rpcserver
+Traceback (most recent call last):
+  File "/usr/lib/python3/dist-packages/scapy/main.py", line 312, in _load
+    mod = importlib.import_module(module)
+  File "/usr/lib/python3.13/importlib/__init__.py", line 88, in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+           ~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "<frozen importlib._bootstrap>", line 1387, in _gcd_import
+  File "<frozen importlib._bootstrap>", line 1360, in _find_and_load
+  File "<frozen importlib._bootstrap>", line 1331, in _find_and_load_unlocked
+  File "<frozen importlib._bootstrap>", line 935, in _load_unlocked
+  File "<frozen importlib._bootstrap_external>", line 1023, in exec_module
+  File "<frozen importlib._bootstrap>", line 488, in _call_with_frames_removed
+  File "/usr/lib/python3/dist-packages/scapy/layers/msrpce/rpcserver.py", line 19, in <module>
+    from scapy.layers.dcerpc import (
+    ...<18 lines>...
+    )
+  File "/usr/lib/python3/dist-packages/scapy/layers/dcerpc.py", line 98, in <module>
+    from scapy.layers.kerberos import (
+    ...<2 lines>...
+    )
+  File "/usr/lib/python3/dist-packages/scapy/layers/kerberos.py", line 163, in <module>
+    from scapy.layers.tls.crypto.groups import _ffdh_groups
+  File "/usr/lib/python3/dist-packages/scapy/layers/tls/crypto/groups.py", line 49, in <module>
+    class modp768(_FFDHParams):
+    ...<6 lines>...
+        mLen = 768
+  File "/usr/lib/python3/dist-packages/scapy/layers/tls/crypto/groups.py", line 40, in __new__
+    params = pn.parameters(default_backend())
+ValueError: Invalid DH parameters
+ERROR: Loading module scapy.layers.smbclient
+Traceback (most recent call last):
+  File "/usr/lib/python3/dist-packages/scapy/main.py", line 312, in _load
+    mod = importlib.import_module(module)
+  File "/usr/lib/python3.13/importlib/__init__.py", line 88, in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+           ~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "<frozen importlib._bootstrap>", line 1387, in _gcd_import
+  File "<frozen importlib._bootstrap>", line 1360, in _find_and_load
+  File "<frozen importlib._bootstrap>", line 1331, in _find_and_load_unlocked
+  File "<frozen importlib._bootstrap>", line 935, in _load_unlocked
+  File "<frozen importlib._bootstrap_external>", line 1023, in exec_module
+  File "<frozen importlib._bootstrap>", line 488, in _call_with_frames_removed
+  File "/usr/lib/python3/dist-packages/scapy/layers/smbclient.py", line 34, in <module>
+    from scapy.layers.dcerpc import NDRUnion, find_dcerpc_interface
+  File "/usr/lib/python3/dist-packages/scapy/layers/dcerpc.py", line 98, in <module>
+    from scapy.layers.kerberos import (
+    ...<2 lines>...
+    )
+  File "/usr/lib/python3/dist-packages/scapy/layers/kerberos.py", line 163, in <module>
+    from scapy.layers.tls.crypto.groups import _ffdh_groups
+  File "/usr/lib/python3/dist-packages/scapy/layers/tls/crypto/groups.py", line 49, in <module>
+    class modp768(_FFDHParams):
+    ...<6 lines>...
+        mLen = 768
+  File "/usr/lib/python3/dist-packages/scapy/layers/tls/crypto/groups.py", line 40, in __new__
+    params = pn.parameters(default_backend())
+ValueError: Invalid DH parameters
+ERROR: Loading module scapy.layers.smbserver
+Traceback (most recent call last):
+  File "/usr/lib/python3/dist-packages/scapy/main.py", line 312, in _load
+    mod = importlib.import_module(module)
+  File "/usr/lib/python3.13/importlib/__init__.py", line 88, in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+           ~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "<frozen importlib._bootstrap>", line 1387, in _gcd_import
+  File "<frozen importlib._bootstrap>", line 1360, in _find_and_load
+  File "<frozen importlib._bootstrap>", line 1331, in _find_and_load_unlocked
+  File "<frozen importlib._bootstrap>", line 935, in _load_unlocked
+  File "<frozen importlib._bootstrap_external>", line 1023, in exec_module
+  File "<frozen importlib._bootstrap>", line 488, in _call_with_frames_removed
+  File "/usr/lib/python3/dist-packages/scapy/layers/smbserver.py", line 33, in <module>
+    from scapy.layers.dcerpc import (
+    ...<2 lines>...
+    )
+  File "/usr/lib/python3/dist-packages/scapy/layers/dcerpc.py", line 98, in <module>
+    from scapy.layers.kerberos import (
+    ...<2 lines>...
+    )
+  File "/usr/lib/python3/dist-packages/scapy/layers/kerberos.py", line 163, in <module>
+    from scapy.layers.tls.crypto.groups import _ffdh_groups
+  File "/usr/lib/python3/dist-packages/scapy/layers/tls/crypto/groups.py", line 49, in <module>
+    class modp768(_FFDHParams):
+    ...<6 lines>...
+        mLen = 768
+  File "/usr/lib/python3/dist-packages/scapy/layers/tls/crypto/groups.py", line 40, in __new__
+    params = pn.parameters(default_backend())
+ValueError: Invalid DH parameters
+ERROR: Loading module scapy.layers.spnego
+Traceback (most recent call last):
+  File "/usr/lib/python3/dist-packages/scapy/main.py", line 312, in _load
+    mod = importlib.import_module(module)
+  File "/usr/lib/python3.13/importlib/__init__.py", line 88, in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+           ~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "<frozen importlib._bootstrap>", line 1387, in _gcd_import
+  File "<frozen importlib._bootstrap>", line 1360, in _find_and_load
+  File "<frozen importlib._bootstrap>", line 1331, in _find_and_load_unlocked
+  File "<frozen importlib._bootstrap>", line 935, in _load_unlocked
+  File "<frozen importlib._bootstrap_external>", line 1023, in exec_module
+  File "<frozen importlib._bootstrap>", line 488, in _call_with_frames_removed
+  File "/usr/lib/python3/dist-packages/scapy/layers/spnego.py", line 84, in <module>
+    from scapy.layers.kerberos import (
+    ...<4 lines>...
+    )
+  File "/usr/lib/python3/dist-packages/scapy/layers/kerberos.py", line 163, in <module>
+    from scapy.layers.tls.crypto.groups import _ffdh_groups
+  File "/usr/lib/python3/dist-packages/scapy/layers/tls/crypto/groups.py", line 49, in <module>
+    class modp768(_FFDHParams):
+    ...<6 lines>...
+        mLen = 768
+  File "/usr/lib/python3/dist-packages/scapy/layers/tls/crypto/groups.py", line 40, in __new__
+    params = pn.parameters(default_backend())
+ValueError: Invalid DH parameters
+
+======================================================================
+ML BRIDGE — Connecting Week 3 → ML Models → Week 4
+======================================================================
+Input  : /home/ounnha/Documents/Capstone/data/processed/merged_features_all.json
+Output : /home/ounnha/Documents/Capstone/data/processed/merged_features_labeled.json
+
+[*] Loaded 8152 Week 3 records
+
+[*] LABEL ONLY MODE — generating labels from attack_count
+   Labels generated: 5888 benign  |  2264 attack
+   Attack rate: 27.8%
+
+✅ Labeled data saved → /home/ounnha/Documents/Capstone/data/processed/merged_features_labeled.json
+   Use for training: python Model.py --train /home/ounnha/Documents/Capstone/data/processed/merged_features_labeled.json
+WARNING: All log messages before absl::InitializeLog() is called are written to STDERR
+I0000 00:00:1792818777.643114   36664 port.cc:153] oneDNN custom operations are on. You may see slightly different numerical results due to floating-point round-off errors from different computation orders. To turn them off, set the environment variable `TF_ENABLE_ONEDNN_OPTS=0`.
+I0000 00:00:1792818777.643523   36664 cudart_stub.cc:31] Could not find cuda drivers on your machine, GPU will not be used.
+I0000 00:00:1792818777.746761   36664 cpu_feature_guard.cc:227] This TensorFlow binary is optimized to use available CPU instructions in performance-critical operations.
+To enable the following instructions: AVX2 AVX_VNNI FMA, in other operations, rebuild TensorFlow with the appropriate compiler flags.
+WARNING: All log messages before absl::InitializeLog() is called are written to STDERR
+I0000 00:00:1792818778.595269   36664 port.cc:153] oneDNN custom operations are on. You may see slightly different numerical results due to floating-point round-off errors from different computation orders. To turn them off, set the environment variable `TF_ENABLE_ONEDNN_OPTS=0`.
+I0000 00:00:1792818778.595554   36664 cudart_stub.cc:31] Could not find cuda drivers on your machine, GPU will not be used.
+ERROR: Loading module scapy.layers.dcerpc
+Traceback (most recent call last):
+  File "/usr/lib/python3/dist-packages/scapy/main.py", line 312, in _load
+    mod = importlib.import_module(module)
+  File "/usr/lib/python3.13/importlib/__init__.py", line 88, in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+           ~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "<frozen importlib._bootstrap>", line 1387, in _gcd_import
+  File "<frozen importlib._bootstrap>", line 1360, in _find_and_load
+  File "<frozen importlib._bootstrap>", line 1331, in _find_and_load_unlocked
+  File "<frozen importlib._bootstrap>", line 935, in _load_unlocked
+  File "<frozen importlib._bootstrap_external>", line 1023, in exec_module
+  File "<frozen importlib._bootstrap>", line 488, in _call_with_frames_removed
+  File "/usr/lib/python3/dist-packages/scapy/layers/dcerpc.py", line 98, in <module>
+    from scapy.layers.kerberos import (
+    ...<2 lines>...
+    )
+  File "/usr/lib/python3/dist-packages/scapy/layers/kerberos.py", line 163, in <module>
+    from scapy.layers.tls.crypto.groups import _ffdh_groups
+  File "/usr/lib/python3/dist-packages/scapy/layers/tls/crypto/groups.py", line 49, in <module>
+    class modp768(_FFDHParams):
+    ...<6 lines>...
+        mLen = 768
+  File "/usr/lib/python3/dist-packages/scapy/layers/tls/crypto/groups.py", line 40, in __new__
+    params = pn.parameters(default_backend())
+ValueError: Invalid DH parameters
+ERROR: Loading module scapy.layers.kerberos
+Traceback (most recent call last):
+  File "/usr/lib/python3/dist-packages/scapy/main.py", line 312, in _load
+    mod = importlib.import_module(module)
+  File "/usr/lib/python3.13/importlib/__init__.py", line 88, in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+           ~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "<frozen importlib._bootstrap>", line 1387, in _gcd_import
+  File "<frozen importlib._bootstrap>", line 1360, in _find_and_load
+  File "<frozen importlib._bootstrap>", line 1331, in _find_and_load_unlocked
+  File "<frozen importlib._bootstrap>", line 935, in _load_unlocked
+  File "<frozen importlib._bootstrap_external>", line 1023, in exec_module
+  File "<frozen importlib._bootstrap>", line 488, in _call_with_frames_removed
+  File "/usr/lib/python3/dist-packages/scapy/layers/kerberos.py", line 163, in <module>
+    from scapy.layers.tls.crypto.groups import _ffdh_groups
+  File "/usr/lib/python3/dist-packages/scapy/layers/tls/crypto/groups.py", line 49, in <module>
+    class modp768(_FFDHParams):
+    ...<6 lines>...
+        mLen = 768
+  File "/usr/lib/python3/dist-packages/scapy/layers/tls/crypto/groups.py", line 40, in __new__
+    params = pn.parameters(default_backend())
+ValueError: Invalid DH parameters
+ERROR: Loading module scapy.layers.msrpce.rpcclient
+Traceback (most recent call last):
+  File "/usr/lib/python3/dist-packages/scapy/main.py", line 312, in _load
+    mod = importlib.import_module(module)
+  File "/usr/lib/python3.13/importlib/__init__.py", line 88, in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+           ~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "<frozen importlib._bootstrap>", line 1387, in _gcd_import
+  File "<frozen importlib._bootstrap>", line 1360, in _find_and_load
+  File "<frozen importlib._bootstrap>", line 1331, in _find_and_load_unlocked
+  File "<frozen importlib._bootstrap>", line 935, in _load_unlocked
+  File "<frozen importlib._bootstrap_external>", line 1023, in exec_module
+  File "<frozen importlib._bootstrap>", line 488, in _call_with_frames_removed
+  File "/usr/lib/python3/dist-packages/scapy/layers/msrpce/rpcclient.py", line 16, in <module>
+    from scapy.layers.dcerpc import (
+    ...<28 lines>...
+    )
+  File "/usr/lib/python3/dist-packages/scapy/layers/dcerpc.py", line 98, in <module>
+    from scapy.layers.kerberos import (
+    ...<2 lines>...
+    )
+  File "/usr/lib/python3/dist-packages/scapy/layers/kerberos.py", line 163, in <module>
+    from scapy.layers.tls.crypto.groups import _ffdh_groups
+  File "/usr/lib/python3/dist-packages/scapy/layers/tls/crypto/groups.py", line 49, in <module>
+    class modp768(_FFDHParams):
+    ...<6 lines>...
+        mLen = 768
+  File "/usr/lib/python3/dist-packages/scapy/layers/tls/crypto/groups.py", line 40, in __new__
+    params = pn.parameters(default_backend())
+ValueError: Invalid DH parameters
+ERROR: Loading module scapy.layers.msrpce.rpcserver
+Traceback (most recent call last):
+  File "/usr/lib/python3/dist-packages/scapy/main.py", line 312, in _load
+    mod = importlib.import_module(module)
+  File "/usr/lib/python3.13/importlib/__init__.py", line 88, in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+           ~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "<frozen importlib._bootstrap>", line 1387, in _gcd_import
+  File "<frozen importlib._bootstrap>", line 1360, in _find_and_load
+  File "<frozen importlib._bootstrap>", line 1331, in _find_and_load_unlocked
+  File "<frozen importlib._bootstrap>", line 935, in _load_unlocked
+  File "<frozen importlib._bootstrap_external>", line 1023, in exec_module
+  File "<frozen importlib._bootstrap>", line 488, in _call_with_frames_removed
+  File "/usr/lib/python3/dist-packages/scapy/layers/msrpce/rpcserver.py", line 19, in <module>
+    from scapy.layers.dcerpc import (
+    ...<18 lines>...
+    )
+  File "/usr/lib/python3/dist-packages/scapy/layers/dcerpc.py", line 98, in <module>
+    from scapy.layers.kerberos import (
+    ...<2 lines>...
+    )
+  File "/usr/lib/python3/dist-packages/scapy/layers/kerberos.py", line 163, in <module>
+    from scapy.layers.tls.crypto.groups import _ffdh_groups
+  File "/usr/lib/python3/dist-packages/scapy/layers/tls/crypto/groups.py", line 49, in <module>
+    class modp768(_FFDHParams):
+    ...<6 lines>...
+        mLen = 768
+  File "/usr/lib/python3/dist-packages/scapy/layers/tls/crypto/groups.py", line 40, in __new__
+    params = pn.parameters(default_backend())
+ValueError: Invalid DH parameters
+ERROR: Loading module scapy.layers.smbclient
+Traceback (most recent call last):
+  File "/usr/lib/python3/dist-packages/scapy/main.py", line 312, in _load
+    mod = importlib.import_module(module)
+  File "/usr/lib/python3.13/importlib/__init__.py", line 88, in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+           ~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "<frozen importlib._bootstrap>", line 1387, in _gcd_import
+  File "<frozen importlib._bootstrap>", line 1360, in _find_and_load
+  File "<frozen importlib._bootstrap>", line 1331, in _find_and_load_unlocked
+  File "<frozen importlib._bootstrap>", line 935, in _load_unlocked
+  File "<frozen importlib._bootstrap_external>", line 1023, in exec_module
+  File "<frozen importlib._bootstrap>", line 488, in _call_with_frames_removed
+  File "/usr/lib/python3/dist-packages/scapy/layers/smbclient.py", line 34, in <module>
+    from scapy.layers.dcerpc import NDRUnion, find_dcerpc_interface
+  File "/usr/lib/python3/dist-packages/scapy/layers/dcerpc.py", line 98, in <module>
+    from scapy.layers.kerberos import (
+    ...<2 lines>...
+    )
+  File "/usr/lib/python3/dist-packages/scapy/layers/kerberos.py", line 163, in <module>
+    from scapy.layers.tls.crypto.groups import _ffdh_groups
+  File "/usr/lib/python3/dist-packages/scapy/layers/tls/crypto/groups.py", line 49, in <module>
+    class modp768(_FFDHParams):
+    ...<6 lines>...
+        mLen = 768
+  File "/usr/lib/python3/dist-packages/scapy/layers/tls/crypto/groups.py", line 40, in __new__
+    params = pn.parameters(default_backend())
+ValueError: Invalid DH parameters
+ERROR: Loading module scapy.layers.smbserver
+Traceback (most recent call last):
+  File "/usr/lib/python3/dist-packages/scapy/main.py", line 312, in _load
+    mod = importlib.import_module(module)
+  File "/usr/lib/python3.13/importlib/__init__.py", line 88, in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+           ~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "<frozen importlib._bootstrap>", line 1387, in _gcd_import
+  File "<frozen importlib._bootstrap>", line 1360, in _find_and_load
+  File "<frozen importlib._bootstrap>", line 1331, in _find_and_load_unlocked
+  File "<frozen importlib._bootstrap>", line 935, in _load_unlocked
+  File "<frozen importlib._bootstrap_external>", line 1023, in exec_module
+  File "<frozen importlib._bootstrap>", line 488, in _call_with_frames_removed
+  File "/usr/lib/python3/dist-packages/scapy/layers/smbserver.py", line 33, in <module>
+    from scapy.layers.dcerpc import (
+    ...<2 lines>...
+    )
+  File "/usr/lib/python3/dist-packages/scapy/layers/dcerpc.py", line 98, in <module>
+    from scapy.layers.kerberos import (
+    ...<2 lines>...
+    )
+  File "/usr/lib/python3/dist-packages/scapy/layers/kerberos.py", line 163, in <module>
+    from scapy.layers.tls.crypto.groups import _ffdh_groups
+  File "/usr/lib/python3/dist-packages/scapy/layers/tls/crypto/groups.py", line 49, in <module>
+    class modp768(_FFDHParams):
+    ...<6 lines>...
+        mLen = 768
+  File "/usr/lib/python3/dist-packages/scapy/layers/tls/crypto/groups.py", line 40, in __new__
+    params = pn.parameters(default_backend())
+ValueError: Invalid DH parameters
+ERROR: Loading module scapy.layers.spnego
+Traceback (most recent call last):
+  File "/usr/lib/python3/dist-packages/scapy/main.py", line 312, in _load
+    mod = importlib.import_module(module)
+  File "/usr/lib/python3.13/importlib/__init__.py", line 88, in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+           ~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "<frozen importlib._bootstrap>", line 1387, in _gcd_import
+  File "<frozen importlib._bootstrap>", line 1360, in _find_and_load
+  File "<frozen importlib._bootstrap>", line 1331, in _find_and_load_unlocked
+  File "<frozen importlib._bootstrap>", line 935, in _load_unlocked
+  File "<frozen importlib._bootstrap_external>", line 1023, in exec_module
+  File "<frozen importlib._bootstrap>", line 488, in _call_with_frames_removed
+  File "/usr/lib/python3/dist-packages/scapy/layers/spnego.py", line 84, in <module>
+    from scapy.layers.kerberos import (
+    ...<4 lines>...
+    )
+  File "/usr/lib/python3/dist-packages/scapy/layers/kerberos.py", line 163, in <module>
+    from scapy.layers.tls.crypto.groups import _ffdh_groups
+  File "/usr/lib/python3/dist-packages/scapy/layers/tls/crypto/groups.py", line 49, in <module>
+    class modp768(_FFDHParams):
+    ...<6 lines>...
+        mLen = 768
+  File "/usr/lib/python3/dist-packages/scapy/layers/tls/crypto/groups.py", line 40, in __new__
+    params = pn.parameters(default_backend())
+ValueError: Invalid DH parameters
+E0000 00:00:1792818780.846393   36664 cuda_platform.cc:52] failed call to cuInit: INTERNAL: CUDA error: Failed call to cuInit: UNKNOWN ERROR (303)
+
+[*] Loading training data: /home/ounnha/Documents/Capstone/data/processed/merged_features_labeled.json
+[*] Reading Week 3 features JSON: /home/ounnha/Documents/Capstone/data/processed/merged_features_labeled.json
+[*] Loaded 8152 Week 3 feature records.
+[*] Dataset: 8152 records  |  Benign: 5888  |  Attack: 2264
+[*] Split → train=5706  val=1223  test=1223
+Saved → /home/ounnha/Documents/Capstone/models/dns_scaler.pkl  (fit on training data only)
+
+── Random Forest ──────────────────────────────────────────────
+              precision    recall  f1-score   support
+
+      benign       0.97      0.96      0.96       884
+      attack       0.89      0.91      0.90       339
+
+    accuracy                           0.94      1223
+   macro avg       0.93      0.94      0.93      1223
+weighted avg       0.95      0.94      0.94      1223
+
+Saved → /home/ounnha/Documents/Capstone/models/dns_tunnel_rf.pkl
+
+── Transformer (Binary Classifier) ───────────────────────────
+Model: "functional"
+┏━━━━━━━━━━━━━━━━━━━━━┳━━━━━━━━━━━━━━━━━━━┳━━━━━━━━━━━━┳━━━━━━━━━━━━━━━━━━━┓
+┃ Layer (type)        ┃ Output Shape      ┃    Param # ┃ Connected to      ┃
+┡━━━━━━━━━━━━━━━━━━━━━╇━━━━━━━━━━━━━━━━━━━╇━━━━━━━━━━━━╇━━━━━━━━━━━━━━━━━━━┩
+│ input_layer         │ (None, 10, 8)     │          0 │ -                 │
+│ (InputLayer)        │                   │            │                   │
+├─────────────────────┼───────────────────┼────────────┼───────────────────┤
+│ layer_normalization │ (None, 10, 8)     │         16 │ input_layer[0][0] │
+│ (LayerNormalizatio… │                   │            │                   │
+├─────────────────────┼───────────────────┼────────────┼───────────────────┤
+│ multi_head_attenti… │ (None, 10, 8)     │      2,248 │ layer_normalizat… │
+│ (MultiHeadAttentio… │                   │            │ layer_normalizat… │
+├─────────────────────┼───────────────────┼────────────┼───────────────────┤
+│ dropout_1 (Dropout) │ (None, 10, 8)     │          0 │ multi_head_atten… │
+├─────────────────────┼───────────────────┼────────────┼───────────────────┤
+│ add (Add)           │ (None, 10, 8)     │          0 │ dropout_1[0][0],  │
+│                     │                   │            │ input_layer[0][0] │
+├─────────────────────┼───────────────────┼────────────┼───────────────────┤
+│ layer_normalizatio… │ (None, 10, 8)     │         16 │ add[0][0]         │
+│ (LayerNormalizatio… │                   │            │                   │
+├─────────────────────┼───────────────────┼────────────┼───────────────────┤
+│ conv1d (Conv1D)     │ (None, 10, 64)    │        576 │ layer_normalizat… │
+├─────────────────────┼───────────────────┼────────────┼───────────────────┤
+│ dropout_2 (Dropout) │ (None, 10, 64)    │          0 │ conv1d[0][0]      │
+├─────────────────────┼───────────────────┼────────────┼───────────────────┤
+│ conv1d_1 (Conv1D)   │ (None, 10, 8)     │        520 │ dropout_2[0][0]   │
+├─────────────────────┼───────────────────┼────────────┼───────────────────┤
+│ add_1 (Add)         │ (None, 10, 8)     │          0 │ conv1d_1[0][0],   │
+│                     │                   │            │ add[0][0]         │
+├─────────────────────┼───────────────────┼────────────┼───────────────────┤
+│ layer_normalizatio… │ (None, 10, 8)     │         16 │ add_1[0][0]       │
+│ (LayerNormalizatio… │                   │            │                   │
+├─────────────────────┼───────────────────┼────────────┼───────────────────┤
+│ multi_head_attenti… │ (None, 10, 8)     │      2,248 │ layer_normalizat… │
+│ (MultiHeadAttentio… │                   │            │ layer_normalizat… │
+├─────────────────────┼───────────────────┼────────────┼───────────────────┤
+│ dropout_4 (Dropout) │ (None, 10, 8)     │          0 │ multi_head_atten… │
+├─────────────────────┼───────────────────┼────────────┼───────────────────┤
+│ add_2 (Add)         │ (None, 10, 8)     │          0 │ dropout_4[0][0],  │
+│                     │                   │            │ add_1[0][0]       │
+├─────────────────────┼───────────────────┼────────────┼───────────────────┤
+│ layer_normalizatio… │ (None, 10, 8)     │         16 │ add_2[0][0]       │
+│ (LayerNormalizatio… │                   │            │                   │
+├─────────────────────┼───────────────────┼────────────┼───────────────────┤
+│ conv1d_2 (Conv1D)   │ (None, 10, 64)    │        576 │ layer_normalizat… │
+├─────────────────────┼───────────────────┼────────────┼───────────────────┤
+│ dropout_5 (Dropout) │ (None, 10, 64)    │          0 │ conv1d_2[0][0]    │
+├─────────────────────┼───────────────────┼────────────┼───────────────────┤
+│ conv1d_3 (Conv1D)   │ (None, 10, 8)     │        520 │ dropout_5[0][0]   │
+├─────────────────────┼───────────────────┼────────────┼───────────────────┤
+│ add_3 (Add)         │ (None, 10, 8)     │          0 │ conv1d_3[0][0],   │
+│                     │                   │            │ add_2[0][0]       │
+├─────────────────────┼───────────────────┼────────────┼───────────────────┤
+│ global_average_poo… │ (None, 8)         │          0 │ add_3[0][0]       │
+│ (GlobalAveragePool… │                   │            │                   │
+├─────────────────────┼───────────────────┼────────────┼───────────────────┤
+│ dense (Dense)       │ (None, 64)        │        576 │ global_average_p… │
+├─────────────────────┼───────────────────┼────────────┼───────────────────┤
+│ dropout_6 (Dropout) │ (None, 64)        │          0 │ dense[0][0]       │
+├─────────────────────┼───────────────────┼────────────┼───────────────────┤
+│ dense_1 (Dense)     │ (None, 1)         │         65 │ dropout_6[0][0]   │
+└─────────────────────┴───────────────────┴────────────┴───────────────────┘
+ Total params: 7,393 (28.88 KB)
+ Trainable params: 7,393 (28.88 KB)
+ Non-trainable params: 0 (0.00 B)
+Epoch 1/30
+[1m  1/179[0m [37m━━━━━━━━━━━━━━━━━━━━[0m [1m18:57[0m 6s/step - accuracy: 0.5625 - auc: 0.4349 - loss: 0.6836[1m  2/179[0m [37m━━━━━━━━━━━━━━━━━━━━[0m [1m9s[0m 52ms/step - accuracy: 0.5781 - auc: 0.4337 - loss: 0.6720 [1m  5/179[0m [37m━━━━━━━━━━━━━━━━━━━━[0m [1m4s[0m 28ms/step - accuracy: 0.7125 - auc: 0.5032 - loss: 0.6262[1m 11/179[0m [32m━[0m[37m━━━━━━━━━━━━━━━━━━━[0m [1m2s[0m 17ms/step - accuracy: 0.7102 - auc: 0.4806 - loss: 0.6161[1m 16/179[0m [32m━[0m[37m━━━━━━━━━━━━━━━━━━━[0m [1m2s[0m 15ms/step - accuracy: 0.7148 - auc: 0.4852 - loss: 0.6135[1m 23/179[0m [32m━━[0m[37m━━━━━━━━━━━━━━━━━━[0m [1m1s[0m 12ms/step - accuracy: 0.7188 - auc: 0.5016 - loss: 0.6059[1m 29/179[0m [32m━━━[0m[37m━━━━━━━━━━━━━━━━━[0m [1m1s[0m 12ms/step - accuracy: 0.7209 - auc: 0.5062 - loss: 0.6027[1m 38/179[0m [32m━━━━[0m[37m━━━━━━━━━━━━━━━━[0m [1m1s[0m 10ms/step - accuracy: 0.7237 - auc: 0.5085 - loss: 0.5988[1m 47/179[0m [32m━━━━━[0m[37m━━━━━━━━━━━━━━━[0m [1m1s[0m 10ms/step - accuracy: 0.7201 - auc: 0.5086 - loss: 0.6014[1m 59/179[0m [32m━━━━━━[0m[37m━━━━━━━━━━━━━━[0m [1m1s[0m 8ms/step - accuracy: 0.7320 - auc: 0.5143 - loss: 0.5888 [1m 71/179[0m [32m━━━━━━━[0m[37m━━━━━━━━━━━━━[0m [1m0s[0m 8ms/step - accuracy: 0.7249 - auc: 0.5098 - loss: 0.5971[1m 79/179[0m [32m━━━━━━━━[0m[37m━━━━━━━━━━━━[0m [1m0s[0m 8ms/step - accuracy: 0.7290 - auc: 0.5088 - loss: 0.5930[1m 88/179[0m [32m━━━━━━━━━[0m[37m━━━━━━━━━━━[0m [1m0s[0m 7ms/step - accuracy: 0.7262 - auc: 0.5110 - loss: 0.5949[1m 99/179[0m [32m━━━━━━━━━━━[0m[37m━━━━━━━━━[0m [1m0s[0m 7ms/step - accuracy: 0.7273 - auc: 0.5094 - loss: 0.5936[1m110/179[0m [32m━━━━━━━━━━━━[0m[37m━━━━━━━━[0m [1m0s[0m 7ms/step - accuracy: 0.7281 - auc: 0.5060 - loss: 0.5928[1m119/179[0m [32m━━━━━━━━━━━━━[0m[37m━━━━━━━[0m [1m0s[0m 7ms/step - accuracy: 0.7261 - auc: 0.5083 - loss: 0.5940[1m130/179[0m [32m━━━━━━━━━━━━━━[0m[37m━━━━━━[0m [1m0s[0m 7ms/step - accuracy: 0.7269 - auc: 0.5073 - loss: 0.5930[1m139/179[0m [32m━━━━━━━━━━━━━━━[0m[37m━━━━━[0m [1m0s[0m 7ms/step - accuracy: 0.7271 - auc: 0.5055 - loss: 0.5928[1m149/179[0m [32m━━━━━━━━━━━━━━━━[0m[37m━━━━[0m [1m0s[0m 6ms/step - accuracy: 0.7273 - auc: 0.5025 - loss: 0.5926[1m158/179[0m [32m━━━━━━━━━━━━━━━━━[0m[37m━━━[0m [1m0s[0m 6ms/step - accuracy: 0.7243 - auc: 0.5020 - loss: 0.5955[1m167/179[0m [32m━━━━━━━━━━━━━━━━━━[0m[37m━━[0m [1m0s[0m 6ms/step - accuracy: 0.7201 - auc: 0.5063 - loss: 0.5990[1m178/179[0m [32m━━━━━━━━━━━━━━━━━━━[0m[37m━[0m [1m0s[0m 6ms/step - accuracy: 0.7205 - auc: 0.5023 - loss: 0.5996[1m179/179[0m [32m━━━━━━━━━━━━━━━━━━━━[0m[37m[0m [1m8s[0m 9ms/step - accuracy: 0.7206 - auc: 0.5023 - loss: 0.5996 - val_accuracy: 0.7232 - val_auc: 0.5223 - val_loss: 0.5919
+Epoch 2/30
+[1m  1/179[0m [37m━━━━━━━━━━━━━━━━━━━━[0m [1m4s[0m 25ms/step - accuracy: 0.7812 - auc: 0.3800 - loss: 0.5690[1m 11/179[0m [32m━[0m[37m━━━━━━━━━━━━━━━━━━━[0m [1m0s[0m 5ms/step - accuracy: 0.7216 - auc: 0.5109 - loss: 0.5939 [1m 22/179[0m [32m━━[0m[37m━━━━━━━━━━━━━━━━━━[0m [1m0s[0m 5ms/step - accuracy: 0.7159 - auc: 0.4868 - loss: 0.6019[1m 33/179[0m [32m━━━[0m[37m━━━━━━━━━━━━━━━━━[0m [1m0s[0m 5ms/step - accuracy: 0.7235 - auc: 0.5100 - loss: 0.5914[1m 44/179[0m [32m━━━━[0m[37m━━━━━━━━━━━━━━━━[0m [1m0s[0m 5ms/step - accuracy: 0.7358 - auc: 0.5137 - loss: 0.5797[1m 54/179[0m [32m━━━━━━[0m[37m━━━━━━━━━━━━━━[0m [1m0s[0m 5ms/step - accuracy: 0.7390 - auc: 0.5179 - loss: 0.5751[1m 64/179[0m [32m━━━━━━━[0m[37m━━━━━━━━━━━━━[0m [1m0s[0m 5ms/step - accuracy: 0.7339 - auc: 0.5204 - loss: 0.5810[1m 74/179[0m [32m━━━━━━━━[0m[37m━━━━━━━━━━━━[0m [1m0s[0m 5ms/step - accuracy: 0.7289 - auc: 0.5246 - loss: 0.5855[1m 85/179[0m [32m━━━━━━━━━[0m[37m━━━━━━━━━━━[0m [1m0s[0m 5ms/step - accuracy: 0.7276 - auc: 0.5239 - loss: 0.5871[1m 93/179[0m [32m━━━━━━━━━━[0m[37m━━━━━━━━━━[0m [1m0s[0m 5ms/step - accuracy: 0.7302 - auc: 0.5130 - loss: 0.5862[1m102/179[0m [32m━━━━━━━━━━━[0m[37m━━━━━━━━━[0m [1m0s[0m 5ms/step - accuracy: 0.7304 - auc: 0.5121 - loss: 0.5864[1m113/179[0m [32m━━━━━━━━━━━━[0m[37m━━━━━━━━[0m [1m0s[0m 5ms/step - accuracy: 0.7323 - auc: 0.5200 - loss: 0.5834[1m124/179[0m [32m━━━━━━━━━━━━━[0m[37m━━━━━━━[0m [1m0s[0m 5ms/step - accuracy: 0.7293 - auc: 0.5145 - loss: 0.5873[1m134/179[0m [32m━━━━━━━━━━━━━━[0m[37m━━━━━━[0m [1m0s[0m 5ms/step - accuracy: 0.7285 - auc: 0.5171 - loss: 0.5876[1m143/179[0m [32m━━━━━━━━━━━━━━━[0m[37m━━━━━[0m [1m0s[0m 5ms/step - accuracy: 0.7284 - auc: 0.5209 - loss: 0.5872[1m153/179[0m [32m━━━━━━━━━━━━━━━━━[0m[37m━━━[0m [1m0s[0m 5ms/step - accuracy: 0.7277 - auc: 0.5221 - loss: 0.5876[1m164/179[0m [32m━━━━━━━━━━━━━━━━━━[0m[37m━━[0m [1m0s[0m 5ms/step - accuracy: 0.7239 - auc: 0.5261 - loss: 0.5908[1m173/179[0m [32m━━━━━━━━━━━━━━━━━━━[0m[37m━[0m [1m0s[0m 5ms/step - accuracy: 0.7225 - auc: 0.5236 - loss: 0.5926[1m178/179[0m [32m━━━━━━━━━━━━━━━━━━━[0m[37m━[0m [1m0s[0m 5ms/step - accuracy: 0.7221 - auc: 0.5232 - loss: 0.5931[1m179/179[0m [32m━━━━━━━━━━━━━━━━━━━━[0m[37m[0m [1m1s[0m 6ms/step - accuracy: 0.7220 - auc: 0.5234 - loss: 0.5932 - val_accuracy: 0.7232 - val_auc: 0.4973 - val_loss: 0.6004
+Epoch 3/30
+[1m  1/179[0m [37m━━━━━━━━━━━━━━━━━━━━[0m [1m3s[0m 17ms/step - accuracy: 0.7188 - auc: 0.6256 - loss: 0.5837[1m 12/179[0m [32m━[0m[37m━━━━━━━━━━━━━━━━━━━[0m [1m0s[0m 5ms/step - accuracy: 0.7474 - auc: 0.5466 - loss: 0.5753 [1m 21/179[0m [32m━━[0m[37m━━━━━━━━━━━━━━━━━━[0m [1m0s[0m 5ms/step - accuracy: 0.7321 - auc: 0.5199 - loss: 0.5884[1m 32/179[0m [32m━━━[0m[37m━━━━━━━━━━━━━━━━━[0m [1m0s[0m 5ms/step - accuracy: 0.7412 - auc: 0.5099 - loss: 0.5798[1m 43/179[0m [32m━━━━[0m[37m━━━━━━━━━━━━━━━━[0m [1m0s[0m 5ms/step - accuracy: 0.7311 - auc: 0.5219 - loss: 0.5861[1m 53/179[0m [32m━━━━━[0m[37m━━━━━━━━━━━━━━━[0m [1m0s[0m 5ms/step - accuracy: 0.7229 - auc: 0.5337 - loss: 0.5915[1m 64/179[0m [32m━━━━━━━[0m[37m━━━━━━━━━━━━━[0m [1m0s[0m 5ms/step - accuracy: 0.7266 - auc: 0.5370 - loss: 0.5877[1m 72/179[0m [32m━━━━━━━━[0m[37m━━━━━━━━━━━━[0m [1m0s[0m 5ms/step - accuracy: 0.7296 - auc: 0.5331 - loss: 0.5854[1m 83/179[0m [32m━━━━━━━━━[0m[37m━━━━━━━━━━━[0m [1m0s[0m 5ms/step - accuracy: 0.7368 - auc: 0.5389 - loss: 0.5774[1m 93/179[0m [32m━━━━━━━━━━[0m[37m━━━━━━━━━━[0m [1m0s[0m 5ms/step - accuracy: 0.7356 - auc: 0.5342 - loss: 0.5795[1m104/179[0m [32m━━━━━━━━━━━[0m[37m━━━━━━━━━[0m [1m0s[0m 5ms/step - accuracy: 0.7350 - auc: 0.5332 - loss: 0.5800[1m112/179[0m [32m━━━━━━━━━━━━[0m[37m━━━━━━━━[0m [1m0s[0m 5ms/step - accuracy: 0.7305 - auc: 0.5345 - loss: 0.5840[1m123/179[0m [32m━━━━━━━━━━━━━[0m[37m━━━━━━━[0m [1m0s[0m 5ms/step - accuracy: 0.7312 - auc: 0.5310 - loss: 0.5839[1m134/179[0m [32m━━━━━━━━━━━━━━[0m[37m━━━━━━[0m [1m0s[0m 5ms/step - accuracy: 0.7271 - auc: 0.5286 - loss: 0.5880[1m145/179[0m [32m━━━━━━━━━━━━━━━━[0m[37m━━━━[0m [1m0s[0m 5ms/step - accuracy: 0.7248 - auc: 0.5305 - loss: 0.5898[1m153/179[0m [32m━━━━━━━━━━━━━━━━━[0m[37m━━━[0m [1m0s[0m 5ms/step - accuracy: 0.7228 - auc: 0.5297 - loss: 0.5917[1m162/179[0m [32m━━━━━━━━━━━━━━━━━━[0m[37m━━[0m [1m0s[0m 5ms/step - accuracy: 0.7234 - auc: 0.5268 - loss: 0.5915[1m172/179[0m [32m━━━━━━━━━━━━━━━━━━━[0m[37m━[0m [1m0s[0m 5ms/step - accuracy: 0.7209 - auc: 0.5272 - loss: 0.5936[1m179/179[0m [32m━━━━━━━━━━━━━━━━━━━━[0m[37m[0m [1m1s[0m 6ms/step - accuracy: 0.7221 - auc: 0.5261 - loss: 0.5926 - val_accuracy: 0.7232 - val_auc: 0.5251 - val_loss: 0.5887
+Epoch 4/30
+[1m  1/179[0m [37m━━━━━━━━━━━━━━━━━━━━[0m [1m3s[0m 19ms/step - accuracy: 0.6875 - auc: 0.4614 - loss: 0.6304[1m 11/179[0m [32m━[0m[37m━━━━━━━━━━━━━━━━━━━[0m [1m0s[0m 5ms/step - accuracy: 0.7074 - auc: 0.5604 - loss: 0.6018 [1m 21/179[0m [32m━━[0m[37m━━━━━━━━━━━━━━━━━━[0m [1m0s[0m 5ms/step - accuracy: 0.7113 - auc: 0.5568 - loss: 0.5968[1m 31/179[0m [32m━━━[0m[37m━━━━━━━━━━━━━━━━━[0m [1m0s[0m 5ms/step - accuracy: 0.7218 - auc: 0.5587 - loss: 0.5861[1m 41/179[0m [32m━━━━[0m[37m━━━━━━━━━━━━━━━━[0m [1m0s[0m 5ms/step - accuracy: 0.7165 - auc: 0.5348 - loss: 0.5948[1m 50/179[0m [32m━━━━━[0m[37m━━━━━━━━━━━━━━━[0m [1m0s[0m 5ms/step - accuracy: 0.7138 - auc: 0.5296 - loss: 0.5984[1m 61/179[0m [32m━━━━━━[0m[37m━━━━━━━━━━━━━━[0m [1m0s[0m 5ms/step - accuracy: 0.7198 - auc: 0.5188 - loss: 0.5947[1m 71/179[0m [32m━━━━━━━[0m[37m━━━━━━━━━━━━━[0m [1m0s[0m 5ms/step - accuracy: 0.7258 - auc: 0.5205 - loss: 0.5886[1m 81/179[0m [32m━━━━━━━━━[0m[37m━━━━━━━━━━━[0m [1m0s[0m 5ms/step - accuracy: 0.7234 - auc: 0.5155 - loss: 0.5921[1m 91/179[0m [32m━━━━━━━━━━[0m[37m━━━━━━━━━━[0m [1m0s[0m 5ms/step - accuracy: 0.7218 - auc: 0.5119 - loss: 0.5941[1m 99/179[0m [32m━━━━━━━━━━━[0m[37m━━━━━━━━━[0m [1m0s[0m 5ms/step - accuracy: 0.7216 - auc: 0.5057 - loss: 0.5953[1m109/179[0m [32m━━━━━━━━━━━━[0m[37m━━━━━━━━[0m [1m0s[0m 5ms/step - accuracy: 0.7236 - auc: 0.5060 - loss: 0.5932[1m120/179[0m [32m━━━━━━━━━━━━━[0m[37m━━━━━━━[0m [1m0s[0m 5ms/step - accuracy: 0.7195 - auc: 0.5053 - loss: 0.5971[1m131/179[0m [32m━━━━━━━━━━━━━━[0m[37m━━━━━━[0m [1m0s[0m 5ms/step - accuracy: 0.7199 - auc: 0.5040 - loss: 0.5967[1m142/179[0m [32m━━━━━━━━━━━━━━━[0m[37m━━━━━[0m [1m0s[0m 5ms/step - accuracy: 0.7194 - auc: 0.5059 - loss: 0.5968[1m152/179[0m [32m━━━━━━━━━━━━━━━━[0m[37m━━━━[0m [1m0s[0m 5ms/step - accuracy: 0.7202 - auc: 0.5088 - loss: 0.5957[1m163/179[0m [32m━━━━━━━━━━━━━━━━━━[0m[37m━━[0m [1m0s[0m 5ms/step - accuracy: 0.7230 - auc: 0.5086 - loss: 0.5931[1m174/179[0m [32m━━━━━━━━━━━━━━━━━━━[0m[37m━[0m [1m0s[0m 5ms/step - accuracy: 0.7231 - auc: 0.5075 - loss: 0.5932[1m179/179[0m [32m━━━━━━━━━━━━━━━━━━━━[0m[37m[0m [1m1s[0m 6ms/step - accuracy: 0.7221 - auc: 0.5052 - loss: 0.5946 - val_accuracy: 0.7232 - val_auc: 0.5133 - val_loss: 0.5913
+Epoch 5/30
+[1m  1/179[0m [37m━━━━━━━━━━━━━━━━━━━━[0m [1m3s[0m 21ms/step - accuracy: 0.9062 - auc: 0.6207 - loss: 0.4208[1m 11/179[0m [32m━[0m[37m━━━━━━━━━━━━━━━━━━━[0m [1m0s[0m 5ms/step - accuracy: 0.7614 - auc: 0.5120 - loss: 0.5525 [1m 22/179[0m [32m━━[0m[37m━━━━━━━━━━━━━━━━━━[0m [1m0s[0m 5ms/step - accuracy: 0.7386 - auc: 0.4901 - loss: 0.5782[1m 32/179[0m [32m━━━[0m[37m━━━━━━━━━━━━━━━━━[0m [1m0s[0m 5ms/step - accuracy: 0.7373 - auc: 0.5200 - loss: 0.5759[1m 42/179[0m [32m━━━━[0m[37m━━━━━━━━━━━━━━━━[0m [1m0s[0m 5ms/step - accuracy: 0.7336 - auc: 0.5329 - loss: 0.5783[1m 52/179[0m [32m━━━━━[0m[37m━━━━━━━━━━━━━━━[0m [1m0s[0m 5ms/step - accuracy: 0.7338 - auc: 0.5330 - loss: 0.5783[1m 63/179[0m [32m━━━━━━━[0m[37m━━━━━━━━━━━━━[0m [1m0s[0m 5ms/step - accuracy: 0.7312 - auc: 0.5385 - loss: 0.5803[1m 74/179[0m [32m━━━━━━━━[0m[37m━━━━━━━━━━━━[0m [1m0s[0m 5ms/step - accuracy: 0.7293 - auc: 0.5417 - loss: 0.5819[1m 84/179[0m [32m━━━━━━━━━[0m[37m━━━━━━━━━━━[0m [1m0s[0m 5ms/step - accuracy: 0.7266 - auc: 0.5429 - loss: 0.5845[1m 93/179[0m [32m━━━━━━━━━━[0m[37m━━━━━━━━━━[0m [1m0s[0m 5ms/step - accuracy: 0.7221 - auc: 0.5470 - loss: 0.5881[1m103/179[0m [32m━━━━━━━━━━━[0m[37m━━━━━━━━━[0m [1m0s[0m 5ms/step - accuracy: 0.7224 - auc: 0.5496 - loss: 0.5876[1m114/179[0m [32m━━━━━━━━━━━━[0m[37m━━━━━━━━[0m [1m0s[0m 5ms/step - accuracy: 0.7215 - auc: 0.5428 - loss: 0.5896[1m119/179[0m [32m━━━━━━━━━━━━━[0m[37m━━━━━━━[0m [1m0s[0m 5ms/step - accuracy: 0.7232 - auc: 0.5403 - loss: 0.5882[1m123/179[0m [32m━━━━━━━━━━━━━[0m[37m━━━━━━━[0m [1m0s[0m 6ms/step - accuracy: 0.7238 - auc: 0.5410 - loss: 0.5875[1m126/179[0m [32m━━━━━━━━━━━━━━[0m[37m━━━━━━[0m [1m0s[0m 6ms/step - accuracy: 0.7237 - auc: 0.5399 - loss: 0.5879[1m129/179[0m [32m━━━━━━━━━━━━━━[0m[37m━━━━━━[0m [1m0s[0m 6ms/step - accuracy: 0.7224 - auc: 0.5392 - loss: 0.5893[1m133/179[0m [32m━━━━━━━━━━━━━━[0m[37m━━━━━━[0m [1m0s[0m 7ms/step - accuracy: 0.7213 - auc: 0.5347 - loss: 0.5909[1m137/179[0m [32m━━━━━━━━━━━━━━━[0m[37m━━━━━[0m [1m0s[0m 7ms/step - accuracy: 0.7235 - auc: 0.5342 - loss: 0.5889[1m140/179[0m [32m━━━━━━━━━━━━━━━[0m[37m━━━━━[0m [1m0s[0m 7ms/step - accuracy: 0.7239 - auc: 0.5349 - loss: 0.5885[1m144/179[0m [32m━━━━━━━━━━━━━━━━[0m[37m━━━━[0m [1m0s[0m 7ms/step - accuracy: 0.7229 - auc: 0.5342 - loss: 0.5895[1m148/179[0m [32m━━━━━━━━━━━━━━━━[0m[37m━━━━[0m [1m0s[0m 8ms/step - accuracy: 0.7223 - auc: 0.5331 - loss: 0.5902[1m152/179[0m [32m━━━━━━━━━━━━━━━━[0m[37m━━━━[0m [1m0s[0m 8ms/step - accuracy: 0.7227 - auc: 0.5323 - loss: 0.5900[1m155/179[0m [32m━━━━━━━━━━━━━━━━━[0m[37m━━━[0m [1m0s[0m 8ms/step - accuracy: 0.7234 - auc: 0.5317 - loss: 0.5893[1m159/179[0m [32m━━━━━━━━━━━━━━━━━[0m[37m━━━[0m [1m0s[0m 8ms/step - accuracy: 0.7229 - auc: 0.5336 - loss: 0.5896[1m162/179[0m [32m━━━━━━━━━━━━━━━━━━[0m[37m━━[0m [1m0s[0m 8ms/step - accuracy: 0.7230 - auc: 0.5337 - loss: 0.5895[1m165/179[0m [32m━━━━━━━━━━━━━━━━━━[0m[37m━━[0m [1m0s[0m 8ms/step - accuracy: 0.7227 - auc: 0.5358 - loss: 0.5895[1m168/179[0m [32m━━━━━━━━━━━━━━━━━━[0m[37m━━[0m [1m0s[0m 9ms/step - accuracy: 0.7217 - auc: 0.5363 - loss: 0.5903[1m172/179[0m [32m━━━━━━━━━━━━━━━━━━━[0m[37m━[0m [1m0s[0m 9ms/step - accuracy: 0.7222 - auc: 0.5364 - loss: 0.5898[1m176/179[0m [32m━━━━━━━━━━━━━━━━━━━[0m[37m━[0m [1m0s[0m 9ms/step - accuracy: 0.7223 - auc: 0.5372 - loss: 0.5896[1m179/179[0m [32m━━━━━━━━━━━━━━━━━━━━[0m[37m[0m [1m2s[0m 11ms/step - accuracy: 0.7221 - auc: 0.5379 - loss: 0.5897 - val_accuracy: 0.7232 - val_auc: 0.5298 - val_loss: 0.5887
+Epoch 6/30
+[1m  1/179[0m [37m━━━━━━━━━━━━━━━━━━━━[0m [1m9s[0m 52ms/step - accuracy: 0.7500 - auc: 0.5026 - loss: 0.5608[1m  4/179[0m [37m━━━━━━━━━━━━━━━━━━━━[0m [1m3s[0m 17ms/step - accuracy: 0.6328 - auc: 0.4957 - loss: 0.6753[1m  8/179[0m [37m━━━━━━━━━━━━━━━━━━━━[0m [1m3s[0m 18ms/step - accuracy: 0.6797 - auc: 0.5076 - loss: 0.6305[1m 11/179[0m [32m━[0m[37m━━━━━━━━━━━━━━━━━━━[0m [1m3s[0m 19ms/step - accuracy: 0.6790 - auc: 0.5071 - loss: 0.6313[1m 14/179[0m [32m━[0m[37m━━━━━━━━━━━━━━━━━━━[0m [1m3s[0m 19ms/step - accuracy: 0.6830 - auc: 0.5085 - loss: 0.6273[1m 17/179[0m [32m━[0m[37m━━━━━━━━━━━━━━━━━━━[0m [1m3s[0m 19ms/step - accuracy: 0.7096 - auc: 0.5060 - loss: 0.6029[1m 21/179[0m [32m━━[0m[37m━━━━━━━━━━━━━━━━━━[0m [1m2s[0m 18ms/step - accuracy: 0.7054 - auc: 0.5052 - loss: 0.6073[1m 24/179[0m [32m━━[0m[37m━━━━━━━━━━━━━━━━━━[0m [1m2s[0m 18ms/step - accuracy: 0.7070 - auc: 0.5167 - loss: 0.6048[1m 28/179[0m [32m━━━[0m[37m━━━━━━━━━━━━━━━━━[0m [1m2s[0m 18ms/step - accuracy: 0.7132 - auc: 0.5090 - loss: 0.6000[1m 32/179[0m [32m━━━[0m[37m━━━━━━━━━━━━━━━━━[0m [1m2s[0m 17ms/step - accuracy: 0.7129 - auc: 0.5141 - loss: 0.6001[1m 36/179[0m [32m━━━━[0m[37m━━━━━━━━━━━━━━━━[0m [1m2s[0m 17ms/step - accuracy: 0.7109 - auc: 0.5196 - loss: 0.6014[1m 40/179[0m [32m━━━━[0m[37m━━━━━━━━━━━━━━━━[0m [1m2s[0m 17ms/step - accuracy: 0.7164 - auc: 0.5166 - loss: 0.5967[1m 44/179[0m [32m━━━━[0m[37m━━━━━━━━━━━━━━━━[0m [1m2s[0m 17ms/step - accuracy: 0.7209 - auc: 0.5196 - loss: 0.5922[1m 48/179[0m [32m━━━━━[0m[37m━━━━━━━━━━━━━━━[0m [1m2s[0m 17ms/step - accuracy: 0.7207 - auc: 0.5248 - loss: 0.5917[1m 52/179[0m [32m━━━━━[0m[37m━━━━━━━━━━━━━━━[0m [1m2s[0m 17ms/step - accuracy: 0.7218 - auc: 0.5201 - loss: 0.5918[1m 56/179[0m [32m━━━━━━[0m[37m━━━━━━━━━━━━━━[0m [1m2s[0m 17ms/step - accuracy: 0.7182 - auc: 0.5191 - loss: 0.5953[1m 59/179[0m [32m━━━━━━[0m[37m━━━━━━━━━━━━━━[0m [1m2s[0m 17ms/step - accuracy: 0.7214 - auc: 0.5168 - loss: 0.5923[1m 63/179[0m [32m━━━━━━━[0m[37m━━━━━━━━━━━━━[0m [1m1s[0m 17ms/step - accuracy: 0.7188 - auc: 0.5167 - loss: 0.5950[1m 67/179[0m [32m━━━━━━━[0m[37m━━━━━━━━━━━━━[0m [1m1s[0m 17ms/step - accuracy: 0.7197 - auc: 0.5176 - loss: 0.5938[1m 71/179[0m [32m━━━━━━━[0m[37m━━━━━━━━━━━━━[0m [1m1s[0m 17ms/step - accuracy: 0.7201 - auc: 0.5148 - loss: 0.5938[1m 74/179[0m [32m━━━━━━━━[0m[37m━━━━━━━━━━━━[0m [1m1s[0m 17ms/step - accuracy: 0.7183 - auc: 0.5175 - loss: 0.5952[1m 78/179[0m [32m━━━━━━━━[0m[37m━━━━━━━━━━━━[0m [1m1s[0m 17ms/step - accuracy: 0.7163 - auc: 0.5178 - loss: 0.5970[1m 81/179[0m [32m━━━━━━━━━[0m[37m━━━━━━━━━━━[0m [1m1s[0m 17ms/step - accuracy: 0.7168 - auc: 0.5173 - loss: 0.5966[1m 85/179[0m [32m━━━━━━━━━[0m[37m━━━━━━━━━━━[0m [1m1s[0m 17ms/step - accuracy: 0.7158 - auc: 0.5227 - loss: 0.5968[1m 88/179[0m [32m━━━━━━━━━[0m[37m━━━━━━━━━━━[0m [1m1s[0m 17ms/step - accuracy: 0.7159 - auc: 0.5227 - loss: 0.5967[1m 91/179[0m [32m━━━━━━━━━━[0m[37m━━━━━━━━━━[0m [1m1s[0m 17ms/step - accuracy: 0.7150 - auc: 0.5225 - loss: 0.5975[1m 94/179[0m [32m━━━━━━━━━━[0m[37m━━━━━━━━━━[0m [1m1s[0m 17ms/step - accuracy: 0.7151 - auc: 0.5236 - loss: 0.5972[1m 97/179[0m [32m━━━━━━━━━━[0m[37m━━━━━━━━━━[0m [1m1s[0m 17ms/step - accuracy: 0.7162 - auc: 0.5214 - loss: 0.5964[1m100/179[0m [32m━━━━━━━━━━━[0m[37m━━━━━━━━━[0m [1m1s[0m 17ms/step - accuracy: 0.7156 - auc: 0.5220 - loss: 0.5968[1m103/179[0m [32m━━━━━━━━━━━[0m[37m━━━━━━━━━[0m [1m1s[0m 17ms/step - accuracy: 0.7154 - auc: 0.5197 - loss: 0.5973[1m106/179[0m [32m━━━━━━━━━━━[0m[37m━━━━━━━━━[0m [1m1s[0m 17ms/step - accuracy: 0.7158 - auc: 0.5190 - loss: 0.5970[1m110/179[0m [32m━━━━━━━━━━━━[0m[37m━━━━━━━━[0m [1m1s[0m 17ms/step - accuracy: 0.7179 - auc: 0.5216 - loss: 0.5947[1m113/179[0m [32m━━━━━━━━━━━━[0m[37m━━━━━━━━[0m [1m1s[0m 17ms/step - accuracy: 0.7146 - auc: 0.5158 - loss: 0.5984[1m117/179[0m [32m━━━━━━━━━━━━━[0m[37m━━━━━━━[0m [1m1s[0m 17ms/step - accuracy: 0.7166 - auc: 0.5169 - loss: 0.5964[1m121/179[0m [32m━━━━━━━━━━━━━[0m[37m━━━━━━━[0m [1m0s[0m 17ms/step - accuracy: 0.7177 - auc: 0.5157 - loss: 0.5954[1m125/179[0m [32m━━━━━━━━━━━━━[0m[37m━━━━━━━[0m [1m0s[0m 17ms/step - accuracy: 0.7180 - auc: 0.5150 - loss: 0.5953[1m128/179[0m [32m━━━━━━━━━━━━━━[0m[37m━━━━━━[0m [1m0s[0m 17ms/step - accuracy: 0.7170 - auc: 0.5134 - loss: 0.5963[1m131/179[0m [32m━━━━━━━━━━━━━━[0m[37m━━━━━━[0m [1m0s[0m 17ms/step - accuracy: 0.7164 - auc: 0.5152 - loss: 0.5968[1m134/179[0m [32m━━━━━━━━━━━━━━[0m[37m━━━━━━[0m [1m0s[0m 17ms/step - accuracy: 0.7174 - auc: 0.5157 - loss: 0.5958[1m137/179[0m [32m━━━━━━━━━━━━━━━[0m[37m━━━━━[0m [1m0s[0m 17ms/step - accuracy: 0.7174 - auc: 0.5151 - loss: 0.5958[1m139/179[0m [32m━━━━━━━━━━━━━━━[0m[37m━━━━━[0m [1m0s[0m 18ms/step - accuracy: 0.7165 - auc: 0.5150 - loss: 0.5966[1m142/179[0m [32m━━━━━━━━━━━━━━━[0m[37m━━━━━[0m [1m0s[0m 18ms/step - accuracy: 0.7185 - auc: 0.5163 - loss: 0.5946[1m145/179[0m [32m━━━━━━━━━━━━━━━━[0m[37m━━━━[0m [1m0s[0m 18ms/step - accuracy: 0.7203 - auc: 0.5151 - loss: 0.5931[1m148/179[0m [32m━━━━━━━━━━━━━━━━[0m[37m━━━━[0m [1m0s[0m 18ms/step - accuracy: 0.7200 - auc: 0.5156 - loss: 0.5933[1m151/179[0m [32m━━━━━━━━━━━━━━━━[0m[37m━━━━[0m [1m0s[0m 18ms/step - accuracy: 0.7196 - auc: 0.5138 - loss: 0.5940[1m154/179[0m [32m━━━━━━━━━━━━━━━━━[0m[37m━━━[0m [1m0s[0m 18ms/step - accuracy: 0.7198 - auc: 0.5137 - loss: 0.5938[1m158/179[0m [32m━━━━━━━━━━━━━━━━━[0m[37m━━━[0m [1m0s[0m 18ms/step - accuracy: 0.7211 - auc: 0.5164 - loss: 0.5923[1m162/179[0m [32m━━━━━━━━━━━━━━━━━━[0m[37m━━[0m [1m0s[0m 18ms/step - accuracy: 0.7209 - auc: 0.5190 - loss: 0.5924[1m166/179[0m [32m━━━━━━━━━━━━━━━━━━[0m[37m━━[0m [1m0s[0m 18ms/step - accuracy: 0.7210 - auc: 0.5179 - loss: 0.5923[1m170/179[0m [32m━━━━━━━━━━━━━━━━━━[0m[37m━━[0m [1m0s[0m 18ms/step - accuracy: 0.7217 - auc: 0.5164 - loss: 0.5918[1m174/179[0m [32m━━━━━━━━━━━━━━━━━━━[0m[37m━[0m [1m0s[0m 18ms/step - accuracy: 0.7216 - auc: 0.5178 - loss: 0.5918[1m178/179[0m [32m━━━━━━━━━━━━━━━━━━━[0m[37m━[0m [1m0s[0m 18ms/step - accuracy: 0.7221 - auc: 0.5187 - loss: 0.5913[1m179/179[0m [32m━━━━━━━━━━━━━━━━━━━━[0m[37m[0m [1m3s[0m 19ms/step - accuracy: 0.7221 - auc: 0.5188 - loss: 0.5912 - val_accuracy: 0.7232 - val_auc: 0.5014 - val_loss: 0.5926
+Epoch 7/30
+[1m  1/179[0m [37m━━━━━━━━━━━━━━━━━━━━[0m [1m4s[0m 25ms/step - accuracy: 0.8125 - auc: 0.6859 - loss: 0.4859[1m  9/179[0m [32m━[0m[37m━━━━━━━━━━━━━━━━━━━[0m [1m1s[0m 6ms/step - accuracy: 0.7257 - auc: 0.5061 - loss: 0.5926 [1m 19/179[0m [32m━━[0m[37m━━━━━━━━━━━━━━━━━━[0m [1m0s[0m 6ms/step - accuracy: 0.7418 - auc: 0.4908 - loss: 0.5767[1m 28/179[0m [32m━━━[0m[37m━━━━━━━━━━━━━━━━━[0m [1m0s[0m 6ms/step - accuracy: 0.7333 - auc: 0.4973 - loss: 0.5850[1m 33/179[0m [32m━━━[0m[37m━━━━━━━━━━━━━━━━━[0m [1m0s[0m 7ms/step - accuracy: 0.7320 - auc: 0.5137 - loss: 0.5839[1m 38/179[0m [32m━━━━[0m[37m━━━━━━━━━━━━━━━━[0m [1m1s[0m 7ms/step - accuracy: 0.7278 - auc: 0.5174 - loss: 0.5876[1m 47/179[0m [32m━━━━━[0m[37m━━━━━━━━━━━━━━━[0m [1m0s[0m 7ms/step - accuracy: 0.7227 - auc: 0.5185 - loss: 0.5922[1m 57/179[0m [32m━━━━━━[0m[37m━━━━━━━━━━━━━━[0m [1m0s[0m 7ms/step - accuracy: 0.7226 - auc: 0.5204 - loss: 0.5921[1m 67/179[0m [32m━━━━━━━[0m[37m━━━━━━━━━━━━━[0m [1m0s[0m 6ms/step - accuracy: 0.7234 - auc: 0.5151 - loss: 0.5918[1m 77/179[0m [32m━━━━━━━━[0m[37m━━━━━━━━━━━━[0m [1m0s[0m 6ms/step - accuracy: 0.7252 - auc: 0.5174 - loss: 0.5896[1m 84/179[0m [32m━━━━━━━━━[0m[37m━━━━━━━━━━━[0m [1m0s[0m 6ms/step - accuracy: 0.7240 - auc: 0.5160 - loss: 0.5909[1m 93/179[0m [32m━━━━━━━━━━[0m[37m━━━━━━━━━━[0m [1m0s[0m 6ms/step - accuracy: 0.7248 - auc: 0.5240 - loss: 0.5890[1m102/179[0m [32m━━━━━━━━━━━[0m[37m━━━━━━━━━[0m [1m0s[0m 6ms/step - accuracy: 0.7249 - auc: 0.5283 - loss: 0.5883[1m112/179[0m [32m━━━━━━━━━━━━[0m[37m━━━━━━━━[0m [1m0s[0m 6ms/step - accuracy: 0.7246 - auc: 0.5273 - loss: 0.5888[1m123/179[0m [32m━━━━━━━━━━━━━[0m[37m━━━━━━━[0m [1m0s[0m 6ms/step - accuracy: 0.7236 - auc: 0.5268 - loss: 0.5897[1m133/179[0m [32m━━━━━━━━━━━━━━[0m[37m━━━━━━[0m [1m0s[0m 6ms/step - accuracy: 0.7216 - auc: 0.5239 - loss: 0.5922[1m144/179[0m [32m━━━━━━━━━━━━━━━━[0m[37m━━━━[0m [1m0s[0m 6ms/step - accuracy: 0.7216 - auc: 0.5233 - loss: 0.5922[1m155/179[0m [32m━━━━━━━━━━━━━━━━━[0m[37m━━━[0m [1m0s[0m 6ms/step - accuracy: 0.7240 - auc: 0.5235 - loss: 0.5898[1m166/179[0m [32m━━━━━━━━━━━━━━━━━━[0m[37m━━[0m [1m0s[0m 6ms/step - accuracy: 0.7225 - auc: 0.5243 - loss: 0.5912[1m171/179[0m [32m━━━━━━━━━━━━━━━━━━━[0m[37m━[0m [1m0s[0m 6ms/step - accuracy: 0.7209 - auc: 0.5245 - loss: 0.5926[1m179/179[0m [32m━━━━━━━━━━━━━━━━━━━━[0m[37m[0m [1m0s[0m 6ms/step - accuracy: 0.7221 - auc: 0.5231 - loss: 0.5916[1m179/179[0m [32m━━━━━━━━━━━━━━━━━━━━[0m[37m[0m [1m1s[0m 7ms/step - accuracy: 0.7221 - auc: 0.5231 - loss: 0.5916 - val_accuracy: 0.7232 - val_auc: 0.5026 - val_loss: 0.5931
+Epoch 8/30
+[1m  1/179[0m [37m━━━━━━━━━━━━━━━━━━━━[0m [1m3s[0m 18ms/step - accuracy: 0.7812 - auc: 0.7257 - loss: 0.5274[1m 10/179[0m [32m━[0m[37m━━━━━━━━━━━━━━━━━━━[0m [1m1s[0m 6ms/step - accuracy: 0.7469 - auc: 0.4721 - loss: 0.5743 [1m 21/179[0m [32m━━[0m[37m━━━━━━━━━━━━━━━━━━[0m [1m0s[0m 5ms/step - accuracy: 0.7381 - auc: 0.4997 - loss: 0.5794[1m 31/179[0m [32m━━━[0m[37m━━━━━━━━━━━━━━━━━[0m [1m0s[0m 5ms/step - accuracy: 0.7349 - auc: 0.5077 - loss: 0.5810[1m 42/179[0m [32m━━━━[0m[37m━━━━━━━━━━━━━━━━[0m [1m0s[0m 5ms/step - accuracy: 0.7351 - auc: 0.5096 - loss: 0.5798[1m 53/179[0m [32m━━━━━[0m[37m━━━━━━━━━━━━━━━[0m [1m0s[0m 5ms/step - accuracy: 0.7376 - auc: 0.5116 - loss: 0.5771[1m 63/179[0m [32m━━━━━━━[0m[37m━━━━━━━━━━━━━[0m [1m0s[0m 5ms/step - accuracy: 0.7371 - auc: 0.5030 - loss: 0.5788[1m 73/179[0m [32m━━━━━━━━[0m[37m━━━━━━━━━━━━[0m [1m0s[0m 5ms/step - accuracy: 0.7333 - auc: 0.5057 - loss: 0.5822[1m 84/179[0m [32m━━━━━━━━━[0m[37m━━━━━━━━━━━[0m [1m0s[0m 5ms/step - accuracy: 0.7314 - auc: 0.5144 - loss: 0.5833[1m 93/179[0m [32m━━━━━━━━━━[0m[37m━━━━━━━━━━[0m [1m0s[0m 5ms/step - accuracy: 0.7312 - auc: 0.5168 - loss: 0.5834[1m103/179[0m [32m━━━━━━━━━━━[0m[37m━━━━━━━━━[0m [1m0s[0m 5ms/step - accuracy: 0.7297 - auc: 0.5147 - loss: 0.5850[1m112/179[0m [32m━━━━━━━━━━━━[0m[37m━━━━━━━━[0m [1m0s[0m 5ms/step - accuracy: 0.7238 - auc: 0.5195 - loss: 0.5903[1m122/179[0m [32m━━━━━━━━━━━━━[0m[37m━━━━━━━[0m [1m0s[0m 5ms/step - accuracy: 0.7226 - auc: 0.5216 - loss: 0.5913[1m133/179[0m [32m━━━━━━━━━━━━━━[0m[37m━━━━━━[0m [1m0s[0m 5ms/step - accuracy: 0.7223 - auc: 0.5246 - loss: 0.5915[1m143/179[0m [32m━━━━━━━━━━━━━━━[0m[37m━━━━━[0m [1m0s[0m 5ms/step - accuracy: 0.7251 - auc: 0.5207 - loss: 0.5897[1m152/179[0m [32m━━━━━━━━━━━━━━━━[0m[37m━━━━[0m [1m0s[0m 5ms/step - accuracy: 0.7255 - auc: 0.5217 - loss: 0.5891[1m162/179[0m [32m━━━━━━━━━━━━━━━━━━[0m[37m━━[0m [1m0s[0m 5ms/step - accuracy: 0.7249 - auc: 0.5208 - loss: 0.5897[1m172/179[0m [32m━━━━━━━━━━━━━━━━━━━[0m[37m━[0m [1m0s[0m 5ms/step - accuracy: 0.7237 - auc: 0.5198 - loss: 0.5910[1m179/179[0m [32m━━━━━━━━━━━━━━━━━━━━[0m[37m[0m [1m1s[0m 7ms/step - accuracy: 0.7221 - auc: 0.5206 - loss: 0.5924 - val_accuracy: 0.7232 - val_auc: 0.5008 - val_loss: 0.5927
+Epoch 9/30
+[1m  1/179[0m [37m━━━━━━━━━━━━━━━━━━━━[0m [1m9s[0m 55ms/step - accuracy: 0.6562 - auc: 0.5390 - loss: 0.6417[1m  4/179[0m [37m━━━━━━━━━━━━━━━━━━━━[0m [1m3s[0m 18ms/step - accuracy: 0.7188 - auc: 0.4900 - loss: 0.5971[1m  7/179[0m [37m━━━━━━━━━━━━━━━━━━━━[0m [1m3s[0m 18ms/step - accuracy: 0.7812 - auc: 0.5012 - loss: 0.5426[1m 10/179[0m [32m━[0m[37m━━━━━━━━━━━━━━━━━━━[0m [1m2s[0m 17ms/step - accuracy: 0.7563 - auc: 0.4976 - loss: 0.5634[1m 14/179[0m [32m━[0m[37m━━━━━━━━━━━━━━━━━━━[0m [1m2s[0m 16ms/step - accuracy: 0.7388 - auc: 0.4954 - loss: 0.5783[1m 25/179[0m [32m━━[0m[37m━━━━━━━━━━━━━━━━━━[0m [1m1s[0m 11ms/step - accuracy: 0.7262 - auc: 0.5032 - loss: 0.5887[1m 34/179[0m [32m━━━[0m[37m━━━━━━━━━━━━━━━━━[0m [1m1s[0m 10ms/step - accuracy: 0.7371 - auc: 0.5087 - loss: 0.5779[1m 44/179[0m [32m━━━━[0m[37m━━━━━━━━━━━━━━━━[0m [1m1s[0m 9ms/step - accuracy: 0.7223 - auc: 0.5036 - loss: 0.5926 [1m 52/179[0m [32m━━━━━[0m[37m━━━━━━━━━━━━━━━[0m [1m1s[0m 8ms/step - accuracy: 0.7260 - auc: 0.5102 - loss: 0.5884[1m 61/179[0m [32m━━━━━━[0m[37m━━━━━━━━━━━━━━[0m [1m0s[0m 8ms/step - accuracy: 0.7249 - auc: 0.5134 - loss: 0.5891[1m 71/179[0m [32m━━━━━━━[0m[37m━━━━━━━━━━━━━[0m [1m0s[0m 8ms/step - accuracy: 0.7210 - auc: 0.5286 - loss: 0.5913[1m 81/179[0m [32m━━━━━━━━━[0m[37m━━━━━━━━━━━[0m [1m0s[0m 7ms/step - accuracy: 0.7180 - auc: 0.5253 - loss: 0.5951[1m 91/179[0m [32m━━━━━━━━━━[0m[37m━━━━━━━━━━[0m [1m0s[0m 7ms/step - accuracy: 0.7160 - auc: 0.5250 - loss: 0.5973[1m100/179[0m [32m━━━━━━━━━━━[0m[37m━━━━━━━━━[0m [1m0s[0m 7ms/step - accuracy: 0.7125 - auc: 0.5222 - loss: 0.6009[1m111/179[0m [32m━━━━━━━━━━━━[0m[37m━━━━━━━━[0m [1m0s[0m 7ms/step - accuracy: 0.7142 - auc: 0.5233 - loss: 0.5991[1m121/179[0m [32m━━━━━━━━━━━━━[0m[37m━━━━━━━[0m [1m0s[0m 7ms/step - accuracy: 0.7159 - auc: 0.5272 - loss: 0.5970[1m131/179[0m [32m━━━━━━━━━━━━━━[0m[37m━━━━━━[0m [1m0s[0m 7ms/step - accuracy: 0.7188 - auc: 0.5312 - loss: 0.5937[1m141/179[0m [32m━━━━━━━━━━━━━━━[0m[37m━━━━━[0m [1m0s[0m 6ms/step - accuracy: 0.7201 - auc: 0.5320 - loss: 0.5923[1m150/179[0m [32m━━━━━━━━━━━━━━━━[0m[37m━━━━[0m [1m0s[0m 6ms/step - accuracy: 0.7206 - auc: 0.5324 - loss: 0.5917[1m160/179[0m [32m━━━━━━━━━━━━━━━━━[0m[37m━━━[0m [1m0s[0m 6ms/step - accuracy: 0.7197 - auc: 0.5304 - loss: 0.5929[1m170/179[0m [32m━━━━━━━━━━━━━━━━━━[0m[37m━━[0m [1m0s[0m 6ms/step - accuracy: 0.7211 - auc: 0.5329 - loss: 0.5912[1m179/179[0m [32m━━━━━━━━━━━━━━━━━━━━[0m[37m[0m [1m1s[0m 7ms/step - accuracy: 0.7221 - auc: 0.5330 - loss: 0.5902 - val_accuracy: 0.7232 - val_auc: 0.5050 - val_loss: 0.5923
+Epoch 10/30
+[1m  1/179[0m [37m━━━━━━━━━━━━━━━━━━━━[0m [1m4s[0m 25ms/step - accuracy: 0.6562 - auc: 0.5260 - loss: 0.6572[1m 10/179[0m [32m━[0m[37m━━━━━━━━━━━━━━━━━━━[0m [1m1s[0m 6ms/step - accuracy: 0.7312 - auc: 0.5934 - loss: 0.5721 [1m 18/179[0m [32m━━[0m[37m━━━━━━━━━━━━━━━━━━[0m [1m1s[0m 6ms/step - accuracy: 0.7378 - auc: 0.6100 - loss: 0.5628[1m 26/179[0m [32m━━[0m[37m━━━━━━━━━━━━━━━━━━[0m [1m0s[0m 6ms/step - accuracy: 0.7404 - auc: 0.5718 - loss: 0.5667[1m 35/179[0m [32m━━━[0m[37m━━━━━━━━━━━━━━━━━[0m [1m0s[0m 6ms/step - accuracy: 0.7312 - auc: 0.5733 - loss: 0.5754[1m 44/179[0m [32m━━━━[0m[37m━━━━━━━━━━━━━━━━[0m [1m0s[0m 6ms/step - accuracy: 0.7244 - auc: 0.5720 - loss: 0.5818[1m 54/179[0m [32m━━━━━━[0m[37m━━━━━━━━━━━━━━[0m [1m0s[0m 6ms/step - accuracy: 0.7274 - auc: 0.5644 - loss: 0.5803[1m 62/179[0m [32m━━━━━━[0m[37m━━━━━━━━━━━━━━[0m [1m0s[0m 6ms/step - accuracy: 0.7293 - auc: 0.5511 - loss: 0.5808[1m 70/179[0m [32m━━━━━━━[0m[37m━━━━━━━━━━━━━[0m [1m0s[0m 6ms/step - accuracy: 0.7277 - auc: 0.5451 - loss: 0.5833[1m 77/179[0m [32m━━━━━━━━[0m[37m━━━━━━━━━━━━[0m [1m0s[0m 6ms/step - accuracy: 0.7269 - auc: 0.5405 - loss: 0.5847[1m 83/179[0m [32m━━━━━━━━━[0m[37m━━━━━━━━━━━[0m [1m0s[0m 6ms/step - accuracy: 0.7225 - auc: 0.5421 - loss: 0.5887[1m 91/179[0m [32m━━━━━━━━━━[0m[37m━━━━━━━━━━[0m [1m0s[0m 6ms/step - accuracy: 0.7249 - auc: 0.5453 - loss: 0.5859[1m 99/179[0m [32m━━━━━━━━━━━[0m[37m━━━━━━━━━[0m [1m0s[0m 7ms/step - accuracy: 0.7241 - auc: 0.5446 - loss: 0.5867[1m106/179[0m [32m━━━━━━━━━━━[0m[37m━━━━━━━━━[0m [1m0s[0m 7ms/step - accuracy: 0.7252 - auc: 0.5424 - loss: 0.5860[1m116/179[0m [32m━━━━━━━━━━━━[0m[37m━━━━━━━━[0m [1m0s[0m 6ms/step - accuracy: 0.7274 - auc: 0.5394 - loss: 0.5845[1m126/179[0m [32m━━━━━━━━━━━━━━[0m[37m━━━━━━[0m [1m0s[0m 6ms/step - accuracy: 0.7272 - auc: 0.5390 - loss: 0.5849[1m137/179[0m [32m━━━━━━━━━━━━━━━[0m[37m━━━━━[0m [1m0s[0m 6ms/step - accuracy: 0.7245 - auc: 0.5340 - loss: 0.5883[1m148/179[0m [32m━━━━━━━━━━━━━━━━[0m[37m━━━━[0m [1m0s[0m 6ms/step - accuracy: 0.7245 - auc: 0.5339 - loss: 0.5884[1m157/179[0m [32m━━━━━━━━━━━━━━━━━[0m[37m━━━[0m [1m0s[0m 6ms/step - accuracy: 0.7197 - auc: 0.5361 - loss: 0.5925[1m168/179[0m [32m━━━━━━━━━━━━━━━━━━[0m[37m━━[0m [1m0s[0m 6ms/step - accuracy: 0.7204 - auc: 0.5329 - loss: 0.5922[1m178/179[0m [32m━━━━━━━━━━━━━━━━━━━[0m[37m━[0m [1m0s[0m 6ms/step - accuracy: 0.7221 - auc: 0.5326 - loss: 0.5906[1m179/179[0m [32m━━━━━━━━━━━━━━━━━━━━[0m[37m[0m [1m1s[0m 7ms/step - accuracy: 0.7221 - auc: 0.5326 - loss: 0.5906 - val_accuracy: 0.7232 - val_auc: 0.5150 - val_loss: 0.5899
+Test accuracy: 0.7232  |  Test loss: 0.5887  |  Test AUC: 0.5298
+Saved → /home/ounnha/Documents/Capstone/models/dns_tunnel_transformer.keras
+
+── Calibrating Ensemble Threshold (validation set) ───────────
+   Calibrated threshold: 0.4546  (F1=0.9147)
+Saved → /home/ounnha/Documents/Capstone/models/dns_threshold.json
+
+── Final Ensemble Evaluation (held-out test set) ─────────────
+              precision    recall  f1-score   support
+
+      benign       0.96      0.96      0.96       884
+      attack       0.91      0.89      0.90       339
+
+    accuracy                           0.94      1223
+   macro avg       0.93      0.93      0.93      1223
+weighted avg       0.94      0.94      0.94      1223
+
+Ensemble ROC-AUC: 0.9823
+[+] Metrics saved → /home/ounnha/Documents/Capstone/models/evaluation_metrics.json  (key: path_a)
+
+✅ Training complete. Artifacts saved:
+   /home/ounnha/Documents/Capstone/models/dns_tunnel_rf.pkl  |  /home/ounnha/Documents/Capstone/models/dns_tunnel_transformer.keras  |  /home/ounnha/Documents/Capstone/models/dns_scaler.pkl  |  /home/ounnha/Documents/Capstone/models/dns_threshold.json
+WARNING: All log messages before absl::InitializeLog() is called are written to STDERR
+I0000 00:00:1792818806.477070   37426 port.cc:153] oneDNN custom operations are on. You may see slightly different numerical results due to floating-point round-off errors from different computation orders. To turn them off, set the environment variable `TF_ENABLE_ONEDNN_OPTS=0`.
+I0000 00:00:1792818806.477247   37426 cudart_stub.cc:31] Could not find cuda drivers on your machine, GPU will not be used.
+I0000 00:00:1792818806.514804   37426 cpu_feature_guard.cc:227] This TensorFlow binary is optimized to use available CPU instructions in performance-critical operations.
+To enable the following instructions: AVX2 AVX_VNNI FMA, in other operations, rebuild TensorFlow with the appropriate compiler flags.
+WARNING: All log messages before absl::InitializeLog() is called are written to STDERR
+I0000 00:00:1792818807.319117   37426 port.cc:153] oneDNN custom operations are on. You may see slightly different numerical results due to floating-point round-off errors from different computation orders. To turn them off, set the environment variable `TF_ENABLE_ONEDNN_OPTS=0`.
+I0000 00:00:1792818807.319356   37426 cudart_stub.cc:31] Could not find cuda drivers on your machine, GPU will not be used.
+ERROR: Loading module scapy.layers.dcerpc
+Traceback (most recent call last):
+  File "/usr/lib/python3/dist-packages/scapy/main.py", line 312, in _load
+    mod = importlib.import_module(module)
+  File "/usr/lib/python3.13/importlib/__init__.py", line 88, in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+           ~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "<frozen importlib._bootstrap>", line 1387, in _gcd_import
+  File "<frozen importlib._bootstrap>", line 1360, in _find_and_load
+  File "<frozen importlib._bootstrap>", line 1331, in _find_and_load_unlocked
+  File "<frozen importlib._bootstrap>", line 935, in _load_unlocked
+  File "<frozen importlib._bootstrap_external>", line 1023, in exec_module
+  File "<frozen importlib._bootstrap>", line 488, in _call_with_frames_removed
+  File "/usr/lib/python3/dist-packages/scapy/layers/dcerpc.py", line 98, in <module>
+    from scapy.layers.kerberos import (
+    ...<2 lines>...
+    )
+  File "/usr/lib/python3/dist-packages/scapy/layers/kerberos.py", line 163, in <module>
+    from scapy.layers.tls.crypto.groups import _ffdh_groups
+  File "/usr/lib/python3/dist-packages/scapy/layers/tls/crypto/groups.py", line 49, in <module>
+    class modp768(_FFDHParams):
+    ...<6 lines>...
+        mLen = 768
+  File "/usr/lib/python3/dist-packages/scapy/layers/tls/crypto/groups.py", line 40, in __new__
+    params = pn.parameters(default_backend())
+ValueError: Invalid DH parameters
+ERROR: Loading module scapy.layers.kerberos
+Traceback (most recent call last):
+  File "/usr/lib/python3/dist-packages/scapy/main.py", line 312, in _load
+    mod = importlib.import_module(module)
+  File "/usr/lib/python3.13/importlib/__init__.py", line 88, in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+           ~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "<frozen importlib._bootstrap>", line 1387, in _gcd_import
+  File "<frozen importlib._bootstrap>", line 1360, in _find_and_load
+  File "<frozen importlib._bootstrap>", line 1331, in _find_and_load_unlocked
+  File "<frozen importlib._bootstrap>", line 935, in _load_unlocked
+  File "<frozen importlib._bootstrap_external>", line 1023, in exec_module
+  File "<frozen importlib._bootstrap>", line 488, in _call_with_frames_removed
+  File "/usr/lib/python3/dist-packages/scapy/layers/kerberos.py", line 163, in <module>
+    from scapy.layers.tls.crypto.groups import _ffdh_groups
+  File "/usr/lib/python3/dist-packages/scapy/layers/tls/crypto/groups.py", line 49, in <module>
+    class modp768(_FFDHParams):
+    ...<6 lines>...
+        mLen = 768
+  File "/usr/lib/python3/dist-packages/scapy/layers/tls/crypto/groups.py", line 40, in __new__
+    params = pn.parameters(default_backend())
+ValueError: Invalid DH parameters
+ERROR: Loading module scapy.layers.msrpce.rpcclient
+Traceback (most recent call last):
+  File "/usr/lib/python3/dist-packages/scapy/main.py", line 312, in _load
+    mod = importlib.import_module(module)
+  File "/usr/lib/python3.13/importlib/__init__.py", line 88, in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+           ~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "<frozen importlib._bootstrap>", line 1387, in _gcd_import
+  File "<frozen importlib._bootstrap>", line 1360, in _find_and_load
+  File "<frozen importlib._bootstrap>", line 1331, in _find_and_load_unlocked
+  File "<frozen importlib._bootstrap>", line 935, in _load_unlocked
+  File "<frozen importlib._bootstrap_external>", line 1023, in exec_module
+  File "<frozen importlib._bootstrap>", line 488, in _call_with_frames_removed
+  File "/usr/lib/python3/dist-packages/scapy/layers/msrpce/rpcclient.py", line 16, in <module>
+    from scapy.layers.dcerpc import (
+    ...<28 lines>...
+    )
+  File "/usr/lib/python3/dist-packages/scapy/layers/dcerpc.py", line 98, in <module>
+    from scapy.layers.kerberos import (
+    ...<2 lines>...
+    )
+  File "/usr/lib/python3/dist-packages/scapy/layers/kerberos.py", line 163, in <module>
+    from scapy.layers.tls.crypto.groups import _ffdh_groups
+  File "/usr/lib/python3/dist-packages/scapy/layers/tls/crypto/groups.py", line 49, in <module>
+    class modp768(_FFDHParams):
+    ...<6 lines>...
+        mLen = 768
+  File "/usr/lib/python3/dist-packages/scapy/layers/tls/crypto/groups.py", line 40, in __new__
+    params = pn.parameters(default_backend())
+ValueError: Invalid DH parameters
+ERROR: Loading module scapy.layers.msrpce.rpcserver
+Traceback (most recent call last):
+  File "/usr/lib/python3/dist-packages/scapy/main.py", line 312, in _load
+    mod = importlib.import_module(module)
+  File "/usr/lib/python3.13/importlib/__init__.py", line 88, in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+           ~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "<frozen importlib._bootstrap>", line 1387, in _gcd_import
+  File "<frozen importlib._bootstrap>", line 1360, in _find_and_load
+  File "<frozen importlib._bootstrap>", line 1331, in _find_and_load_unlocked
+  File "<frozen importlib._bootstrap>", line 935, in _load_unlocked
+  File "<frozen importlib._bootstrap_external>", line 1023, in exec_module
+  File "<frozen importlib._bootstrap>", line 488, in _call_with_frames_removed
+  File "/usr/lib/python3/dist-packages/scapy/layers/msrpce/rpcserver.py", line 19, in <module>
+    from scapy.layers.dcerpc import (
+    ...<18 lines>...
+    )
+  File "/usr/lib/python3/dist-packages/scapy/layers/dcerpc.py", line 98, in <module>
+    from scapy.layers.kerberos import (
+    ...<2 lines>...
+    )
+  File "/usr/lib/python3/dist-packages/scapy/layers/kerberos.py", line 163, in <module>
+    from scapy.layers.tls.crypto.groups import _ffdh_groups
+  File "/usr/lib/python3/dist-packages/scapy/layers/tls/crypto/groups.py", line 49, in <module>
+    class modp768(_FFDHParams):
+    ...<6 lines>...
+        mLen = 768
+  File "/usr/lib/python3/dist-packages/scapy/layers/tls/crypto/groups.py", line 40, in __new__
+    params = pn.parameters(default_backend())
+ValueError: Invalid DH parameters
+ERROR: Loading module scapy.layers.smbclient
+Traceback (most recent call last):
+  File "/usr/lib/python3/dist-packages/scapy/main.py", line 312, in _load
+    mod = importlib.import_module(module)
+  File "/usr/lib/python3.13/importlib/__init__.py", line 88, in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+           ~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "<frozen importlib._bootstrap>", line 1387, in _gcd_import
+  File "<frozen importlib._bootstrap>", line 1360, in _find_and_load
+  File "<frozen importlib._bootstrap>", line 1331, in _find_and_load_unlocked
+  File "<frozen importlib._bootstrap>", line 935, in _load_unlocked
+  File "<frozen importlib._bootstrap_external>", line 1023, in exec_module
+  File "<frozen importlib._bootstrap>", line 488, in _call_with_frames_removed
+  File "/usr/lib/python3/dist-packages/scapy/layers/smbclient.py", line 34, in <module>
+    from scapy.layers.dcerpc import NDRUnion, find_dcerpc_interface
+  File "/usr/lib/python3/dist-packages/scapy/layers/dcerpc.py", line 98, in <module>
+    from scapy.layers.kerberos import (
+    ...<2 lines>...
+    )
+  File "/usr/lib/python3/dist-packages/scapy/layers/kerberos.py", line 163, in <module>
+    from scapy.layers.tls.crypto.groups import _ffdh_groups
+  File "/usr/lib/python3/dist-packages/scapy/layers/tls/crypto/groups.py", line 49, in <module>
+    class modp768(_FFDHParams):
+    ...<6 lines>...
+        mLen = 768
+  File "/usr/lib/python3/dist-packages/scapy/layers/tls/crypto/groups.py", line 40, in __new__
+    params = pn.parameters(default_backend())
+ValueError: Invalid DH parameters
+ERROR: Loading module scapy.layers.smbserver
+Traceback (most recent call last):
+  File "/usr/lib/python3/dist-packages/scapy/main.py", line 312, in _load
+    mod = importlib.import_module(module)
+  File "/usr/lib/python3.13/importlib/__init__.py", line 88, in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+           ~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "<frozen importlib._bootstrap>", line 1387, in _gcd_import
+  File "<frozen importlib._bootstrap>", line 1360, in _find_and_load
+  File "<frozen importlib._bootstrap>", line 1331, in _find_and_load_unlocked
+  File "<frozen importlib._bootstrap>", line 935, in _load_unlocked
+  File "<frozen importlib._bootstrap_external>", line 1023, in exec_module
+  File "<frozen importlib._bootstrap>", line 488, in _call_with_frames_removed
+  File "/usr/lib/python3/dist-packages/scapy/layers/smbserver.py", line 33, in <module>
+    from scapy.layers.dcerpc import (
+    ...<2 lines>...
+    )
+  File "/usr/lib/python3/dist-packages/scapy/layers/dcerpc.py", line 98, in <module>
+    from scapy.layers.kerberos import (
+    ...<2 lines>...
+    )
+  File "/usr/lib/python3/dist-packages/scapy/layers/kerberos.py", line 163, in <module>
+    from scapy.layers.tls.crypto.groups import _ffdh_groups
+  File "/usr/lib/python3/dist-packages/scapy/layers/tls/crypto/groups.py", line 49, in <module>
+    class modp768(_FFDHParams):
+    ...<6 lines>...
+        mLen = 768
+  File "/usr/lib/python3/dist-packages/scapy/layers/tls/crypto/groups.py", line 40, in __new__
+    params = pn.parameters(default_backend())
+ValueError: Invalid DH parameters
+ERROR: Loading module scapy.layers.spnego
+Traceback (most recent call last):
+  File "/usr/lib/python3/dist-packages/scapy/main.py", line 312, in _load
+    mod = importlib.import_module(module)
+  File "/usr/lib/python3.13/importlib/__init__.py", line 88, in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+           ~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "<frozen importlib._bootstrap>", line 1387, in _gcd_import
+  File "<frozen importlib._bootstrap>", line 1360, in _find_and_load
+  File "<frozen importlib._bootstrap>", line 1331, in _find_and_load_unlocked
+  File "<frozen importlib._bootstrap>", line 935, in _load_unlocked
+  File "<frozen importlib._bootstrap_external>", line 1023, in exec_module
+  File "<frozen importlib._bootstrap>", line 488, in _call_with_frames_removed
+  File "/usr/lib/python3/dist-packages/scapy/layers/spnego.py", line 84, in <module>
+    from scapy.layers.kerberos import (
+    ...<4 lines>...
+    )
+  File "/usr/lib/python3/dist-packages/scapy/layers/kerberos.py", line 163, in <module>
+    from scapy.layers.tls.crypto.groups import _ffdh_groups
+  File "/usr/lib/python3/dist-packages/scapy/layers/tls/crypto/groups.py", line 49, in <module>
+    class modp768(_FFDHParams):
+    ...<6 lines>...
+        mLen = 768
+  File "/usr/lib/python3/dist-packages/scapy/layers/tls/crypto/groups.py", line 40, in __new__
+    params = pn.parameters(default_backend())
+ValueError: Invalid DH parameters
+E0000 00:00:1792818810.585901   37426 cuda_platform.cc:52] failed call to cuInit: INTERNAL: CUDA error: Failed call to cuInit: UNKNOWN ERROR (303)
+[*] Loaded 8152 data points from /home/ounnha/Documents/Capstone/data/processed/merged_features_labeled.json  (attacks=2264, benign=5888)
+[*] Chronological split → train=5706  val=1223  test=1223
+[*] Normalization params saved → /home/ounnha/Documents/Capstone/models/dns_trafficformer_norm.json  (train-derived)
+[*] Windows → train=5687  val=1204  test=1204
+[*] Benign-only training windows: 59 (dropped 5628 attack windows)
+[!] Only 0 benign val windows — calibrating threshold on ALL val windows
+Model: "trafficformer_reconstruction"
+┏━━━━━━━━━━━━━━━━━━━━━┳━━━━━━━━━━━━━━━━━━━┳━━━━━━━━━━━━┳━━━━━━━━━━━━━━━━━━━┓
+┃ Layer (type)        ┃ Output Shape      ┃    Param # ┃ Connected to      ┃
+┡━━━━━━━━━━━━━━━━━━━━━╇━━━━━━━━━━━━━━━━━━━╇━━━━━━━━━━━━╇━━━━━━━━━━━━━━━━━━━┩
+│ input_layer         │ (None, 20, 1)     │          0 │ -                 │
+│ (InputLayer)        │                   │            │                   │
+├─────────────────────┼───────────────────┼────────────┼───────────────────┤
+│ layer_normalization │ (None, 20, 1)     │          2 │ input_layer[0][0] │
+│ (LayerNormalizatio… │                   │            │                   │
+├─────────────────────┼───────────────────┼────────────┼───────────────────┤
+│ multi_head_attenti… │ (None, 20, 1)     │      1,345 │ layer_normalizat… │
+│ (MultiHeadAttentio… │                   │            │ layer_normalizat… │
+├─────────────────────┼───────────────────┼────────────┼───────────────────┤
+│ dropout_1 (Dropout) │ (None, 20, 1)     │          0 │ multi_head_atten… │
+├─────────────────────┼───────────────────┼────────────┼───────────────────┤
+│ add (Add)           │ (None, 20, 1)     │          0 │ dropout_1[0][0],  │
+│                     │                   │            │ input_layer[0][0] │
+├─────────────────────┼───────────────────┼────────────┼───────────────────┤
+│ layer_normalizatio… │ (None, 20, 1)     │          2 │ add[0][0]         │
+│ (LayerNormalizatio… │                   │            │                   │
+├─────────────────────┼───────────────────┼────────────┼───────────────────┤
+│ conv1d (Conv1D)     │ (None, 20, 3)     │          6 │ layer_normalizat… │
+├─────────────────────┼───────────────────┼────────────┼───────────────────┤
+│ dropout_2 (Dropout) │ (None, 20, 3)     │          0 │ conv1d[0][0]      │
+├─────────────────────┼───────────────────┼────────────┼───────────────────┤
+│ conv1d_1 (Conv1D)   │ (None, 20, 1)     │          4 │ dropout_2[0][0]   │
+├─────────────────────┼───────────────────┼────────────┼───────────────────┤
+│ add_1 (Add)         │ (None, 20, 1)     │          0 │ conv1d_1[0][0],   │
+│                     │                   │            │ add[0][0]         │
+├─────────────────────┼───────────────────┼────────────┼───────────────────┤
+│ layer_normalizatio… │ (None, 20, 1)     │          2 │ add_1[0][0]       │
+│ (LayerNormalizatio… │                   │            │                   │
+├─────────────────────┼───────────────────┼────────────┼───────────────────┤
+│ multi_head_attenti… │ (None, 20, 1)     │      1,345 │ layer_normalizat… │
+│ (MultiHeadAttentio… │                   │            │ layer_normalizat… │
+├─────────────────────┼───────────────────┼────────────┼───────────────────┤
+│ dropout_4 (Dropout) │ (None, 20, 1)     │          0 │ multi_head_atten… │
+├─────────────────────┼───────────────────┼────────────┼───────────────────┤
+│ add_2 (Add)         │ (None, 20, 1)     │          0 │ dropout_4[0][0],  │
+│                     │                   │            │ add_1[0][0]       │
+├─────────────────────┼───────────────────┼────────────┼───────────────────┤
+│ layer_normalizatio… │ (None, 20, 1)     │          2 │ add_2[0][0]       │
+│ (LayerNormalizatio… │                   │            │                   │
+├─────────────────────┼───────────────────┼────────────┼───────────────────┤
+│ conv1d_2 (Conv1D)   │ (None, 20, 3)     │          6 │ layer_normalizat… │
+├─────────────────────┼───────────────────┼────────────┼───────────────────┤
+│ dropout_5 (Dropout) │ (None, 20, 3)     │          0 │ conv1d_2[0][0]    │
+├─────────────────────┼───────────────────┼────────────┼───────────────────┤
+│ conv1d_3 (Conv1D)   │ (None, 20, 1)     │          4 │ dropout_5[0][0]   │
+├─────────────────────┼───────────────────┼────────────┼───────────────────┤
+│ add_3 (Add)         │ (None, 20, 1)     │          0 │ conv1d_3[0][0],   │
+│                     │                   │            │ add_2[0][0]       │
+├─────────────────────┼───────────────────┼────────────┼───────────────────┤
+│ layer_normalizatio… │ (None, 20, 1)     │          2 │ add_3[0][0]       │
+│ (LayerNormalizatio… │                   │            │                   │
+├─────────────────────┼───────────────────┼────────────┼───────────────────┤
+│ multi_head_attenti… │ (None, 20, 1)     │      1,345 │ layer_normalizat… │
+│ (MultiHeadAttentio… │                   │            │ layer_normalizat… │
+├─────────────────────┼───────────────────┼────────────┼───────────────────┤
+│ dropout_7 (Dropout) │ (None, 20, 1)     │          0 │ multi_head_atten… │
+├─────────────────────┼───────────────────┼────────────┼───────────────────┤
+│ add_4 (Add)         │ (None, 20, 1)     │          0 │ dropout_7[0][0],  │
+│                     │                   │            │ add_3[0][0]       │
+├─────────────────────┼───────────────────┼────────────┼───────────────────┤
+│ layer_normalizatio… │ (None, 20, 1)     │          2 │ add_4[0][0]       │
+│ (LayerNormalizatio… │                   │            │                   │
+├─────────────────────┼───────────────────┼────────────┼───────────────────┤
+│ conv1d_4 (Conv1D)   │ (None, 20, 3)     │          6 │ layer_normalizat… │
+├─────────────────────┼───────────────────┼────────────┼───────────────────┤
+│ dropout_8 (Dropout) │ (None, 20, 3)     │          0 │ conv1d_4[0][0]    │
+├─────────────────────┼───────────────────┼────────────┼───────────────────┤
+│ conv1d_5 (Conv1D)   │ (None, 20, 1)     │          4 │ dropout_8[0][0]   │
+├─────────────────────┼───────────────────┼────────────┼───────────────────┤
+│ add_5 (Add)         │ (None, 20, 1)     │          0 │ conv1d_5[0][0],   │
+│                     │                   │            │ add_4[0][0]       │
+├─────────────────────┼───────────────────┼────────────┼───────────────────┤
+│ dense (Dense)       │ (None, 20, 64)    │        128 │ add_5[0][0]       │
+├─────────────────────┼───────────────────┼────────────┼───────────────────┤
+│ dropout_9 (Dropout) │ (None, 20, 64)    │          0 │ dense[0][0]       │
+├─────────────────────┼───────────────────┼────────────┼───────────────────┤
+│ dense_1 (Dense)     │ (None, 20, 1)     │         65 │ dropout_9[0][0]   │
+└─────────────────────┴───────────────────┴────────────┴───────────────────┘
+ Total params: 4,270 (16.68 KB)
+ Trainable params: 4,270 (16.68 KB)
+ Non-trainable params: 0 (0.00 B)
+Epoch 1/200
+[1m1/2[0m [32m━━━━━━━━━━[0m[37m━━━━━━━━━━[0m [1m4s[0m 5s/step - loss: 0.0615
+Epoch 1: val_loss improved from None to 0.09832, saving model to /home/ounnha/Documents/Capstone/models/dns_trafficformer.h5
+WARNING:absl:You are saving your model as an HDF5 file via `model.save()` or `keras.saving.save_model(model)`. This file format is considered legacy. We recommend using instead the native Keras format, e.g. `model.save('my_model.keras')` or `keras.saving.save_model(model, 'my_model.keras')`. 
+
+Epoch 1: finished saving model to /home/ounnha/Documents/Capstone/models/dns_trafficformer.h5
+[1m2/2[0m [32m━━━━━━━━━━━━━━━━━━━━[0m[37m[0m [1m6s[0m 1s/step - loss: 0.0623 - val_loss: 0.0983
+Epoch 2/200
+[1m1/2[0m [32m━━━━━━━━━━[0m[37m━━━━━━━━━━[0m [1m0s[0m 34ms/step - loss: 0.0653
+Epoch 2: val_loss improved from 0.09832 to 0.09554, saving model to /home/ounnha/Documents/Capstone/models/dns_trafficformer.h5
+WARNING:absl:You are saving your model as an HDF5 file via `model.save()` or `keras.saving.save_model(model)`. This file format is considered legacy. We recommend using instead the native Keras format, e.g. `model.save('my_model.keras')` or `keras.saving.save_model(model, 'my_model.keras')`. 
+
+Epoch 2: finished saving model to /home/ounnha/Documents/Capstone/models/dns_trafficformer.h5
+[1m2/2[0m [32m━━━━━━━━━━━━━━━━━━━━[0m[37m[0m [1m0s[0m 325ms/step - loss: 0.0600 - val_loss: 0.0955
+Epoch 3/200
+[1m1/2[0m [32m━━━━━━━━━━[0m[37m━━━━━━━━━━[0m [1m0s[0m 28ms/step - loss: 0.0577
+Epoch 3: val_loss improved from 0.09554 to 0.09284, saving model to /home/ounnha/Documents/Capstone/models/dns_trafficformer.h5
+WARNING:absl:You are saving your model as an HDF5 file via `model.save()` or `keras.saving.save_model(model)`. This file format is considered legacy. We recommend using instead the native Keras format, e.g. `model.save('my_model.keras')` or `keras.saving.save_model(model, 'my_model.keras')`. 
+
+Epoch 3: finished saving model to /home/ounnha/Documents/Capstone/models/dns_trafficformer.h5
+[1m2/2[0m [32m━━━━━━━━━━━━━━━━━━━━[0m[37m[0m [1m0s[0m 226ms/step - loss: 0.0565 - val_loss: 0.0928
+Epoch 4/200
+[1m1/2[0m [32m━━━━━━━━━━[0m[37m━━━━━━━━━━[0m [1m0s[0m 25ms/step - loss: 0.0556
+Epoch 4: val_loss improved from 0.09284 to 0.09021, saving model to /home/ounnha/Documents/Capstone/models/dns_trafficformer.h5
+WARNING:absl:You are saving your model as an HDF5 file via `model.save()` or `keras.saving.save_model(model)`. This file format is considered legacy. We recommend using instead the native Keras format, e.g. `model.save('my_model.keras')` or `keras.saving.save_model(model, 'my_model.keras')`. 
+
+Epoch 4: finished saving model to /home/ounnha/Documents/Capstone/models/dns_trafficformer.h5
+[1m2/2[0m [32m━━━━━━━━━━━━━━━━━━━━[0m[37m[0m [1m0s[0m 233ms/step - loss: 0.0550 - val_loss: 0.0902
+Epoch 5/200
+[1m1/2[0m [32m━━━━━━━━━━[0m[37m━━━━━━━━━━[0m [1m0s[0m 26ms/step - loss: 0.0525
+Epoch 5: val_loss improved from 0.09021 to 0.08768, saving model to /home/ounnha/Documents/Capstone/models/dns_trafficformer.h5
+WARNING:absl:You are saving your model as an HDF5 file via `model.save()` or `keras.saving.save_model(model)`. This file format is considered legacy. We recommend using instead the native Keras format, e.g. `model.save('my_model.keras')` or `keras.saving.save_model(model, 'my_model.keras')`. 
+
+Epoch 5: finished saving model to /home/ounnha/Documents/Capstone/models/dns_trafficformer.h5
+[1m2/2[0m [32m━━━━━━━━━━━━━━━━━━━━[0m[37m[0m [1m0s[0m 404ms/step - loss: 0.0537 - val_loss: 0.0877
+Epoch 6/200
+[1m1/2[0m [32m━━━━━━━━━━[0m[37m━━━━━━━━━━[0m [1m0s[0m 34ms/step - loss: 0.0519
+Epoch 6: val_loss improved from 0.08768 to 0.08525, saving model to /home/ounnha/Documents/Capstone/models/dns_trafficformer.h5
+WARNING:absl:You are saving your model as an HDF5 file via `model.save()` or `keras.saving.save_model(model)`. This file format is considered legacy. We recommend using instead the native Keras format, e.g. `model.save('my_model.keras')` or `keras.saving.save_model(model, 'my_model.keras')`. 
+
+Epoch 6: finished saving model to /home/ounnha/Documents/Capstone/models/dns_trafficformer.h5
+[1m2/2[0m [32m━━━━━━━━━━━━━━━━━━━━[0m[37m[0m [1m0s[0m 320ms/step - loss: 0.0522 - val_loss: 0.0853
+Epoch 7/200
+[1m1/2[0m [32m━━━━━━━━━━[0m[37m━━━━━━━━━━[0m [1m0s[0m 32ms/step - loss: 0.0504
+Epoch 7: val_loss improved from 0.08525 to 0.08293, saving model to /home/ounnha/Documents/Capstone/models/dns_trafficformer.h5
+WARNING:absl:You are saving your model as an HDF5 file via `model.save()` or `keras.saving.save_model(model)`. This file format is considered legacy. We recommend using instead the native Keras format, e.g. `model.save('my_model.keras')` or `keras.saving.save_model(model, 'my_model.keras')`. 
+
+Epoch 7: finished saving model to /home/ounnha/Documents/Capstone/models/dns_trafficformer.h5
+[1m2/2[0m [32m━━━━━━━━━━━━━━━━━━━━[0m[37m[0m [1m0s[0m 269ms/step - loss: 0.0488 - val_loss: 0.0829
+Epoch 8/200
+[1m1/2[0m [32m━━━━━━━━━━[0m[37m━━━━━━━━━━[0m [1m0s[0m 29ms/step - loss: 0.0449
+Epoch 8: val_loss improved from 0.08293 to 0.08074, saving model to /home/ounnha/Documents/Capstone/models/dns_trafficformer.h5
+WARNING:absl:You are saving your model as an HDF5 file via `model.save()` or `keras.saving.save_model(model)`. This file format is considered legacy. We recommend using instead the native Keras format, e.g. `model.save('my_model.keras')` or `keras.saving.save_model(model, 'my_model.keras')`. 
+
+Epoch 8: finished saving model to /home/ounnha/Documents/Capstone/models/dns_trafficformer.h5
+[1m2/2[0m [32m━━━━━━━━━━━━━━━━━━━━[0m[37m[0m [1m0s[0m 214ms/step - loss: 0.0472 - val_loss: 0.0807
+Epoch 9/200
+[1m1/2[0m [32m━━━━━━━━━━[0m[37m━━━━━━━━━━[0m [1m0s[0m 30ms/step - loss: 0.0472
+Epoch 9: val_loss improved from 0.08074 to 0.07868, saving model to /home/ounnha/Documents/Capstone/models/dns_trafficformer.h5
+WARNING:absl:You are saving your model as an HDF5 file via `model.save()` or `keras.saving.save_model(model)`. This file format is considered legacy. We recommend using instead the native Keras format, e.g. `model.save('my_model.keras')` or `keras.saving.save_model(model, 'my_model.keras')`. 
+
+Epoch 9: finished saving model to /home/ounnha/Documents/Capstone/models/dns_trafficformer.h5
+[1m2/2[0m [32m━━━━━━━━━━━━━━━━━━━━[0m[37m[0m [1m0s[0m 288ms/step - loss: 0.0464 - val_loss: 0.0787
+Epoch 10/200
+[1m1/2[0m [32m━━━━━━━━━━[0m[37m━━━━━━━━━━[0m [1m0s[0m 356ms/step - loss: 0.0448
+Epoch 10: val_loss improved from 0.07868 to 0.07682, saving model to /home/ounnha/Documents/Capstone/models/dns_trafficformer.h5
+WARNING:absl:You are saving your model as an HDF5 file via `model.save()` or `keras.saving.save_model(model)`. This file format is considered legacy. We recommend using instead the native Keras format, e.g. `model.save('my_model.keras')` or `keras.saving.save_model(model, 'my_model.keras')`. 
+
+Epoch 10: finished saving model to /home/ounnha/Documents/Capstone/models/dns_trafficformer.h5
+[1m2/2[0m [32m━━━━━━━━━━━━━━━━━━━━[0m[37m[0m [1m1s[0m 521ms/step - loss: 0.0442 - val_loss: 0.0768
+Epoch 11/200
+[1m1/2[0m [32m━━━━━━━━━━[0m[37m━━━━━━━━━━[0m [1m0s[0m 31ms/step - loss: 0.0464
+Epoch 11: val_loss improved from 0.07682 to 0.07512, saving model to /home/ounnha/Documents/Capstone/models/dns_trafficformer.h5
+WARNING:absl:You are saving your model as an HDF5 file via `model.save()` or `keras.saving.save_model(model)`. This file format is considered legacy. We recommend using instead the native Keras format, e.g. `model.save('my_model.keras')` or `keras.saving.save_model(model, 'my_model.keras')`. 
+
+Epoch 11: finished saving model to /home/ounnha/Documents/Capstone/models/dns_trafficformer.h5
+[1m2/2[0m [32m━━━━━━━━━━━━━━━━━━━━[0m[37m[0m [1m0s[0m 363ms/step - loss: 0.0438 - val_loss: 0.0751
+Epoch 12/200
+[1m1/2[0m [32m━━━━━━━━━━[0m[37m━━━━━━━━━━[0m [1m0s[0m 32ms/step - loss: 0.0413
+Epoch 12: val_loss improved from 0.07512 to 0.07357, saving model to /home/ounnha/Documents/Capstone/models/dns_trafficformer.h5
+WARNING:absl:You are saving your model as an HDF5 file via `model.save()` or `keras.saving.save_model(model)`. This file format is considered legacy. We recommend using instead the native Keras format, e.g. `model.save('my_model.keras')` or `keras.saving.save_model(model, 'my_model.keras')`. 
+
+Epoch 12: finished saving model to /home/ounnha/Documents/Capstone/models/dns_trafficformer.h5
+[1m2/2[0m [32m━━━━━━━━━━━━━━━━━━━━[0m[37m[0m [1m0s[0m 248ms/step - loss: 0.0425 - val_loss: 0.0736
+Epoch 13/200
+[1m1/2[0m [32m━━━━━━━━━━[0m[37m━━━━━━━━━━[0m [1m0s[0m 57ms/step - loss: 0.0402
+Epoch 13: val_loss improved from 0.07357 to 0.07219, saving model to /home/ounnha/Documents/Capstone/models/dns_trafficformer.h5
+WARNING:absl:You are saving your model as an HDF5 file via `model.save()` or `keras.saving.save_model(model)`. This file format is considered legacy. We recommend using instead the native Keras format, e.g. `model.save('my_model.keras')` or `keras.saving.save_model(model, 'my_model.keras')`. 
+
+Epoch 13: finished saving model to /home/ounnha/Documents/Capstone/models/dns_trafficformer.h5
+[1m2/2[0m [32m━━━━━━━━━━━━━━━━━━━━[0m[37m[0m [1m0s[0m 372ms/step - loss: 0.0416 - val_loss: 0.0722
+Epoch 14/200
+[1m1/2[0m [32m━━━━━━━━━━[0m[37m━━━━━━━━━━[0m [1m0s[0m 34ms/step - loss: 0.0419
+Epoch 14: val_loss improved from 0.07219 to 0.07092, saving model to /home/ounnha/Documents/Capstone/models/dns_trafficformer.h5
+WARNING:absl:You are saving your model as an HDF5 file via `model.save()` or `keras.saving.save_model(model)`. This file format is considered legacy. We recommend using instead the native Keras format, e.g. `model.save('my_model.keras')` or `keras.saving.save_model(model, 'my_model.keras')`. 
+
+Epoch 14: finished saving model to /home/ounnha/Documents/Capstone/models/dns_trafficformer.h5
+[1m2/2[0m [32m━━━━━━━━━━━━━━━━━━━━[0m[37m[0m [1m0s[0m 367ms/step - loss: 0.0407 - val_loss: 0.0709
+Epoch 15/200
+[1m1/2[0m [32m━━━━━━━━━━[0m[37m━━━━━━━━━━[0m [1m0s[0m 259ms/step - loss: 0.0381
+Epoch 15: val_loss improved from 0.07092 to 0.06978, saving model to /home/ounnha/Documents/Capstone/models/dns_trafficformer.h5
+WARNING:absl:You are saving your model as an HDF5 file via `model.save()` or `keras.saving.save_model(model)`. This file format is considered legacy. We recommend using instead the native Keras format, e.g. `model.save('my_model.keras')` or `keras.saving.save_model(model, 'my_model.keras')`. 
+
+Epoch 15: finished saving model to /home/ounnha/Documents/Capstone/models/dns_trafficformer.h5
+[1m2/2[0m [32m━━━━━━━━━━━━━━━━━━━━[0m[37m[0m [1m1s[0m 557ms/step - loss: 0.0399 - val_loss: 0.0698
+Epoch 16/200
+[1m1/2[0m [32m━━━━━━━━━━[0m[37m━━━━━━━━━━[0m [1m0s[0m 26ms/step - loss: 0.0377
+Epoch 16: val_loss improved from 0.06978 to 0.06873, saving model to /home/ounnha/Documents/Capstone/models/dns_trafficformer.h5
+WARNING:absl:You are saving your model as an HDF5 file via `model.save()` or `keras.saving.save_model(model)`. This file format is considered legacy. We recommend using instead the native Keras format, e.g. `model.save('my_model.keras')` or `keras.saving.save_model(model, 'my_model.keras')`. 
+
+Epoch 16: finished saving model to /home/ounnha/Documents/Capstone/models/dns_trafficformer.h5
+[1m2/2[0m [32m━━━━━━━━━━━━━━━━━━━━[0m[37m[0m [1m0s[0m 338ms/step - loss: 0.0400 - val_loss: 0.0687
+Epoch 17/200
+[1m1/2[0m [32m━━━━━━━━━━[0m[37m━━━━━━━━━━[0m [1m0s[0m 36ms/step - loss: 0.0429
+Epoch 17: val_loss improved from 0.06873 to 0.06779, saving model to /home/ounnha/Documents/Capstone/models/dns_trafficformer.h5
+WARNING:absl:You are saving your model as an HDF5 file via `model.save()` or `keras.saving.save_model(model)`. This file format is considered legacy. We recommend using instead the native Keras format, e.g. `model.save('my_model.keras')` or `keras.saving.save_model(model, 'my_model.keras')`. 
+
+Epoch 17: finished saving model to /home/ounnha/Documents/Capstone/models/dns_trafficformer.h5
+[1m2/2[0m [32m━━━━━━━━━━━━━━━━━━━━[0m[37m[0m [1m0s[0m 247ms/step - loss: 0.0390 - val_loss: 0.0678
+Epoch 18/200
+[1m1/2[0m [32m━━━━━━━━━━[0m[37m━━━━━━━━━━[0m [1m0s[0m 27ms/step - loss: 0.0382
+Epoch 18: val_loss improved from 0.06779 to 0.06693, saving model to /home/ounnha/Documents/Capstone/models/dns_trafficformer.h5
+WARNING:absl:You are saving your model as an HDF5 file via `model.save()` or `keras.saving.save_model(model)`. This file format is considered legacy. We recommend using instead the native Keras format, e.g. `model.save('my_model.keras')` or `keras.saving.save_model(model, 'my_model.keras')`. 
+
+Epoch 18: finished saving model to /home/ounnha/Documents/Capstone/models/dns_trafficformer.h5
+[1m2/2[0m [32m━━━━━━━━━━━━━━━━━━━━[0m[37m[0m [1m0s[0m 216ms/step - loss: 0.0394 - val_loss: 0.0669
+Epoch 19/200
+[1m1/2[0m [32m━━━━━━━━━━[0m[37m━━━━━━━━━━[0m [1m0s[0m 23ms/step - loss: 0.0382
+Epoch 19: val_loss improved from 0.06693 to 0.06616, saving model to /home/ounnha/Documents/Capstone/models/dns_trafficformer.h5
+WARNING:absl:You are saving your model as an HDF5 file via `model.save()` or `keras.saving.save_model(model)`. This file format is considered legacy. We recommend using instead the native Keras format, e.g. `model.save('my_model.keras')` or `keras.saving.save_model(model, 'my_model.keras')`. 
+
+Epoch 19: finished saving model to /home/ounnha/Documents/Capstone/models/dns_trafficformer.h5
+[1m2/2[0m [32m━━━━━━━━━━━━━━━━━━━━[0m[37m[0m [1m0s[0m 222ms/step - loss: 0.0382 - val_loss: 0.0662
+Epoch 20/200
+[1m1/2[0m [32m━━━━━━━━━━[0m[37m━━━━━━━━━━[0m [1m0s[0m 25ms/step - loss: 0.0375
+Epoch 20: val_loss improved from 0.06616 to 0.06545, saving model to /home/ounnha/Documents/Capstone/models/dns_trafficformer.h5
+WARNING:absl:You are saving your model as an HDF5 file via `model.save()` or `keras.saving.save_model(model)`. This file format is considered legacy. We recommend using instead the native Keras format, e.g. `model.save('my_model.keras')` or `keras.saving.save_model(model, 'my_model.keras')`. 
+
+Epoch 20: finished saving model to /home/ounnha/Documents/Capstone/models/dns_trafficformer.h5
+[1m2/2[0m [32m━━━━━━━━━━━━━━━━━━━━[0m[37m[0m [1m0s[0m 274ms/step - loss: 0.0378 - val_loss: 0.0655
+Epoch 21/200
+[1m1/2[0m [32m━━━━━━━━━━[0m[37m━━━━━━━━━━[0m [1m0s[0m 25ms/step - loss: 0.0368
+Epoch 21: val_loss improved from 0.06545 to 0.06481, saving model to /home/ounnha/Documents/Capstone/models/dns_trafficformer.h5
+WARNING:absl:You are saving your model as an HDF5 file via `model.save()` or `keras.saving.save_model(model)`. This file format is considered legacy. We recommend using instead the native Keras format, e.g. `model.save('my_model.keras')` or `keras.saving.save_model(model, 'my_model.keras')`. 
+
+Epoch 21: finished saving model to /home/ounnha/Documents/Capstone/models/dns_trafficformer.h5
+[1m2/2[0m [32m━━━━━━━━━━━━━━━━━━━━[0m[37m[0m [1m0s[0m 223ms/step - loss: 0.0379 - val_loss: 0.0648
+Epoch 22/200
+[1m1/2[0m [32m━━━━━━━━━━[0m[37m━━━━━━━━━━[0m [1m0s[0m 23ms/step - loss: 0.0342
+Epoch 22: val_loss improved from 0.06481 to 0.06424, saving model to /home/ounnha/Documents/Capstone/models/dns_trafficformer.h5
+WARNING:absl:You are saving your model as an HDF5 file via `model.save()` or `keras.saving.save_model(model)`. This file format is considered legacy. We recommend using instead the native Keras format, e.g. `model.save('my_model.keras')` or `keras.saving.save_model(model, 'my_model.keras')`. 
+
+Epoch 22: finished saving model to /home/ounnha/Documents/Capstone/models/dns_trafficformer.h5
+[1m2/2[0m [32m━━━━━━━━━━━━━━━━━━━━[0m[37m[0m [1m0s[0m 229ms/step - loss: 0.0369 - val_loss: 0.0642
+Epoch 23/200
+[1m1/2[0m [32m━━━━━━━━━━[0m[37m━━━━━━━━━━[0m [1m0s[0m 28ms/step - loss: 0.0351
+Epoch 23: val_loss improved from 0.06424 to 0.06371, saving model to /home/ounnha/Documents/Capstone/models/dns_trafficformer.h5
+WARNING:absl:You are saving your model as an HDF5 file via `model.save()` or `keras.saving.save_model(model)`. This file format is considered legacy. We recommend using instead the native Keras format, e.g. `model.save('my_model.keras')` or `keras.saving.save_model(model, 'my_model.keras')`. 
+
+Epoch 23: finished saving model to /home/ounnha/Documents/Capstone/models/dns_trafficformer.h5
+[1m2/2[0m [32m━━━━━━━━━━━━━━━━━━━━[0m[37m[0m [1m0s[0m 266ms/step - loss: 0.0367 - val_loss: 0.0637
+Epoch 24/200
+[1m1/2[0m [32m━━━━━━━━━━[0m[37m━━━━━━━━━━[0m [1m0s[0m 37ms/step - loss: 0.0361
+Epoch 24: val_loss improved from 0.06371 to 0.06321, saving model to /home/ounnha/Documents/Capstone/models/dns_trafficformer.h5
+WARNING:absl:You are saving your model as an HDF5 file via `model.save()` or `keras.saving.save_model(model)`. This file format is considered legacy. We recommend using instead the native Keras format, e.g. `model.save('my_model.keras')` or `keras.saving.save_model(model, 'my_model.keras')`. 
+
+Epoch 24: finished saving model to /home/ounnha/Documents/Capstone/models/dns_trafficformer.h5
+[1m2/2[0m [32m━━━━━━━━━━━━━━━━━━━━[0m[37m[0m [1m0s[0m 350ms/step - loss: 0.0362 - val_loss: 0.0632
+Epoch 25/200
+[1m1/2[0m [32m━━━━━━━━━━[0m[37m━━━━━━━━━━[0m [1m0s[0m 29ms/step - loss: 0.0346
+Epoch 25: val_loss improved from 0.06321 to 0.06274, saving model to /home/ounnha/Documents/Capstone/models/dns_trafficformer.h5
+WARNING:absl:You are saving your model as an HDF5 file via `model.save()` or `keras.saving.save_model(model)`. This file format is considered legacy. We recommend using instead the native Keras format, e.g. `model.save('my_model.keras')` or `keras.saving.save_model(model, 'my_model.keras')`. 
+
+Epoch 25: finished saving model to /home/ounnha/Documents/Capstone/models/dns_trafficformer.h5
+[1m2/2[0m [32m━━━━━━━━━━━━━━━━━━━━[0m[37m[0m [1m1s[0m 716ms/step - loss: 0.0364 - val_loss: 0.0627
+Epoch 26/200
+[1m1/2[0m [32m━━━━━━━━━━[0m[37m━━━━━━━━━━[0m [1m0s[0m 65ms/step - loss: 0.0356
+Epoch 26: val_loss improved from 0.06274 to 0.06229, saving model to /home/ounnha/Documents/Capstone/models/dns_trafficformer.h5
+WARNING:absl:You are saving your model as an HDF5 file via `model.save()` or `keras.saving.save_model(model)`. This file format is considered legacy. We recommend using instead the native Keras format, e.g. `model.save('my_model.keras')` or `keras.saving.save_model(model, 'my_model.keras')`. 
+
+Epoch 26: finished saving model to /home/ounnha/Documents/Capstone/models/dns_trafficformer.h5
+[1m2/2[0m [32m━━━━━━━━━━━━━━━━━━━━[0m[37m[0m [1m0s[0m 414ms/step - loss: 0.0354 - val_loss: 0.0623
+Epoch 27/200
+[1m1/2[0m [32m━━━━━━━━━━[0m[37m━━━━━━━━━━[0m [1m0s[0m 39ms/step - loss: 0.0325
+Epoch 27: val_loss improved from 0.06229 to 0.06185, saving model to /home/ounnha/Documents/Capstone/models/dns_trafficformer.h5
+WARNING:absl:You are saving your model as an HDF5 file via `model.save()` or `keras.saving.save_model(model)`. This file format is considered legacy. We recommend using instead the native Keras format, e.g. `model.save('my_model.keras')` or `keras.saving.save_model(model, 'my_model.keras')`. 
+
+Epoch 27: finished saving model to /home/ounnha/Documents/Capstone/models/dns_trafficformer.h5
+[1m2/2[0m [32m━━━━━━━━━━━━━━━━━━━━[0m[37m[0m [1m0s[0m 433ms/step - loss: 0.0351 - val_loss: 0.0619
+Epoch 28/200
+[1m1/2[0m [32m━━━━━━━━━━[0m[37m━━━━━━━━━━[0m [1m0s[0m 42ms/step - loss: 0.0312
+Epoch 28: val_loss improved from 0.06185 to 0.06143, saving model to /home/ounnha/Documents/Capstone/models/dns_trafficformer.h5
+WARNING:absl:You are saving your model as an HDF5 file via `model.save()` or `keras.saving.save_model(model)`. This file format is considered legacy. We recommend using instead the native Keras format, e.g. `model.save('my_model.keras')` or `keras.saving.save_model(model, 'my_model.keras')`. 
+
+Epoch 28: finished saving model to /home/ounnha/Documents/Capstone/models/dns_trafficformer.h5
+[1m2/2[0m [32m━━━━━━━━━━━━━━━━━━━━[0m[37m[0m [1m0s[0m 410ms/step - loss: 0.0345 - val_loss: 0.0614
+Epoch 29/200
+[1m1/2[0m [32m━━━━━━━━━━[0m[37m━━━━━━━━━━[0m [1m0s[0m 41ms/step - loss: 0.0320
+Epoch 29: val_loss improved from 0.06143 to 0.06100, saving model to /home/ounnha/Documents/Capstone/models/dns_trafficformer.h5
+WARNING:absl:You are saving your model as an HDF5 file via `model.save()` or `keras.saving.save_model(model)`. This file format is considered legacy. We recommend using instead the native Keras format, e.g. `model.save('my_model.keras')` or `keras.saving.save_model(model, 'my_model.keras')`. 
+
+Epoch 29: finished saving model to /home/ounnha/Documents/Capstone/models/dns_trafficformer.h5
+[1m2/2[0m [32m━━━━━━━━━━━━━━━━━━━━[0m[37m[0m [1m0s[0m 403ms/step - loss: 0.0346 - val_loss: 0.0610
+Epoch 30/200
+[1m1/2[0m [32m━━━━━━━━━━[0m[37m━━━━━━━━━━[0m [1m0s[0m 24ms/step - loss: 0.0316
+Epoch 30: val_loss improved from 0.06100 to 0.06057, saving model to /home/ounnha/Documents/Capstone/models/dns_trafficformer.h5
+WARNING:absl:You are saving your model as an HDF5 file via `model.save()` or `keras.saving.save_model(model)`. This file format is considered legacy. We recommend using instead the native Keras format, e.g. `model.save('my_model.keras')` or `keras.saving.save_model(model, 'my_model.keras')`. 
+
+Epoch 30: finished saving model to /home/ounnha/Documents/Capstone/models/dns_trafficformer.h5
+[1m2/2[0m [32m━━━━━━━━━━━━━━━━━━━━[0m[37m[0m [1m0s[0m 222ms/step - loss: 0.0343 - val_loss: 0.0606
+Epoch 31/200
+[1m1/2[0m [32m━━━━━━━━━━[0m[37m━━━━━━━━━━[0m [1m0s[0m 80ms/step - loss: 0.0337
+Epoch 31: val_loss improved from 0.06057 to 0.06014, saving model to /home/ounnha/Documents/Capstone/models/dns_trafficformer.h5
+WARNING:absl:You are saving your model as an HDF5 file via `model.save()` or `keras.saving.save_model(model)`. This file format is considered legacy. We recommend using instead the native Keras format, e.g. `model.save('my_model.keras')` or `keras.saving.save_model(model, 'my_model.keras')`. 
+
+Epoch 31: finished saving model to /home/ounnha/Documents/Capstone/models/dns_trafficformer.h5
+[1m2/2[0m [32m━━━━━━━━━━━━━━━━━━━━[0m[37m[0m [1m0s[0m 211ms/step - loss: 0.0331 - val_loss: 0.0601
+Epoch 32/200
+[1m1/2[0m [32m━━━━━━━━━━[0m[37m━━━━━━━━━━[0m [1m0s[0m 114ms/step - loss: 0.0321
+Epoch 32: val_loss improved from 0.06014 to 0.05969, saving model to /home/ounnha/Documents/Capstone/models/dns_trafficformer.h5
+WARNING:absl:You are saving your model as an HDF5 file via `model.save()` or `keras.saving.save_model(model)`. This file format is considered legacy. We recommend using instead the native Keras format, e.g. `model.save('my_model.keras')` or `keras.saving.save_model(model, 'my_model.keras')`. 
+
+Epoch 32: finished saving model to /home/ounnha/Documents/Capstone/models/dns_trafficformer.h5
+[1m2/2[0m [32m━━━━━━━━━━━━━━━━━━━━[0m[37m[0m [1m1s[0m 772ms/step - loss: 0.0333 - val_loss: 0.0597
+Epoch 33/200
+[1m1/2[0m [32m━━━━━━━━━━[0m[37m━━━━━━━━━━[0m [1m0s[0m 58ms/step - loss: 0.0326
+Epoch 33: val_loss improved from 0.05969 to 0.05923, saving model to /home/ounnha/Documents/Capstone/models/dns_trafficformer.h5
+WARNING:absl:You are saving your model as an HDF5 file via `model.save()` or `keras.saving.save_model(model)`. This file format is considered legacy. We recommend using instead the native Keras format, e.g. `model.save('my_model.keras')` or `keras.saving.save_model(model, 'my_model.keras')`. 
+
+Epoch 33: finished saving model to /home/ounnha/Documents/Capstone/models/dns_trafficformer.h5
+[1m2/2[0m [32m━━━━━━━━━━━━━━━━━━━━[0m[37m[0m [1m1s[0m 691ms/step - loss: 0.0332 - val_loss: 0.0592
+Epoch 34/200
+[1m1/2[0m [32m━━━━━━━━━━[0m[37m━━━━━━━━━━[0m [1m0s[0m 35ms/step - loss: 0.0339
+Epoch 34: val_loss improved from 0.05923 to 0.05876, saving model to /home/ounnha/Documents/Capstone/models/dns_trafficformer.h5
+WARNING:absl:You are saving your model as an HDF5 file via `model.save()` or `keras.saving.save_model(model)`. This file format is considered legacy. We recommend using instead the native Keras format, e.g. `model.save('my_model.keras')` or `keras.saving.save_model(model, 'my_model.keras')`. 
+
+Epoch 34: finished saving model to /home/ounnha/Documents/Capstone/models/dns_trafficformer.h5
+[1m2/2[0m [32m━━━━━━━━━━━━━━━━━━━━[0m[37m[0m [1m0s[0m 388ms/step - loss: 0.0327 - val_loss: 0.0588
+Epoch 35/200
+[1m1/2[0m [32m━━━━━━━━━━[0m[37m━━━━━━━━━━[0m [1m0s[0m 34ms/step - loss: 0.0313
+Epoch 35: val_loss improved from 0.05876 to 0.05828, saving model to /home/ounnha/Documents/Capstone/models/dns_trafficformer.h5
+WARNING:absl:You are saving your model as an HDF5 file via `model.save()` or `keras.saving.save_model(model)`. This file format is considered legacy. We recommend using instead the native Keras format, e.g. `model.save('my_model.keras')` or `keras.saving.save_model(model, 'my_model.keras')`. 
+
+Epoch 35: finished saving model to /home/ounnha/Documents/Capstone/models/dns_trafficformer.h5
+[1m2/2[0m [32m━━━━━━━━━━━━━━━━━━━━[0m[37m[0m [1m0s[0m 268ms/step - loss: 0.0321 - val_loss: 0.0583
+Epoch 36/200
+[1m1/2[0m [32m━━━━━━━━━━[0m[37m━━━━━━━━━━[0m [1m0s[0m 33ms/step - loss: 0.0325
+Epoch 36: val_loss improved from 0.05828 to 0.05779, saving model to /home/ounnha/Documents/Capstone/models/dns_trafficformer.h5
+WARNING:absl:You are saving your model as an HDF5 file via `model.save()` or `keras.saving.save_model(model)`. This file format is considered legacy. We recommend using instead the native Keras format, e.g. `model.save('my_model.keras')` or `keras.saving.save_model(model, 'my_model.keras')`. 
+
+Epoch 36: finished saving model to /home/ounnha/Documents/Capstone/models/dns_trafficformer.h5
+[1m2/2[0m [32m━━━━━━━━━━━━━━━━━━━━[0m[37m[0m [1m0s[0m 244ms/step - loss: 0.0321 - val_loss: 0.0578
+Epoch 37/200
+[1m1/2[0m [32m━━━━━━━━━━[0m[37m━━━━━━━━━━[0m [1m0s[0m 37ms/step - loss: 0.0320
+Epoch 37: val_loss improved from 0.05779 to 0.05731, saving model to /home/ounnha/Documents/Capstone/models/dns_trafficformer.h5
+WARNING:absl:You are saving your model as an HDF5 file via `model.save()` or `keras.saving.save_model(model)`. This file format is considered legacy. We recommend using instead the native Keras format, e.g. `model.save('my_model.keras')` or `keras.saving.save_model(model, 'my_model.keras')`. 
+
+Epoch 37: finished saving model to /home/ounnha/Documents/Capstone/models/dns_trafficformer.h5
+[1m2/2[0m [32m━━━━━━━━━━━━━━━━━━━━[0m[37m[0m [1m0s[0m 232ms/step - loss: 0.0316 - val_loss: 0.0573
+Epoch 38/200
+[1m1/2[0m [32m━━━━━━━━━━[0m[37m━━━━━━━━━━[0m [1m0s[0m 28ms/step - loss: 0.0299
+Epoch 38: val_loss improved from 0.05731 to 0.05683, saving model to /home/ounnha/Documents/Capstone/models/dns_trafficformer.h5
+WARNING:absl:You are saving your model as an HDF5 file via `model.save()` or `keras.saving.save_model(model)`. This file format is considered legacy. We recommend using instead the native Keras format, e.g. `model.save('my_model.keras')` or `keras.saving.save_model(model, 'my_model.keras')`. 
+
+Epoch 38: finished saving model to /home/ounnha/Documents/Capstone/models/dns_trafficformer.h5
+[1m2/2[0m [32m━━━━━━━━━━━━━━━━━━━━[0m[37m[0m [1m0s[0m 247ms/step - loss: 0.0314 - val_loss: 0.0568
+Epoch 39/200
+[1m1/2[0m [32m━━━━━━━━━━[0m[37m━━━━━━━━━━[0m [1m0s[0m 35ms/step - loss: 0.0310
+Epoch 39: val_loss improved from 0.05683 to 0.05635, saving model to /home/ounnha/Documents/Capstone/models/dns_trafficformer.h5
+WARNING:absl:You are saving your model as an HDF5 file via `model.save()` or `keras.saving.save_model(model)`. This file format is considered legacy. We recommend using instead the native Keras format, e.g. `model.save('my_model.keras')` or `keras.saving.save_model(model, 'my_model.keras')`. 
+
+Epoch 39: finished saving model to /home/ounnha/Documents/Capstone/models/dns_trafficformer.h5
+[1m2/2[0m [32m━━━━━━━━━━━━━━━━━━━━[0m[37m[0m [1m0s[0m 255ms/step - loss: 0.0305 - val_loss: 0.0564
+Epoch 40/200
+[1m1/2[0m [32m━━━━━━━━━━[0m[37m━━━━━━━━━━[0m [1m0s[0m 30ms/step - loss: 0.0299
+Epoch 40: val_loss improved from 0.05635 to 0.05586, saving model to /home/ounnha/Documents/Capstone/models/dns_trafficformer.h5
+WARNING:absl:You are saving your model as an HDF5 file via `model.save()` or `keras.saving.save_model(model)`. This file format is considered legacy. We recommend using instead the native Keras format, e.g. `model.save('my_model.keras')` or `keras.saving.save_model(model, 'my_model.keras')`. 
+
+Epoch 40: finished saving model to /home/ounnha/Documents/Capstone/models/dns_trafficformer.h5
+[1m2/2[0m [32m━━━━━━━━━━━━━━━━━━━━[0m[37m[0m [1m0s[0m 240ms/step - loss: 0.0304 - val_loss: 0.0559
+Epoch 41/200
+[1m1/2[0m [32m━━━━━━━━━━[0m[37m━━━━━━━━━━[0m [1m0s[0m 25ms/step - loss: 0.0331
+Epoch 41: val_loss improved from 0.05586 to 0.05538, saving model to /home/ounnha/Documents/Capstone/models/dns_trafficformer.h5
+WARNING:absl:You are saving your model as an HDF5 file via `model.save()` or `keras.saving.save_model(model)`. This file format is considered legacy. We recommend using instead the native Keras format, e.g. `model.save('my_model.keras')` or `keras.saving.save_model(model, 'my_model.keras')`. 
+
+Epoch 41: finished saving model to /home/ounnha/Documents/Capstone/models/dns_trafficformer.h5
+[1m2/2[0m [32m━━━━━━━━━━━━━━━━━━━━[0m[37m[0m [1m0s[0m 326ms/step - loss: 0.0302 - val_loss: 0.0554
+Epoch 42/200
+[1m1/2[0m [32m━━━━━━━━━━[0m[37m━━━━━━━━━━[0m [1m0s[0m 73ms/step - loss: 0.0293
+Epoch 42: val_loss improved from 0.05538 to 0.05490, saving model to /home/ounnha/Documents/Capstone/models/dns_trafficformer.h5
+WARNING:absl:You are saving your model as an HDF5 file via `model.save()` or `keras.saving.save_model(model)`. This file format is considered legacy. We recommend using instead the native Keras format, e.g. `model.save('my_model.keras')` or `keras.saving.save_model(model, 'my_model.keras')`. 
+
+Epoch 42: finished saving model to /home/ounnha/Documents/Capstone/models/dns_trafficformer.h5
+[1m2/2[0m [32m━━━━━━━━━━━━━━━━━━━━[0m[37m[0m [1m0s[0m 323ms/step - loss: 0.0302 - val_loss: 0.0549
+Epoch 43/200
+[1m1/2[0m [32m━━━━━━━━━━[0m[37m━━━━━━━━━━[0m [1m0s[0m 37ms/step - loss: 0.0272
+Epoch 43: val_loss improved from 0.05490 to 0.05441, saving model to /home/ounnha/Documents/Capstone/models/dns_trafficformer.h5
+WARNING:absl:You are saving your model as an HDF5 file via `model.save()` or `keras.saving.save_model(model)`. This file format is considered legacy. We recommend using instead the native Keras format, e.g. `model.save('my_model.keras')` or `keras.saving.save_model(model, 'my_model.keras')`. 
+
+Epoch 43: finished saving model to /home/ounnha/Documents/Capstone/models/dns_trafficformer.h5
+[1m2/2[0m [32m━━━━━━━━━━━━━━━━━━━━[0m[37m[0m [1m0s[0m 228ms/step - loss: 0.0298 - val_loss: 0.0544
+Epoch 44/200
+[1m1/2[0m [32m━━━━━━━━━━[0m[37m━━━━━━━━━━[0m [1m0s[0m 28ms/step - loss: 0.0281
+Epoch 44: val_loss improved from 0.05441 to 0.05393, saving model to /home/ounnha/Documents/Capstone/models/dns_trafficformer.h5
+WARNING:absl:You are saving your model as an HDF5 file via `model.save()` or `keras.saving.save_model(model)`. This file format is considered legacy. We recommend using instead the native Keras format, e.g. `model.save('my_model.keras')` or `keras.saving.save_model(model, 'my_model.keras')`. 
+
+Epoch 44: finished saving model to /home/ounnha/Documents/Capstone/models/dns_trafficformer.h5
+[1m2/2[0m [32m━━━━━━━━━━━━━━━━━━━━[0m[37m[0m [1m0s[0m 209ms/step - loss: 0.0289 - val_loss: 0.0539
+Epoch 45/200
+[1m1/2[0m [32m━━━━━━━━━━[0m[37m━━━━━━━━━━[0m [1m0s[0m 27ms/step - loss: 0.0289
+Epoch 45: val_loss improved from 0.05393 to 0.05346, saving model to /home/ounnha/Documents/Capstone/models/dns_trafficformer.h5
+WARNING:absl:You are saving your model as an HDF5 file via `model.save()` or `keras.saving.save_model(model)`. This file format is considered legacy. We recommend using instead the native Keras format, e.g. `model.save('my_model.keras')` or `keras.saving.save_model(model, 'my_model.keras')`. 
+
+Epoch 45: finished saving model to /home/ounnha/Documents/Capstone/models/dns_trafficformer.h5
+[1m2/2[0m [32m━━━━━━━━━━━━━━━━━━━━[0m[37m[0m [1m0s[0m 377ms/step - loss: 0.0287 - val_loss: 0.0535
+Epoch 46/200
+[1m1/2[0m [32m━━━━━━━━━━[0m[37m━━━━━━━━━━[0m [1m0s[0m 25ms/step - loss: 0.0275
+Epoch 46: val_loss improved from 0.05346 to 0.05302, saving model to /home/ounnha/Documents/Capstone/models/dns_trafficformer.h5
+WARNING:absl:You are saving your model as an HDF5 file via `model.save()` or `keras.saving.save_model(model)`. This file format is considered legacy. We recommend using instead the native Keras format, e.g. `model.save('my_model.keras')` or `keras.saving.save_model(model, 'my_model.keras')`. 
+
+Epoch 46: finished saving model to /home/ounnha/Documents/Capstone/models/dns_trafficformer.h5
+[1m2/2[0m [32m━━━━━━━━━━━━━━━━━━━━[0m[37m[0m [1m0s[0m 400ms/step - loss: 0.0282 - val_loss: 0.0530
+Epoch 47/200
+[1m1/2[0m [32m━━━━━━━━━━[0m[37m━━━━━━━━━━[0m [1m0s[0m 38ms/step - loss: 0.0285
+Epoch 47: val_loss improved from 0.05302 to 0.05258, saving model to /home/ounnha/Documents/Capstone/models/dns_trafficformer.h5
+WARNING:absl:You are saving your model as an HDF5 file via `model.save()` or `keras.saving.save_model(model)`. This file format is considered legacy. We recommend using instead the native Keras format, e.g. `model.save('my_model.keras')` or `keras.saving.save_model(model, 'my_model.keras')`. 
+
+Epoch 47: finished saving model to /home/ounnha/Documents/Capstone/models/dns_trafficformer.h5
+[1m2/2[0m [32m━━━━━━━━━━━━━━━━━━━━[0m[37m[0m [1m0s[0m 401ms/step - loss: 0.0282 - val_loss: 0.0526
+Epoch 48/200
+[1m1/2[0m [32m━━━━━━━━━━[0m[37m━━━━━━━━━━[0m [1m0s[0m 45ms/step - loss: 0.0258
+Epoch 48: val_loss improved from 0.05258 to 0.05215, saving model to /home/ounnha/Documents/Capstone/models/dns_trafficformer.h5
+WARNING:absl:You are saving your model as an HDF5 file via `model.save()` or `keras.saving.save_model(model)`. This file format is considered legacy. We recommend using instead the native Keras format, e.g. `model.save('my_model.keras')` or `keras.saving.save_model(model, 'my_model.keras')`. 
+
+Epoch 48: finished saving model to /home/ounnha/Documents/Capstone/models/dns_trafficformer.h5
+[1m2/2[0m [32m━━━━━━━━━━━━━━━━━━━━[0m[37m[0m [1m0s[0m 326ms/step - loss: 0.0279 - val_loss: 0.0522
+Epoch 49/200
+[1m1/2[0m [32m━━━━━━━━━━[0m[37m━━━━━━━━━━[0m [1m0s[0m 39ms/step - loss: 0.0266
+Epoch 49: val_loss improved from 0.05215 to 0.05174, saving model to /home/ounnha/Documents/Capstone/models/dns_trafficformer.h5
+WARNING:absl:You are saving your model as an HDF5 file via `model.save()` or `keras.saving.save_model(model)`. This file format is considered legacy. We recommend using instead the native Keras format, e.g. `model.save('my_model.keras')` or `keras.saving.save_model(model, 'my_model.keras')`. 
+
+Epoch 49: finished saving model to /home/ounnha/Documents/Capstone/models/dns_trafficformer.h5
+[1m2/2[0m [32m━━━━━━━━━━━━━━━━━━━━[0m[37m[0m [1m0s[0m 393ms/step - loss: 0.0276 - val_loss: 0.0517
+Epoch 50/200
+[1m1/2[0m [32m━━━━━━━━━━[0m[37m━━━━━━━━━━[0m [1m0s[0m 69ms/step - loss: 0.0285
+Epoch 50: val_loss improved from 0.05174 to 0.05132, saving model to /home/ounnha/Documents/Capstone/models/dns_trafficformer.h5
+WARNING:absl:You are saving your model as an HDF5 file via `model.save()` or `keras.saving.save_model(model)`. This file format is considered legacy. We recommend using instead the native Keras format, e.g. `model.save('my_model.keras')` or `keras.saving.save_model(model, 'my_model.keras')`. 
+
+Epoch 50: finished saving model to /home/ounnha/Documents/Capstone/models/dns_trafficformer.h5
+[1m2/2[0m [32m━━━━━━━━━━━━━━━━━━━━[0m[37m[0m [1m1s[0m 481ms/step - loss: 0.0275 - val_loss: 0.0513
+Epoch 51/200
+[1m1/2[0m [32m━━━━━━━━━━[0m[37m━━━━━━━━━━[0m [1m0s[0m 28ms/step - loss: 0.0270
+Epoch 51: val_loss improved from 0.05132 to 0.05090, saving model to /home/ounnha/Documents/Capstone/models/dns_trafficformer.h5
+WARNING:absl:You are saving your model as an HDF5 file via `model.save()` or `keras.saving.save_model(model)`. This file format is considered legacy. We recommend using instead the native Keras format, e.g. `model.save('my_model.keras')` or `keras.saving.save_model(model, 'my_model.keras')`. 
+
+Epoch 51: finished saving model to /home/ounnha/Documents/Capstone/models/dns_trafficformer.h5
+[1m2/2[0m [32m━━━━━━━━━━━━━━━━━━━━[0m[37m[0m [1m0s[0m 229ms/step - loss: 0.0272 - val_loss: 0.0509
+Epoch 52/200
+[1m1/2[0m [32m━━━━━━━━━━[0m[37m━━━━━━━━━━[0m [1m0s[0m 38ms/step - loss: 0.0260
+Epoch 52: val_loss improved from 0.05090 to 0.05049, saving model to /home/ounnha/Documents/Capstone/models/dns_trafficformer.h5
+WARNING:absl:You are saving your model as an HDF5 file via `model.save()` or `keras.saving.save_model(model)`. This file format is considered legacy. We recommend using instead the native Keras format, e.g. `model.save('my_model.keras')` or `keras.saving.save_model(model, 'my_model.keras')`. 
+
+Epoch 52: finished saving model to /home/ounnha/Documents/Capstone/models/dns_trafficformer.h5
+[1m2/2[0m [32m━━━━━━━━━━━━━━━━━━━━[0m[37m[0m [1m0s[0m 267ms/step - loss: 0.0269 - val_loss: 0.0505
+Epoch 53/200
+[1m1/2[0m [32m━━━━━━━━━━[0m[37m━━━━━━━━━━[0m [1m0s[0m 24ms/step - loss: 0.0263
+Epoch 53: val_loss improved from 0.05049 to 0.05007, saving model to /home/ounnha/Documents/Capstone/models/dns_trafficformer.h5
+WARNING:absl:You are saving your model as an HDF5 file via `model.save()` or `keras.saving.save_model(model)`. This file format is considered legacy. We recommend using instead the native Keras format, e.g. `model.save('my_model.keras')` or `keras.saving.save_model(model, 'my_model.keras')`. 
+
+Epoch 53: finished saving model to /home/ounnha/Documents/Capstone/models/dns_trafficformer.h5
+[1m2/2[0m [32m━━━━━━━━━━━━━━━━━━━━[0m[37m[0m [1m0s[0m 218ms/step - loss: 0.0270 - val_loss: 0.0501
+Epoch 54/200
+[1m1/2[0m [32m━━━━━━━━━━[0m[37m━━━━━━━━━━[0m [1m0s[0m 24ms/step - loss: 0.0267
+Epoch 54: val_loss improved from 0.05007 to 0.04964, saving model to /home/ounnha/Documents/Capstone/models/dns_trafficformer.h5
+WARNING:absl:You are saving your model as an HDF5 file via `model.save()` or `keras.saving.save_model(model)`. This file format is considered legacy. We recommend using instead the native Keras format, e.g. `model.save('my_model.keras')` or `keras.saving.save_model(model, 'my_model.keras')`. 
+
+Epoch 54: finished saving model to /home/ounnha/Documents/Capstone/models/dns_trafficformer.h5
+[1m2/2[0m [32m━━━━━━━━━━━━━━━━━━━━[0m[37m[0m [1m0s[0m 213ms/step - loss: 0.0262 - val_loss: 0.0496
+Epoch 55/200
+[1m1/2[0m [32m━━━━━━━━━━[0m[37m━━━━━━━━━━[0m [1m0s[0m 89ms/step - loss: 0.0261
+Epoch 55: val_loss improved from 0.04964 to 0.04923, saving model to /home/ounnha/Documents/Capstone/models/dns_trafficformer.h5
+WARNING:absl:You are saving your model as an HDF5 file via `model.save()` or `keras.saving.save_model(model)`. This file format is considered legacy. We recommend using instead the native Keras format, e.g. `model.save('my_model.keras')` or `keras.saving.save_model(model, 'my_model.keras')`. 
+
+Epoch 55: finished saving model to /home/ounnha/Documents/Capstone/models/dns_trafficformer.h5
+[1m2/2[0m [32m━━━━━━━━━━━━━━━━━━━━[0m[37m[0m [1m0s[0m 217ms/step - loss: 0.0256 - val_loss: 0.0492
+Epoch 56/200
+[1m1/2[0m [32m━━━━━━━━━━[0m[37m━━━━━━━━━━[0m [1m0s[0m 24ms/step - loss: 0.0251
+Epoch 56: val_loss improved from 0.04923 to 0.04884, saving model to /home/ounnha/Documents/Capstone/models/dns_trafficformer.h5
+WARNING:absl:You are saving your model as an HDF5 file via `model.save()` or `keras.saving.save_model(model)`. This file format is considered legacy. We recommend using instead the native Keras format, e.g. `model.save('my_model.keras')` or `keras.saving.save_model(model, 'my_model.keras')`. 
+
+Epoch 56: finished saving model to /home/ounnha/Documents/Capstone/models/dns_trafficformer.h5
+[1m2/2[0m [32m━━━━━━━━━━━━━━━━━━━━[0m[37m[0m [1m0s[0m 221ms/step - loss: 0.0256 - val_loss: 0.0488
+Epoch 57/200
+[1m1/2[0m [32m━━━━━━━━━━[0m[37m━━━━━━━━━━[0m [1m0s[0m 26ms/step - loss: 0.0279
+Epoch 57: val_loss improved from 0.04884 to 0.04844, saving model to /home/ounnha/Documents/Capstone/models/dns_trafficformer.h5
+WARNING:absl:You are saving your model as an HDF5 file via `model.save()` or `keras.saving.save_model(model)`. This file format is considered legacy. We recommend using instead the native Keras format, e.g. `model.save('my_model.keras')` or `keras.saving.save_model(model, 'my_model.keras')`. 
+
+Epoch 57: finished saving model to /home/ounnha/Documents/Capstone/models/dns_trafficformer.h5
+[1m2/2[0m [32m━━━━━━━━━━━━━━━━━━━━[0m[37m[0m [1m0s[0m 226ms/step - loss: 0.0254 - val_loss: 0.0484
+Epoch 58/200
+[1m1/2[0m [32m━━━━━━━━━━[0m[37m━━━━━━━━━━[0m [1m0s[0m 27ms/step - loss: 0.0232
+Epoch 58: val_loss improved from 0.04844 to 0.04806, saving model to /home/ounnha/Documents/Capstone/models/dns_trafficformer.h5
+WARNING:absl:You are saving your model as an HDF5 file via `model.save()` or `keras.saving.save_model(model)`. This file format is considered legacy. We recommend using instead the native Keras format, e.g. `model.save('my_model.keras')` or `keras.saving.save_model(model, 'my_model.keras')`. 
+
+Epoch 58: finished saving model to /home/ounnha/Documents/Capstone/models/dns_trafficformer.h5
+[1m2/2[0m [32m━━━━━━━━━━━━━━━━━━━━[0m[37m[0m [1m0s[0m 222ms/step - loss: 0.0251 - val_loss: 0.0481
+Epoch 59/200
+[1m1/2[0m [32m━━━━━━━━━━[0m[37m━━━━━━━━━━[0m [1m0s[0m 24ms/step - loss: 0.0271
+Epoch 59: val_loss improved from 0.04806 to 0.04768, saving model to /home/ounnha/Documents/Capstone/models/dns_trafficformer.h5
+WARNING:absl:You are saving your model as an HDF5 file via `model.save()` or `keras.saving.save_model(model)`. This file format is considered legacy. We recommend using instead the native Keras format, e.g. `model.save('my_model.keras')` or `keras.saving.save_model(model, 'my_model.keras')`. 
+
+Epoch 59: finished saving model to /home/ounnha/Documents/Capstone/models/dns_trafficformer.h5
+[1m2/2[0m [32m━━━━━━━━━━━━━━━━━━━━[0m[37m[0m [1m0s[0m 216ms/step - loss: 0.0246 - val_loss: 0.0477
+Epoch 60/200
+[1m1/2[0m [32m━━━━━━━━━━[0m[37m━━━━━━━━━━[0m [1m0s[0m 29ms/step - loss: 0.0254
+Epoch 60: val_loss improved from 0.04768 to 0.04730, saving model to /home/ounnha/Documents/Capstone/models/dns_trafficformer.h5
+WARNING:absl:You are saving your model as an HDF5 file via `model.save()` or `keras.saving.save_model(model)`. This file format is considered legacy. We recommend using instead the native Keras format, e.g. `model.save('my_model.keras')` or `keras.saving.save_model(model, 'my_model.keras')`. 
+
+Epoch 60: finished saving model to /home/ounnha/Documents/Capstone/models/dns_trafficformer.h5
+[1m2/2[0m [32m━━━━━━━━━━━━━━━━━━━━[0m[37m[0m [1m1s[0m 716ms/step - loss: 0.0243 - val_loss: 0.0473
+Epoch 61/200
+[1m1/2[0m [32m━━━━━━━━━━[0m[37m━━━━━━━━━━[0m [1m0s[0m 106ms/step - loss: 0.0251
+Epoch 61: val_loss improved from 0.04730 to 0.04694, saving model to /home/ounnha/Documents/Capstone/models/dns_trafficformer.h5
+WARNING:absl:You are saving your model as an HDF5 file via `model.save()` or `keras.saving.save_model(model)`. This file format is considered legacy. We recommend using instead the native Keras format, e.g. `model.save('my_model.keras')` or `keras.saving.save_model(model, 'my_model.keras')`. 
+
+Epoch 61: finished saving model to /home/ounnha/Documents/Capstone/models/dns_trafficformer.h5
+[1m2/2[0m [32m━━━━━━━━━━━━━━━━━━━━[0m[37m[0m [1m1s[0m 964ms/step - loss: 0.0238 - val_loss: 0.0469
+Epoch 62/200
+[1m1/2[0m [32m━━━━━━━━━━[0m[37m━━━━━━━━━━[0m [1m0s[0m 71ms/step - loss: 0.0212
+Epoch 62: val_loss improved from 0.04694 to 0.04658, saving model to /home/ounnha/Documents/Capstone/models/dns_trafficformer.h5
+WARNING:absl:You are saving your model as an HDF5 file via `model.save()` or `keras.saving.save_model(model)`. This file format is considered legacy. We recommend using instead the native Keras format, e.g. `model.save('my_model.keras')` or `keras.saving.save_model(model, 'my_model.keras')`. 
+
+Epoch 62: finished saving model to /home/ounnha/Documents/Capstone/models/dns_trafficformer.h5
+[1m2/2[0m [32m━━━━━━━━━━━━━━━━━━━━[0m[37m[0m [1m1s[0m 924ms/step - loss: 0.0236 - val_loss: 0.0466
+Epoch 63/200
+[1m1/2[0m [32m━━━━━━━━━━[0m[37m━━━━━━━━━━[0m [1m0s[0m 85ms/step - loss: 0.0246[1m2/2[0m [32m━━━━━━━━━━━━━━━━━━━━[0m[37m[0m [1m0s[0m 55ms/step - loss: 0.0234
+Epoch 63: val_loss improved from 0.04658 to 0.04624, saving model to /home/ounnha/Documents/Capstone/models/dns_trafficformer.h5
+WARNING:absl:You are saving your model as an HDF5 file via `model.save()` or `keras.saving.save_model(model)`. This file format is considered legacy. We recommend using instead the native Keras format, e.g. `model.save('my_model.keras')` or `keras.saving.save_model(model, 'my_model.keras')`. 
+
+Epoch 63: finished saving model to /home/ounnha/Documents/Capstone/models/dns_trafficformer.h5
+[1m2/2[0m [32m━━━━━━━━━━━━━━━━━━━━[0m[37m[0m [1m1s[0m 809ms/step - loss: 0.0234 - val_loss: 0.0462
+Epoch 64/200
+[1m1/2[0m [32m━━━━━━━━━━[0m[37m━━━━━━━━━━[0m [1m0s[0m 26ms/step - loss: 0.0240
+Epoch 64: val_loss improved from 0.04624 to 0.04589, saving model to /home/ounnha/Documents/Capstone/models/dns_trafficformer.h5
+WARNING:absl:You are saving your model as an HDF5 file via `model.save()` or `keras.saving.save_model(model)`. This file format is considered legacy. We recommend using instead the native Keras format, e.g. `model.save('my_model.keras')` or `keras.saving.save_model(model, 'my_model.keras')`. 
+
+Epoch 64: finished saving model to /home/ounnha/Documents/Capstone/models/dns_trafficformer.h5
+[1m2/2[0m [32m━━━━━━━━━━━━━━━━━━━━[0m[37m[0m [1m0s[0m 221ms/step - loss: 0.0231 - val_loss: 0.0459
+Epoch 65/200
+[1m1/2[0m [32m━━━━━━━━━━[0m[37m━━━━━━━━━━[0m [1m0s[0m 21ms/step - loss: 0.0237
+Epoch 65: val_loss improved from 0.04589 to 0.04557, saving model to /home/ounnha/Documents/Capstone/models/dns_trafficformer.h5
+WARNING:absl:You are saving your model as an HDF5 file via `model.save()` or `keras.saving.save_model(model)`. This file format is considered legacy. We recommend using instead the native Keras format, e.g. `model.save('my_model.keras')` or `keras.saving.save_model(model, 'my_model.keras')`. 
+
+Epoch 65: finished saving model to /home/ounnha/Documents/Capstone/models/dns_trafficformer.h5
+[1m2/2[0m [32m━━━━━━━━━━━━━━━━━━━━[0m[37m[0m [1m0s[0m 253ms/step - loss: 0.0229 - val_loss: 0.0456
+Epoch 66/200
+[1m1/2[0m [32m━━━━━━━━━━[0m[37m━━━━━━━━━━[0m [1m0s[0m 24ms/step - loss: 0.0221
+Epoch 66: val_loss improved from 0.04557 to 0.04526, saving model to /home/ounnha/Documents/Capstone/models/dns_trafficformer.h5
+WARNING:absl:You are saving your model as an HDF5 file via `model.save()` or `keras.saving.save_model(model)`. This file format is considered legacy. We recommend using instead the native Keras format, e.g. `model.save('my_model.keras')` or `keras.saving.save_model(model, 'my_model.keras')`. 
+
+Epoch 66: finished saving model to /home/ounnha/Documents/Capstone/models/dns_trafficformer.h5
+[1m2/2[0m [32m━━━━━━━━━━━━━━━━━━━━[0m[37m[0m [1m0s[0m 219ms/step - loss: 0.0226 - val_loss: 0.0453
+Epoch 67/200
+[1m1/2[0m [32m━━━━━━━━━━[0m[37m━━━━━━━━━━[0m [1m0s[0m 27ms/step - loss: 0.0200
+Epoch 67: val_loss improved from 0.04526 to 0.04495, saving model to /home/ounnha/Documents/Capstone/models/dns_trafficformer.h5
+WARNING:absl:You are saving your model as an HDF5 file via `model.save()` or `keras.saving.save_model(model)`. This file format is considered legacy. We recommend using instead the native Keras format, e.g. `model.save('my_model.keras')` or `keras.saving.save_model(model, 'my_model.keras')`. 
+
+Epoch 67: finished saving model to /home/ounnha/Documents/Capstone/models/dns_trafficformer.h5
+[1m2/2[0m [32m━━━━━━━━━━━━━━━━━━━━[0m[37m[0m [1m0s[0m 356ms/step - loss: 0.0224 - val_loss: 0.0450
+Epoch 68/200
+[1m1/2[0m [32m━━━━━━━━━━[0m[37m━━━━━━━━━━[0m [1m0s[0m 33ms/step - loss: 0.0214
+Epoch 68: val_loss improved from 0.04495 to 0.04463, saving model to /home/ounnha/Documents/Capstone/models/dns_trafficformer.h5
+WARNING:absl:You are saving your model as an HDF5 file via `model.save()` or `keras.saving.save_model(model)`. This file format is considered legacy. We recommend using instead the native Keras format, e.g. `model.save('my_model.keras')` or `keras.saving.save_model(model, 'my_model.keras')`. 
+
+Epoch 68: finished saving model to /home/ounnha/Documents/Capstone/models/dns_trafficformer.h5
+[1m2/2[0m [32m━━━━━━━━━━━━━━━━━━━━[0m[37m[0m [1m0s[0m 373ms/step - loss: 0.0225 - val_loss: 0.0446
+Epoch 69/200
+[1m1/2[0m [32m━━━━━━━━━━[0m[37m━━━━━━━━━━[0m [1m0s[0m 38ms/step - loss: 0.0212
+Epoch 69: val_loss improved from 0.04463 to 0.04430, saving model to /home/ounnha/Documents/Capstone/models/dns_trafficformer.h5
+WARNING:absl:You are saving your model as an HDF5 file via `model.save()` or `keras.saving.save_model(model)`. This file format is considered legacy. We recommend using instead the native Keras format, e.g. `model.save('my_model.keras')` or `keras.saving.save_model(model, 'my_model.keras')`. 
+
+Epoch 69: finished saving model to /home/ounnha/Documents/Capstone/models/dns_trafficformer.h5
+[1m2/2[0m [32m━━━━━━━━━━━━━━━━━━━━[0m[37m[0m [1m0s[0m 226ms/step - loss: 0.0217 - val_loss: 0.0443
+Epoch 70/200
+[1m1/2[0m [32m━━━━━━━━━━[0m[37m━━━━━━━━━━[0m [1m0s[0m 24ms/step - loss: 0.0225
+Epoch 70: val_loss improved from 0.04430 to 0.04398, saving model to /home/ounnha/Documents/Capstone/models/dns_trafficformer.h5
+WARNING:absl:You are saving your model as an HDF5 file via `model.save()` or `keras.saving.save_model(model)`. This file format is considered legacy. We recommend using instead the native Keras format, e.g. `model.save('my_model.keras')` or `keras.saving.save_model(model, 'my_model.keras')`. 
+
+Epoch 70: finished saving model to /home/ounnha/Documents/Capstone/models/dns_trafficformer.h5
+[1m2/2[0m [32m━━━━━━━━━━━━━━━━━━━━[0m[37m[0m [1m0s[0m 236ms/step - loss: 0.0219 - val_loss: 0.0440
+Epoch 71/200
+[1m1/2[0m [32m━━━━━━━━━━[0m[37m━━━━━━━━━━[0m [1m0s[0m 34ms/step - loss: 0.0219
+Epoch 71: val_loss improved from 0.04398 to 0.04366, saving model to /home/ounnha/Documents/Capstone/models/dns_trafficformer.h5
+WARNING:absl:You are saving your model as an HDF5 file via `model.save()` or `keras.saving.save_model(model)`. This file format is considered legacy. We recommend using instead the native Keras format, e.g. `model.save('my_model.keras')` or `keras.saving.save_model(model, 'my_model.keras')`. 
+
+Epoch 71: finished saving model to /home/ounnha/Documents/Capstone/models/dns_trafficformer.h5
+[1m2/2[0m [32m━━━━━━━━━━━━━━━━━━━━[0m[37m[0m [1m0s[0m 278ms/step - loss: 0.0212 - val_loss: 0.0437
+Epoch 72/200
+[1m1/2[0m [32m━━━━━━━━━━[0m[37m━━━━━━━━━━[0m [1m0s[0m 63ms/step - loss: 0.0202
+Epoch 72: val_loss improved from 0.04366 to 0.04334, saving model to /home/ounnha/Documents/Capstone/models/dns_trafficformer.h5
+WARNING:absl:You are saving your model as an HDF5 file via `model.save()` or `keras.saving.save_model(model)`. This file format is considered legacy. We recommend using instead the native Keras format, e.g. `model.save('my_model.keras')` or `keras.saving.save_model(model, 'my_model.keras')`. 
+
+Epoch 72: finished saving model to /home/ounnha/Documents/Capstone/models/dns_trafficformer.h5
+[1m2/2[0m [32m━━━━━━━━━━━━━━━━━━━━[0m[37m[0m [1m1s[0m 755ms/step - loss: 0.0214 - val_loss: 0.0433
+Epoch 73/200
+[1m1/2[0m [32m━━━━━━━━━━[0m[37m━━━━━━━━━━[0m [1m0s[0m 62ms/step - loss: 0.0211
+Epoch 73: val_loss improved from 0.04334 to 0.04302, saving model to /home/ounnha/Documents/Capstone/models/dns_trafficformer.h5
+WARNING:absl:You are saving your model as an HDF5 file via `model.save()` or `keras.saving.save_model(model)`. This file format is considered legacy. We recommend using instead the native Keras format, e.g. `model.save('my_model.keras')` or `keras.saving.save_model(model, 'my_model.keras')`. 
+
+Epoch 73: finished saving model to /home/ounnha/Documents/Capstone/models/dns_trafficformer.h5
+[1m2/2[0m [32m━━━━━━━━━━━━━━━━━━━━[0m[37m[0m [1m1s[0m 906ms/step - loss: 0.0210 - val_loss: 0.0430
+Epoch 74/200
+[1m1/2[0m [32m━━━━━━━━━━[0m[37m━━━━━━━━━━[0m [1m0s[0m 65ms/step - loss: 0.0218
+Epoch 74: val_loss improved from 0.04302 to 0.04270, saving model to /home/ounnha/Documents/Capstone/models/dns_trafficformer.h5
+WARNING:absl:You are saving your model as an HDF5 file via `model.save()` or `keras.saving.save_model(model)`. This file format is considered legacy. We recommend using instead the native Keras format, e.g. `model.save('my_model.keras')` or `keras.saving.save_model(model, 'my_model.keras')`. 
+
+Epoch 74: finished saving model to /home/ounnha/Documents/Capstone/models/dns_trafficformer.h5
+[1m2/2[0m [32m━━━━━━━━━━━━━━━━━━━━[0m[37m[0m [1m1s[0m 701ms/step - loss: 0.0216 - val_loss: 0.0427
+Epoch 75/200
+[1m1/2[0m [32m━━━━━━━━━━[0m[37m━━━━━━━━━━[0m [1m0s[0m 79ms/step - loss: 0.0226
+Epoch 75: val_loss improved from 0.04270 to 0.04238, saving model to /home/ounnha/Documents/Capstone/models/dns_trafficformer.h5
+WARNING:absl:You are saving your model as an HDF5 file via `model.save()` or `keras.saving.save_model(model)`. This file format is considered legacy. We recommend using instead the native Keras format, e.g. `model.save('my_model.keras')` or `keras.saving.save_model(model, 'my_model.keras')`. 
+
+Epoch 75: finished saving model to /home/ounnha/Documents/Capstone/models/dns_trafficformer.h5
+[1m2/2[0m [32m━━━━━━━━━━━━━━━━━━━━[0m[37m[0m [1m1s[0m 908ms/step - loss: 0.0209 - val_loss: 0.0424
+Epoch 76/200
+[1m1/2[0m [32m━━━━━━━━━━[0m[37m━━━━━━━━━━[0m [1m0s[0m 59ms/step - loss: 0.0205
+Epoch 76: val_loss improved from 0.04238 to 0.04205, saving model to /home/ounnha/Documents/Capstone/models/dns_trafficformer.h5
+WARNING:absl:You are saving your model as an HDF5 file via `model.save()` or `keras.saving.save_model(model)`. This file format is considered legacy. We recommend using instead the native Keras format, e.g. `model.save('my_model.keras')` or `keras.saving.save_model(model, 'my_model.keras')`. 

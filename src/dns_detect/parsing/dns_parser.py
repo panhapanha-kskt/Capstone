@@ -38,15 +38,37 @@ FEATURES_8 = [
     "unique_char_ratio",
 ]
 
+from dns_detect.features.aggregates import FEATURES_AGG, FEATURES_WINDOW, add_window_features  # noqa: E402
+
+
+def _excluded_features() -> list:
+    """training.exclude_features in config/settings.yaml — inputs switched off for both paths."""
+    try:
+        from dns_detect.config import settings
+        return list(getattr(settings.training, "exclude_features", None) or [])
+    except Exception:
+        return []
+
+
+# Path A model inputs. FEATURES_8 stays the raw per-query vector (duplicate keys, schema
+# checks, drift monitoring); the model drops answer_count, which is 0 in every PCAP-derived
+# row and so encodes the capture source rather than traffic, and adds the behaviour features.
+PATH_A_BASE_FEATURES = [f for f in FEATURES_8 if f != "answer_count"]
+PATH_A_FEATURES_ALL = PATH_A_BASE_FEATURES + FEATURES_AGG
+PATH_A_FEATURES = [f for f in PATH_A_FEATURES_ALL if f not in _excluded_features()]
+
 # Multi-feature set for Path B (Trafficformer). A single scalar (query length)
 # is too weak (Kitsune/Nadler): the autoencoder reconstructs this vector instead.
-PATH_B_FEATURES = [
+# The window features are added; bigram_logprob is not, because Path B is fitted on
+# benign traffic only and the bigram model is itself a benign-traffic model.
+PATH_B_BASE_FEATURES = [
     "query_length",
     "query_entropy",
     "subdomain_count",
     "digit_ratio",
     "longest_label",
 ]
+PATH_B_FEATURES = [f for f in PATH_B_BASE_FEATURES + FEATURES_WINDOW if f not in _excluded_features()]
 
 # Week 3 feature names that map to FEATURES_8 (for bridge alignment)
 WEEK3_TO_MODEL_MAP = {
@@ -341,6 +363,8 @@ def load_multifeature_with_meta(path: str, features=None):
     }
     df = df.rename(columns={k: v for k, v in rename_map.items()
                             if k in df.columns and v not in df.columns})
+    if any(f in FEATURES_WINDOW and f not in df.columns for f in features):
+        df = add_window_features(df)
     for col in features:
         if col not in df.columns:
             df[col] = 0

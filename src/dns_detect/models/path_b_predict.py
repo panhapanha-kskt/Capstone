@@ -47,21 +47,39 @@ def load_model_artifacts(save_name: str, model_dir: str = None):
     threshold_path = os.path.join(model_dir, f"{save_name}_threshold.json")
     norm_path      = os.path.join(model_dir, f"{save_name}_norm.json")
 
-    # Training saves .h5; .keras is also accepted so either format loads.
+    # Training saves .keras; older runs saved .h5.
     candidates = [os.path.join(model_dir, f"{save_name}{ext}")
-                  for ext in (".h5", ".keras")]
+                  for ext in (".keras", ".h5")]
     model_path = next((p for p in candidates if os.path.exists(p)), None)
     if model_path is None:
         raise FileNotFoundError(
             f"Model not found: tried {' and '.join(candidates)}"
         )
 
-    print(f"[*] Loading model: {model_path}")
-    model = tf.keras.models.load_model(model_path, compile=False)
-
+    td = {}
     if os.path.exists(threshold_path):
         with open(threshold_path) as f:
             td = json.load(f)
+
+    print(f"[*] Loading model: {model_path}")
+    try:
+        model = tf.keras.models.load_model(model_path, compile=False)
+    except TypeError:
+        # Keras 3 cannot rebuild MultiHeadAttention from a legacy .h5 config. Rebuild the same
+        # architecture in code and load only the weights. Models saved before the bottleneck
+        # was added have no latent_dim in their threshold file → latent_dim=0 (old layout).
+        from dns_detect.models.path_b_train import build_trafficformer
+        latent = int(td.get("latent_dim", 0) or 0)
+        model = build_trafficformer(
+            input_shape=[int(td.get("window_size", 20)), int(td.get("n_features", len(PATH_B_FEATURES)))],
+            head_size=64, num_heads=3, ff_dim=3, num_transformer_blocks=3,
+            mlp_units=[64], mlp_dropout=0.4, dropout=0.25,
+            latent_dim=latent, noise_std=0.05 if latent else 0.0,
+        )
+        model.load_weights(model_path)
+        print(f"[*] Legacy .h5 — architecture rebuilt in code (latent_dim={latent}), weights loaded")
+
+    if td:
         threshold   = float(td["threshold"])
         window_size = int(td.get("window_size", 20))
         error_mean  = float(td.get("error_mean", 0.0))

@@ -10,9 +10,9 @@ This week focused on making the training data trustworthy before improving the m
 - **"Find new data" now keeps labeled and unlabeled data** and reports which is which. Unlabeled PCAP captures used to be dropped.
 - **Two EDA stages now run**: EDA #1 right after the data is found (labeled data, unlabeled data, and how they compare) and EDA #2 after merging. `--eda-only` stops after both.
 - **Merge became a tested module** that records every row's original source, checks the schema, and reports duplicates and label problems.
-- **Path A's train/test split no longer leaks.** Before, 79.8 % of test rows had an identical copy in the training set; now 0 %.
-- **Labeling (Step 8) was rebuilt from DNS-tunneling research.** On the existing labeled data it makes 0 wrong labels, against 1,094 for the old rule, and catches 100 % of DNSExfiltrator queries instead of 71.7 %.
-- **The main finding:** the current labeled data is too easy, so the models' near-perfect scores say little about real traffic. Once the lab's NXDOMAIN-attack log is added, the score drops to F1 0.985, the first non-perfect result, and it shows exactly what the model cannot yet see.
+- **Path A's split is free of exact-copy leakage.** Before, 79.8 % of test rows had an identical copy in the training set; now 0 %. Leakage within a session or capture remains and is tracked as N2 in `Need-Improve.md`.
+- **Labeling (Step 8) was rebuilt from DNS-tunneling research.** On the existing labeled data it makes 0 wrong labels on the development data (not yet validated externally — N6 in `Need-Improve.md`), against 1,094 for the old rule, and catches 100 % of DNSExfiltrator queries instead of 71.7 %.
+- **The main finding:** the current labeled data is too easy, so the models' near-perfect scores say little about real traffic. Once the lab's NXDOMAIN-attack log is added, one run on one split gives F1 0.985, precision 0.971 — single-seed numbers against a stand-in Transformer baseline (uncertainty bounds are N13). Unseen-tool recall is 0.32–0.36 (N1); that is the headline for Week 3.
 
 ![Training flow after Week 2](week2_training_flow.svg)
 
@@ -104,7 +104,7 @@ The score did not drop, so duplicates were not what made it perfect. The labeled
 | Lab NXDOMAIN attack | `2026-03-18.log`: 8,152 queries, one client, 3 minutes, 99.95 % NXDOMAIN | invisible per query (see below) |
 | Two logs are empty | `2026-03-19.log`, `2026-03-20.log`: server status lines only | add nothing to training |
 
-**First non-perfect score.** With the NXDOMAIN log included, 35 feature vectors (945 rows) appear with both labels. Short wordlist names like `apa-www.lab.local` look exactly like normal short names to Path A's per-query features. On test rows with real labels, the RF/GBT models reach **F1 0.985, precision 0.971, recall 1.0, PR-AUC 0.9999**. The NXDOMAIN attack is only visible as behaviour (one client, thousands of failed lookups). This run replaced the Transformer baseline with a stand-in; the decision models are real.
+**First non-perfect score.** With the NXDOMAIN log included, 35 feature vectors (945 rows) appear with both labels. Short wordlist names like `apa-www.lab.local` look exactly like normal short names to Path A's per-query features. On test rows with real labels, the RF/GBT models reach **F1 0.985, precision 0.971, recall 1.0, PR-AUC 0.9999 at 54.5 % attack share (N5)** — one run, one split, stand-in Transformer baseline (N13). The NXDOMAIN attack is only visible as behaviour (one client, thousands of failed lookups).
 
 ## 8. Testing
 

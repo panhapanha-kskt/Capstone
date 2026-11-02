@@ -48,9 +48,9 @@ from dns_detect.parsing.dns_parser import (
     _load_json_records, week3_record_to_length
 )
 from dns_detect.models.path_a import (
-    load_path_a_models, tree_ensemble_scores, load_threshold,
-    MODEL_RF, MODEL_GBT, MODEL_SCALER
+    load_threshold, score_frame, MODEL_RF, MODEL_GBT, MODEL_SCALER
 )
+from dns_detect.fusion import stacker
 from dns_detect.models.path_b_predict import score_records
 from dns_detect.utils.paths import PROJECT_ROOT
 
@@ -131,17 +131,14 @@ def run_path_a(week3_json_path: str) -> pd.DataFrame:
                 f"Run first: python -m dns_detect.models.path_a --train <labeled_data>"
             )
 
-    rf_model, gbt_model, scaler, threshold, decision = load_path_a_models()
-    print(f"   Decision: {decision}  |  threshold: {threshold:.4f}")
-
     df = load_as_dataframe(week3_json_path)
     for col in FEATURES_8:
         if col not in df.columns:
             df[col] = 0
 
-    X_scaled = scaler.transform(df[FEATURES_8].values)
-    scores   = tree_ensemble_scores(rf_model, gbt_model, X_scaled, decision)
-    preds    = (scores >= threshold).astype(int)
+    # Same feature code path as training: per-query + window features + bigram score.
+    scores, preds, threshold, decision = score_frame(df)
+    print(f"   Decision: {decision}  |  threshold: {threshold:.4f}")
 
     result_df = df.copy()
     result_df["ml_score_A"]   = scores
@@ -187,6 +184,14 @@ def run_path_b(week3_json_path: str, save_name: str,
 # MERGE AND COMPUTE COMBINED SCORE
 # ─────────────────────────────────────────────
 
+def _fusion_mode() -> str:
+    try:
+        from dns_detect.config import settings
+        return str(getattr(settings.ensemble, "fusion", "or") or "or").lower()
+    except Exception:
+        return "or"
+
+
 def merge_ml_scores(df_path_a: pd.DataFrame,
                     score_b: pd.Series,
                     label_b: pd.Series,
@@ -223,6 +228,20 @@ def merge_ml_scores(df_path_a: pd.DataFrame,
     df["ml_combined_label_thr"] = (
         df["ml_combined_score"] >= decision_threshold
     ).astype(int)
+
+    # Learned fusion (ensemble.fusion: lr) replaces the OR decision when a model is trained
+    # (scripts/train_fusion.py). The OR label is kept for comparison.
+    if _fusion_mode() == "lr":
+        loaded = stacker.load()
+        if loaded is None:
+            print("   [warn] ensemble.fusion is 'lr' but models/fusion_lr.pkl is missing — using the OR rule")
+        else:
+            prob, label = stacker.predict(df, *loaded)
+            df["ml_combined_label_or"] = df["ml_combined_label"]
+            df["ml_combined_score"] = prob
+            df["ml_combined_label"] = label
+            print(f"   Fusion: logistic regression (threshold {loaded[1]['threshold']:.4f}) — "
+                  f"{int(label.sum())} attack vs {int(df['ml_combined_label_or'].sum())} with the OR rule")
 
     df["ml_combined_verdict"] = df["ml_combined_label"].map({
         1: "ML_ATTACK", 0: "ml_benign"

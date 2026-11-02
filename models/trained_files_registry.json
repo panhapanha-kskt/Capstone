@@ -1,0 +1,109 @@
+{
+  "trained_files": [
+    {
+      "path": "/home/ounnha/Documents/Capstone/data/raw/2026-03-18.log",
+      "checksum": "892eedcf2e4a0092258416697eae9162e9bf98e721473bdbbdfd31b1222ca7c8",
+      "type": "log",
+      "records": "8152",
+      "trained_at": "2026-10-24T05:12:45Z"
+    },
+    {
+      "path": "/home/ounnha/Documents/Capstone/data/processed/extracted_2026-03-18_1792818763.json",
+      "checksum": "471eab2d1e23ffdf",
+      "type": "json",
+      "records": 8152,
+      "trained_at": "2026-10-24T05:12:46Z"
+    },
+    {
+      "path": "/home/ounnha/Downloads/dns2tcp_key_down.pcapng",
+      "checksum": "e8e871672c8ed87894ebd59b789fcbf51ec052a5746fd49eb433403f7d1cb597",
+      "type": "pcap",
+      "records": "22996",
+      "trained_at": "2026-10-24T06:45:08Z"
+    },
+    {
+      "path": "/home/ounnha/Downloads/dns2tcp_key_up.pcapng",
+      "checksum": "5fbca596b333fd76995b01515661fea574153a9667a322c45d48c87d86976f19",
+      "type": "pcap",
+      "records": "25018",
+      "trained_at": "2026-10-24T06:45:58Z"
+    },
+    {
+      "path": "/home/ounnha/Downloads/dns2tcp_txt_down.pcapng",
+      "checksum": "b6e316cce849ca91329a795a96bea15f229a95b5f991b212ac57b6e432f1da25",
+      "type": "pcap",
+      "records": "23574",
+      "trained_at": "2026-10-24T06:46:40Z"
+    },
+    {
+      "path": "/home/ounnha/Downloads/dns2tcp_txt_up.pcapng",
+      "checksum": "6cf6e4e1c24441b36a6090a78ab809fa0c5f2047ffe2f8390a4a144afbb2aca6",
+      "type": "pcap",
+      "records": "25014",
+      "trained_at": "2026-10-24T06:47:30Z"
+    },
+    {
+      "path": "/home/ounnha/Downloads/dnsexfiltrator_txt_up.pcap",
+      "checksum": "d617858ca4676b477e8b24308e6505be91a88f6a73d1eafd070b53dedaf835c7",
+      "type": "pcap",
+      "records": "111718",
+      "trained_at": "2026-10-24T06:50:15Z"
+    },
+    {
+      "path": "/home/ounnha/Documents/Capstone/data/processed/pcap_feat_dns2tcp_key_down_1792824225.json",
+      "checksum": "6f56a76368e81789",
+      "type": "json",
+      "records": 22996,
+      "trained_at": "2026-10-24T06:50:43Z"
+    },
+    {
+      "path": "/home/ounnha/Documents/Capstone/data/processed/pcap_feat_dns2tcp_key_up_1792824308.json",
+      "checksum": "23dda4f4bed56f1c",
+      "type": "json",
+      "records": 25018,
+      "trained_at": "2026-10-24T06:50:43Z"
+    },
+    {
+      "path": "/home/ounnha/Documents/Capstone/data/processed/pcap_feat_dns2tcp_txt_down_1792824358.json",
+      "checksum": "cba3ffa2728a4189",
+      "type": "json",
+      "records": 23574,
+      "trained_at": "2026-10-24T06:50:43Z"
+    },
+    {
+      "path": "/home/ounnha/Documents/Capstone/data/processed/pcap_feat_dns2tcp_txt_up_1792824400.json",
+      "checksum": "a49a46b4e7422810",
+      "type": "json",
+      "records": 25014,
+      "trained_at": "2026-10-24T06:50:43Z"
+    },
+    {
+      "path": "/home/ounnha/Documents/Capstone/data/processed/pcap_feat_dnsexfiltrator_txt_up_1792824450.json",
+      "checksum": "e8e99b21b2bc70cf",
+      "type": "json",
+      "records": 111718,
+      "trained_at": "2026-10-24T06:50:43Z"
+    },
+    {
+      "path": "data/processed/labeled_tunnels.json",
+      "checksum": "831aab545e62e154",
+      "type": "json",
+      "records": 10000,
+      "trained_at": "2026-10-24T07:29:24Z"
+    },
+    {
+      "path": "data/processed/labeled_benign.json",
+      "checksum": "ef521f387dcef6d3",
+      "type": "json",
+      "records": 5662,
+      "trained_at": "2026-10-24T07:29:24Z"
+    },
+    {
+      "path": "data/processed/labeled_benign.json",
+      "checksum": "d3ebd6cfe9d53494",
+      "type": "json",
+      "records": 8353,
+      "trained_at": "2026-10-24T09:16:53Z"
+    }
+  ]
+}

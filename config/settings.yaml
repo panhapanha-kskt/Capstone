@@ -30,7 +30,13 @@ training:
   path_b_threshold_percentile: 99   # Path B anomaly threshold = 99th pct of benign val error
   threshold_multiplier: 2.5         # only used by the mean+k·std fallback method
   sequence_length: 10               # Transformer baseline only
-  path_b_features: [query_length, query_entropy, subdomain_count, digit_ratio, longest_label]
+  # Path A alarm threshold: lowest score whose false-alarm rate on validation benign rows stays
+  # within this budget (0.001 = 1 per 1,000). Also used by the learned fusion model.
+  path_a_max_fpr: 0.001
+  # Model inputs switched off for Path A and Path B (see PATH_A_FEATURES / PATH_B_FEATURES in
+  # parsing/dns_parser.py). tunnel_rr_share_5m is off while benign data has no TXT/KEY/NULL
+  # queries: on this data it re-encodes the record-type shortcut (ML_IMPROVEMENT_GUIDE Step 6).
+  exclude_features: [tunnel_rr_share_5m]
 
 ensemble:
   # Path A production decision = RF + HistGradientBoosting soft-vote (50/50),
@@ -38,6 +44,9 @@ ensemble:
   # The Transformer is trained + reported as a baseline but excluded from the decision.
   path_a_models: [random_forest, hist_gradient_boosting]
   transformer_in_decision: false
+  # "or": alarm if Path A or Path B fires. "lr": learned logistic-regression fusion
+  # (scripts/train_fusion.py → models/fusion_lr.pkl); falls back to "or" if not trained.
+  fusion: or
   # Path A / Path B fusion weights used by fusion/bridge.py (ml_combined_score)
   rf_weight: 0.6
   tf_weight: 0.4
@@ -60,6 +69,16 @@ labeling:
   ordinary_max_subdomains: 10       # ordinary_domain (benign): few subdomains …
   ordinary_max_p95_length: 40       # … and short names
   min_attack_votes: 2               # attack needs this many attack LFs to agree
+  window_seconds: 0                 # N9: window size for per-time-window per-parent stats; 0 keeps the whole-batch
+                                    # behaviour so previous labeling output is byte-identical. Set e.g. 3600 (1h)
+                                    # to make labels reproducible across runs that add/remove other data.
+
+evaluation:
+  # N2/N11/N13 — shared split manifests + 5-seed cross-validation. Driver: scripts/run_cv.py
+  # Available strategies: exact_copy (current), capture_group, parent_domain_group, time, lofo.
+  strategies: [exact_copy, capture_group, parent_domain_group, time, lofo]
+  seeds: [42, 43, 44, 45, 46]
+  splits_dir: "data/processed/splits"
 
 detection:
   zscore_threshold: 2.0

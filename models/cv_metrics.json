@@ -1,0 +1,1776 @@
+{
+  "dataset_version": "88a5f2a3c37d088c34e39f859fb2fa6dad3ac56f966991d95577619d5e2b2a35",
+  "labeled_paths": [
+    "data/processed/labeled_tunnels.json",
+    "data/processed/labeled_benign.json"
+  ],
+  "by_strategy": {
+    "exact_copy": {
+      "per_seed": [
+        {
+          "manifest": "data/processed/splits/exact_copy_seed42.json",
+          "method": "grouped_by_exact_copy",
+          "record_type": {
+            "fpr": 0.0,
+            "f1": 1.0,
+            "precision": 1.0,
+            "recall": 1.0,
+            "pr_auc": 1.0,
+            "pr_auc_baseline": 0.5450038138825324,
+            "roc_auc": 1.0,
+            "support": {
+              "benign": 1193,
+              "attack": 1429
+            },
+            "threshold": null
+          },
+          "entropy_train_fit": {
+            "fpr": 0.09471919530595138,
+            "f1": 0.9556383338977311,
+            "precision": 0.9258530183727034,
+            "recall": 0.9874037788663401,
+            "pr_auc": 0.9955367205405445,
+            "pr_auc_baseline": 0.5450038138825324,
+            "roc_auc": 0.994870063708465,
+            "support": {
+              "benign": 1193,
+              "attack": 1429
+            },
+            "threshold": 3.785134
+          },
+          "entropy_4.0_literature": {
+            "fpr": 0.018440905280804692,
+            "f1": 0.8829869130100076,
+            "precision": 0.981180496150556,
+            "recall": 0.8026592022393282,
+            "pr_auc": 0.9955367205405445,
+            "pr_auc_baseline": 0.5450038138825324,
+            "roc_auc": 0.994870063708465,
+            "support": {
+              "benign": 1193,
+              "attack": 1429
+            },
+            "threshold": 4.0
+          },
+          "length_train_fit": {
+            "fpr": 0.08549874266554904,
+            "f1": 0.9655405405405405,
+            "precision": 0.9333768778576094,
+            "recall": 1.0,
+            "pr_auc": 0.9631908837030998,
+            "pr_auc_baseline": 0.5450038138825324,
+            "roc_auc": 0.9539962822553066,
+            "support": {
+              "benign": 1193,
+              "attack": 1429
+            },
+            "threshold": 25.04
+          }
+        },
+        {
+          "manifest": "data/processed/splits/exact_copy_seed43.json",
+          "method": "grouped_by_exact_copy",
+          "record_type": {
+            "fpr": 0.0,
+            "f1": 1.0,
+            "precision": 1.0,
+            "recall": 1.0,
+            "pr_auc": 1.0,
+            "pr_auc_baseline": 0.5450038138825324,
+            "roc_auc": 1.0,
+            "support": {
+              "benign": 1193,
+              "attack": 1429
+            },
+            "threshold": null
+          },
+          "entropy_train_fit": {
+            "fpr": 0.09555741827326068,
+            "f1": 0.9506970418225094,
+            "precision": 0.9246031746031746,
+            "recall": 0.9783065080475857,
+            "pr_auc": 0.9971841552122879,
+            "pr_auc_baseline": 0.5450038138825324,
+            "roc_auc": 0.9964875583427235,
+            "support": {
+              "benign": 1193,
+              "attack": 1429
+            },
+            "threshold": 3.785134
+          },
+          "entropy_4.0_literature": {
+            "fpr": 0.0016764459346186086,
+            "f1": 0.8945538818076477,
+            "precision": 0.9982758620689656,
+            "recall": 0.8103568929321203,
+            "pr_auc": 0.9971841552122879,
+            "pr_auc_baseline": 0.5450038138825324,
+            "roc_auc": 0.9964875583427235,
+            "support": {
+              "benign": 1193,
+              "attack": 1429
+            },
+            "threshold": 4.0
+          },
+          "length_train_fit": {
+            "fpr": 0.08046940486169321,
+            "f1": 0.967501692620176,
+            "precision": 0.9370491803278689,
+            "recall": 1.0,
+            "pr_auc": 0.9646851503867165,
+            "pr_auc_baseline": 0.5450038138825324,
+            "roc_auc": 0.95582758533714,
+            "support": {
+              "benign": 1193,
+              "attack": 1429
+            },
+            "threshold": 25.04
+          }
+        },
+        {
+          "manifest": "data/processed/splits/exact_copy_seed44.json",
+          "method": "grouped_by_exact_copy",
+          "record_type": {
+            "fpr": 0.0,
+            "f1": 1.0,
+            "precision": 1.0,
+            "recall": 1.0,
+            "pr_auc": 1.0,
+            "pr_auc_baseline": 0.5446224256292906,
+            "roc_auc": 1.0,
+            "support": {
+              "benign": 1194,
+              "attack": 1428
+            },
+            "threshold": null
+          },
+          "entropy_train_fit": {
+            "fpr": 0.076214405360134,
+            "f1": 0.9606568593910366,
+            "precision": 0.9391304347826087,
+            "recall": 0.9831932773109243,
+            "pr_auc": 0.9983217170062055,
+            "pr_auc_baseline": 0.5446224256292906,
+            "roc_auc": 0.9980399194853822,
+            "support": {
+              "benign": 1194,
+              "attack": 1428
+            },
+            "threshold": 3.785134
+          },
+          "entropy_4.0_literature": {
+            "fpr": 0.0008375209380234506,
+            "f1": 0.8956723338485317,
+            "precision": 0.9991379310344828,
+            "recall": 0.811624649859944,
+            "pr_auc": 0.9983217170062055,
+            "pr_auc_baseline": 0.5446224256292906,
+            "roc_auc": 0.9980399194853822,
+            "support": {
+              "benign": 1194,
+              "attack": 1428
+            },
+            "threshold": 4.0
+          },
+          "length_train_fit": {
+            "fpr": 0.07872696817420435,
+            "f1": 0.9681355932203389,
+            "precision": 0.938239159001314,
+            "recall": 1.0,
+            "pr_auc": 0.96526756788003,
+            "pr_auc_baseline": 0.5446224256292906,
+            "roc_auc": 0.9584119242336802,
+            "support": {
+              "benign": 1194,
+              "attack": 1428
+            },
+            "threshold": 25.04
+          }
+        },
+        {
+          "manifest": "data/processed/splits/exact_copy_seed45.json",
+          "method": "grouped_by_exact_copy",
+          "record_type": {
+            "fpr": 0.0,
+            "f1": 1.0,
+            "precision": 1.0,
+            "recall": 1.0,
+            "pr_auc": 1.0,
+            "pr_auc_baseline": 0.5450038138825324,
+            "roc_auc": 1.0,
+            "support": {
+              "benign": 1193,
+              "attack": 1429
+            },
+            "threshold": null
+          },
+          "entropy_train_fit": {
+            "fpr": 0.07124895222129086,
+            "f1": 0.9598076262452765,
+            "precision": 0.9426450742240216,
+            "recall": 0.9776067179846046,
+            "pr_auc": 0.9977269772418947,
+            "pr_auc_baseline": 0.5450038138825324,
+            "roc_auc": 0.997265950139518,
+            "support": {
+              "benign": 1193,
+              "attack": 1429
+            },
+            "threshold": 3.802289
+          },
+          "entropy_4.0_literature": {
+            "fpr": 0.004191114836546521,
+            "f1": 0.8905222437137331,
+            "precision": 0.995674740484429,
+            "recall": 0.8054583624912526,
+            "pr_auc": 0.9977269772418947,
+            "pr_auc_baseline": 0.5450038138825324,
+            "roc_auc": 0.997265950139518,
+            "support": {
+              "benign": 1193,
+              "attack": 1429
+            },
+            "threshold": 4.0
+          },
+          "length_train_fit": {
+            "fpr": 0.07711651299245599,
+            "f1": 0.968813559322034,
+            "precision": 0.9395134779750164,
+            "recall": 1.0,
+            "pr_auc": 0.965640121705103,
+            "pr_auc_baseline": 0.5450038138825324,
+            "roc_auc": 0.9583387347584492,
+            "support": {
+              "benign": 1193,
+              "attack": 1429
+            },
+            "threshold": 25.919999999999998
+          }
+        },
+        {
+          "manifest": "data/processed/splits/exact_copy_seed46.json",
+          "method": "grouped_by_exact_copy",
+          "record_type": {
+            "fpr": 0.0,
+            "f1": 1.0,
+            "precision": 1.0,
+            "recall": 1.0,
+            "pr_auc": 1.0,
+            "pr_auc_baseline": 0.5446224256292906,
+            "roc_auc": 1.0,
+            "support": {
+              "benign": 1194,
+              "attack": 1428
+            },
+            "threshold": null
+          },
+          "entropy_train_fit": {
+            "fpr": 0.09547738693467336,
+            "f1": 0.9531568228105907,
+            "precision": 0.924901185770751,
+            "recall": 0.9831932773109243,
+            "pr_auc": 0.9923900924854696,
+            "pr_auc_baseline": 0.5446224256292906,
+            "roc_auc": 0.9920086543830262,
+            "support": {
+              "benign": 1194,
+              "attack": 1428
+            },
+            "threshold": 3.785134
+          },
+          "entropy_4.0_literature": {
+            "fpr": 0.011725293132328308,
+            "f1": 0.889060092449923,
+            "precision": 0.988013698630137,
+            "recall": 0.8081232492997199,
+            "pr_auc": 0.9923900924854696,
+            "pr_auc_baseline": 0.5446224256292906,
+            "roc_auc": 0.9920086543830262,
+            "support": {
+              "benign": 1194,
+              "attack": 1428
+            },
+            "threshold": 4.0
+          },
+          "length_train_fit": {
+            "fpr": 0.10050251256281408,
+            "f1": 0.9596774193548387,
+            "precision": 0.9224806201550387,
+            "recall": 1.0,
+            "pr_auc": 0.9576031963172866,
+            "pr_auc_baseline": 0.5446224256292906,
+            "roc_auc": 0.9470945413341216,
+            "support": {
+              "benign": 1194,
+              "attack": 1428
+            },
+            "threshold": 25.04
+          }
+        }
+      ],
+      "methods": [
+        "grouped_by_exact_copy"
+      ],
+      "aggregate": {
+        "length_train_fit": {
+          "f1": {
+            "mean": 0.9659337610115857,
+            "sd": 0.0033134920002431466,
+            "n": 5
+          },
+          "pr_auc": {
+            "mean": 0.9632773839984472,
+            "sd": 0.002957331760186392,
+            "n": 5
+          },
+          "precision": {
+            "mean": 0.9341318630633695,
+            "sd": 0.006175173891814007,
+            "n": 5
+          },
+          "recall": {
+            "mean": 1.0,
+            "sd": 0.0,
+            "n": 5
+          },
+          "fpr": {
+            "mean": 0.08446282825134334,
+            "sd": 0.00849894652956097,
+            "n": 5
+          },
+          "threshold": {
+            "mean": 25.215999999999998,
+            "sd": 0.3519999999999996,
+            "n": 5
+          }
+        },
+        "entropy_train_fit": {
+          "f1": {
+            "mean": 0.9559913368334289,
+            "sd": 0.0038084066508568097,
+            "n": 5
+          },
+          "pr_auc": {
+            "mean": 0.9962319324972805,
+            "sd": 0.002133173247641056,
+            "n": 5
+          },
+          "precision": {
+            "mean": 0.9314265775506518,
+            "sd": 0.007815474540112237,
+            "n": 5
+          },
+          "recall": {
+            "mean": 0.9819407119040758,
+            "sd": 0.0036048268140256566,
+            "n": 5
+          },
+          "fpr": {
+            "mean": 0.08664347161906207,
+            "sd": 0.010662743252519412,
+            "n": 5
+          },
+          "threshold": {
+            "mean": 3.788565,
+            "sd": 0.006861999999999924,
+            "n": 5
+          }
+        },
+        "entropy_4.0_literature": {
+          "f1": {
+            "mean": 0.8905590929659687,
+            "sd": 0.004509763628233105,
+            "n": 5
+          },
+          "pr_auc": {
+            "mean": 0.9962319324972805,
+            "sd": 0.002133173247641056,
+            "n": 5
+          },
+          "precision": {
+            "mean": 0.9924565456737141,
+            "sd": 0.006866590335649631,
+            "n": 5
+          },
+          "recall": {
+            "mean": 0.807644471364473,
+            "sd": 0.003257614470235006,
+            "n": 5
+          },
+          "fpr": {
+            "mean": 0.007374256024464316,
+            "sd": 0.00673392282268429,
+            "n": 5
+          },
+          "threshold": {
+            "mean": 4.0,
+            "sd": 0.0,
+            "n": 5
+          }
+        },
+        "record_type": {
+          "f1": {
+            "mean": 1.0,
+            "sd": 0.0,
+            "n": 5
+          },
+          "pr_auc": {
+            "mean": 1.0,
+            "sd": 0.0,
+            "n": 5
+          },
+          "precision": {
+            "mean": 1.0,
+            "sd": 0.0,
+            "n": 5
+          },
+          "recall": {
+            "mean": 1.0,
+            "sd": 0.0,
+            "n": 5
+          },
+          "fpr": {
+            "mean": 0.0,
+            "sd": 0.0,
+            "n": 5
+          },
+          "threshold": {
+            "mean": null,
+            "sd": null,
+            "n": 0
+          }
+        }
+      }
+    },
+    "capture_group": {
+      "per_seed": [
+        {
+          "manifest": "data/processed/splits/capture_group_seed42.json",
+          "method": "random_rows_fallback",
+          "record_type": {
+            "fpr": 0.0,
+            "f1": 1.0,
+            "precision": 1.0,
+            "recall": 1.0,
+            "pr_auc": 1.0,
+            "pr_auc_baseline": 0.5448601525608427,
+            "roc_auc": 1.0,
+            "support": {
+              "benign": 1253,
+              "attack": 1500
+            },
+            "threshold": null
+          },
+          "entropy_train_fit": {
+            "fpr": 0.03192338387869114,
+            "f1": 0.9831627599867944,
+            "precision": 0.973839110529758,
+            "recall": 0.9926666666666667,
+            "pr_auc": 0.9971428788240366,
+            "pr_auc_baseline": 0.5448601525608427,
+            "roc_auc": 0.9968800212822561,
+            "support": {
+              "benign": 1253,
+              "attack": 1500
+            },
+            "threshold": 3.785134
+          },
+          "entropy_4.0_literature": {
+            "fpr": 0.006384676775738229,
+            "f1": 0.9123692751532636,
+            "precision": 0.9937156323644933,
+            "recall": 0.8433333333333334,
+            "pr_auc": 0.9971428788240366,
+            "pr_auc_baseline": 0.5448601525608427,
+            "roc_auc": 0.9968800212822561,
+            "support": {
+              "benign": 1253,
+              "attack": 1500
+            },
+            "threshold": 4.0
+          },
+          "length_train_fit": {
+            "fpr": 0.030327214684756583,
+            "f1": 0.9874917709019092,
+            "precision": 0.9752925877763329,
+            "recall": 1.0,
+            "pr_auc": 0.9866958695982917,
+            "pr_auc_baseline": 0.5448601525608427,
+            "roc_auc": 0.9841098696461825,
+            "support": {
+              "benign": 1253,
+              "attack": 1500
+            },
+            "threshold": 25.04
+          }
+        },
+        {
+          "manifest": "data/processed/splits/capture_group_seed43.json",
+          "method": "random_rows_fallback",
+          "record_type": {
+            "fpr": 0.0,
+            "f1": 1.0,
+            "precision": 1.0,
+            "recall": 1.0,
+            "pr_auc": 1.0,
+            "pr_auc_baseline": 0.5448601525608427,
+            "roc_auc": 1.0,
+            "support": {
+              "benign": 1253,
+              "attack": 1500
+            },
+            "threshold": null
+          },
+          "entropy_train_fit": {
+            "fpr": 0.03830806065442937,
+            "f1": 0.9792284866468842,
+            "precision": 0.9686888454011742,
+            "recall": 0.99,
+            "pr_auc": 0.9967862957392488,
+            "pr_auc_baseline": 0.5448601525608427,
+            "roc_auc": 0.9965993615323223,
+            "support": {
+              "benign": 1253,
+              "attack": 1500
+            },
+            "threshold": 3.785134
+          },
+          "entropy_4.0_literature": {
+            "fpr": 0.006384676775738229,
+            "f1": 0.9147175242893127,
+            "precision": 0.9937451133698202,
+            "recall": 0.8473333333333334,
+            "pr_auc": 0.9967862957392488,
+            "pr_auc_baseline": 0.5448601525608427,
+            "roc_auc": 0.9965993615323223,
+            "support": {
+              "benign": 1253,
+              "attack": 1500
+            },
+            "threshold": 4.0
+          },
+          "length_train_fit": {
+            "fpr": 0.03112529928172386,
+            "f1": 0.9871668311944719,
+            "precision": 0.9746588693957114,
+            "recall": 1.0,
+            "pr_auc": 0.9853556059519726,
+            "pr_auc_baseline": 0.5448601525608427,
+            "roc_auc": 0.9837001862197393,
+            "support": {
+              "benign": 1253,
+              "attack": 1500
+            },
+            "threshold": 25.04
+          }
+        },
+        {
+          "manifest": "data/processed/splits/capture_group_seed44.json",
+          "method": "random_rows_fallback",
+          "record_type": {
+            "fpr": 0.0,
+            "f1": 1.0,
+            "precision": 1.0,
+            "recall": 1.0,
+            "pr_auc": 1.0,
+            "pr_auc_baseline": 0.5448601525608427,
+            "roc_auc": 1.0,
+            "support": {
+              "benign": 1253,
+              "attack": 1500
+            },
+            "threshold": null
+          },
+          "entropy_train_fit": {
+            "fpr": 0.03272146847565842,
+            "f1": 0.9804829639431029,
+            "precision": 0.9730794484569928,
+            "recall": 0.988,
+            "pr_auc": 0.9969385367968279,
+            "pr_auc_baseline": 0.5448601525608427,
+            "roc_auc": 0.9966632083000798,
+            "support": {
+              "benign": 1253,
+              "attack": 1500
+            },
+            "threshold": 3.785134
+          },
+          "entropy_4.0_literature": {
+            "fpr": 0.0039904229848363925,
+            "f1": 0.909025009061254,
+            "precision": 0.9960285941223193,
+            "recall": 0.836,
+            "pr_auc": 0.9969385367968279,
+            "pr_auc_baseline": 0.5448601525608427,
+            "roc_auc": 0.9966632083000798,
+            "support": {
+              "benign": 1253,
+              "attack": 1500
+            },
+            "threshold": 4.0
+          },
+          "length_train_fit": {
+            "fpr": 0.03192338387869114,
+            "f1": 0.9868421052631579,
+            "precision": 0.974025974025974,
+            "recall": 1.0,
+            "pr_auc": 0.984869361284529,
+            "pr_auc_baseline": 0.5448601525608427,
+            "roc_auc": 0.9839675445597234,
+            "support": {
+              "benign": 1253,
+              "attack": 1500
+            },
+            "threshold": 25.04
+          }
+        },
+        {
+          "manifest": "data/processed/splits/capture_group_seed45.json",
+          "method": "random_rows_fallback",
+          "record_type": {
+            "fpr": 0.0,
+            "f1": 1.0,
+            "precision": 1.0,
+            "recall": 1.0,
+            "pr_auc": 1.0,
+            "pr_auc_baseline": 0.5448601525608427,
+            "roc_auc": 1.0,
+            "support": {
+              "benign": 1253,
+              "attack": 1500
+            },
+            "threshold": null
+          },
+          "entropy_train_fit": {
+            "fpr": 0.03750997605746209,
+            "f1": 0.9785407725321889,
+            "precision": 0.9692609548724657,
+            "recall": 0.988,
+            "pr_auc": 0.9971917619581248,
+            "pr_auc_baseline": 0.5448601525608427,
+            "roc_auc": 0.9969396115988295,
+            "support": {
+              "benign": 1253,
+              "attack": 1500
+            },
+            "threshold": 3.785134
+          },
+          "entropy_4.0_literature": {
+            "fpr": 0.004788507581803671,
+            "f1": 0.9188801148600143,
+            "precision": 0.995334370139969,
+            "recall": 0.8533333333333334,
+            "pr_auc": 0.9971917619581248,
+            "pr_auc_baseline": 0.5448601525608427,
+            "roc_auc": 0.9969396115988295,
+            "support": {
+              "benign": 1253,
+              "attack": 1500
+            },
+            "threshold": 4.0
+          },
+          "length_train_fit": {
+            "fpr": 0.027932960893854747,
+            "f1": 0.9884678747940692,
+            "precision": 0.9771986970684039,
+            "recall": 1.0,
+            "pr_auc": 0.9869348816003389,
+            "pr_auc_baseline": 0.5448601525608427,
+            "roc_auc": 0.9855905826017558,
+            "support": {
+              "benign": 1253,
+              "attack": 1500
+            },
+            "threshold": 25.04
+          }
+        },
+        {
+          "manifest": "data/processed/splits/capture_group_seed46.json",
+          "method": "random_rows_fallback",
+          "record_type": {
+            "fpr": 0.0,
+            "f1": 1.0,
+            "precision": 1.0,
+            "recall": 1.0,
+            "pr_auc": 1.0,
+            "pr_auc_baseline": 0.5448601525608427,
+            "roc_auc": 1.0,
+            "support": {
+              "benign": 1253,
+              "attack": 1500
+            },
+            "threshold": null
+          },
+          "entropy_train_fit": {
+            "fpr": 0.03272146847565842,
+            "f1": 0.9818301949124546,
+            "precision": 0.9731499672560576,
+            "recall": 0.9906666666666667,
+            "pr_auc": 0.9967576988434956,
+            "pr_auc_baseline": 0.5448601525608427,
+            "roc_auc": 0.9965517424847034,
+            "support": {
+              "benign": 1253,
+              "attack": 1500
+            },
+            "threshold": 3.785134
+          },
+          "entropy_4.0_literature": {
+            "fpr": 0.007182761372705506,
+            "f1": 0.90572878897752,
+            "precision": 0.9928457869634341,
+            "recall": 0.8326666666666667,
+            "pr_auc": 0.9967576988434956,
+            "pr_auc_baseline": 0.5448601525608427,
+            "roc_auc": 0.9965517424847034,
+            "support": {
+              "benign": 1253,
+              "attack": 1500
+            },
+            "threshold": 4.0
+          },
+          "length_train_fit": {
+            "fpr": 0.02713487629688747,
+            "f1": 0.988793671720501,
+            "precision": 0.9778357235984355,
+            "recall": 1.0,
+            "pr_auc": 0.9869183098202496,
+            "pr_auc_baseline": 0.5448601525608427,
+            "roc_auc": 0.9855873902633678,
+            "support": {
+              "benign": 1253,
+              "attack": 1500
+            },
+            "threshold": 25.04
+          }
+        }
+      ],
+      "methods": [
+        "random_rows_fallback"
+      ],
+      "aggregate": {
+        "length_train_fit": {
+          "f1": {
+            "mean": 0.9877524507748219,
+            "sd": 0.0007530744750255209,
+            "n": 5
+          },
+          "pr_auc": {
+            "mean": 0.9861548056510764,
+            "sd": 0.000868941272638739,
+            "n": 5
+          },
+          "precision": {
+            "mean": 0.9758023703729716,
+            "sd": 0.0014701911673206574,
+            "n": 5
+          },
+          "recall": {
+            "mean": 1.0,
+            "sd": 0.0,
+            "n": 5
+          },
+          "fpr": {
+            "mean": 0.02968874700718276,
+            "sd": 0.0018476994258244568,
+            "n": 5
+          },
+          "threshold": {
+            "mean": 25.04,
+            "sd": 0.0,
+            "n": 5
+          }
+        },
+        "entropy_train_fit": {
+          "f1": {
+            "mean": 0.980649035604285,
+            "sd": 0.0016854827142799363,
+            "n": 5
+          },
+          "pr_auc": {
+            "mean": 0.9969634344323467,
+            "sd": 0.00017813415736665826,
+            "n": 5
+          },
+          "precision": {
+            "mean": 0.9716036653032897,
+            "sd": 0.002170284231656687,
+            "n": 5
+          },
+          "recall": {
+            "mean": 0.9898666666666667,
+            "sd": 0.0017587874611030725,
+            "n": 5
+          },
+          "fpr": {
+            "mean": 0.034636871508379886,
+            "sd": 0.0026993670431425007,
+            "n": 5
+          },
+          "threshold": {
+            "mean": 3.785134,
+            "sd": 0.0,
+            "n": 5
+          }
+        },
+        "entropy_4.0_literature": {
+          "f1": {
+            "mean": 0.9121441424682729,
+            "sd": 0.004537225064003523,
+            "n": 5
+          },
+          "pr_auc": {
+            "mean": 0.9969634344323467,
+            "sd": 0.00017813415736665826,
+            "n": 5
+          },
+          "precision": {
+            "mean": 0.9943338993920071,
+            "sd": 0.0011675901373154932,
+            "n": 5
+          },
+          "recall": {
+            "mean": 0.8425333333333334,
+            "sd": 0.007488064577119481,
+            "n": 5
+          },
+          "fpr": {
+            "mean": 0.005746209098164406,
+            "sd": 0.0011729400204867572,
+            "n": 5
+          },
+          "threshold": {
+            "mean": 4.0,
+            "sd": 0.0,
+            "n": 5
+          }
+        },
+        "record_type": {
+          "f1": {
+            "mean": 1.0,
+            "sd": 0.0,
+            "n": 5
+          },
+          "pr_auc": {
+            "mean": 1.0,
+            "sd": 0.0,
+            "n": 5
+          },
+          "precision": {
+            "mean": 1.0,
+            "sd": 0.0,
+            "n": 5
+          },
+          "recall": {
+            "mean": 1.0,
+            "sd": 0.0,
+            "n": 5
+          },
+          "fpr": {
+            "mean": 0.0,
+            "sd": 0.0,
+            "n": 5
+          },
+          "threshold": {
+            "mean": null,
+            "sd": null,
+            "n": 0
+          }
+        }
+      }
+    },
+    "parent_domain_group": {
+      "per_seed": [
+        {
+          "manifest": "data/processed/splits/parent_domain_group_seed42.json",
+          "method": "grouped_by_parent_domain_group",
+          "record_type": {
+            "fpr": 0.0,
+            "f1": 1.0,
+            "precision": 1.0,
+            "recall": 1.0,
+            "pr_auc": 1.0,
+            "pr_auc_baseline": 0.7702676680146351,
+            "roc_auc": 1.0,
+            "support": {
+              "benign": 1193,
+              "attack": 4000
+            },
+            "threshold": null
+          },
+          "entropy_train_fit": {
+            "fpr": 0.0,
+            "f1": 0.5795454545454546,
+            "precision": 1.0,
+            "recall": 0.408,
+            "pr_auc": 0.9987237939531979,
+            "pr_auc_baseline": 0.7702676680146351,
+            "roc_auc": 0.9960159262363789,
+            "support": {
+              "benign": 1193,
+              "attack": 4000
+            },
+            "threshold": 4.1312
+          },
+          "entropy_4.0_literature": {
+            "fpr": 0.0,
+            "f1": 0.7581496429680223,
+            "precision": 1.0,
+            "recall": 0.6105,
+            "pr_auc": 0.9987237939531979,
+            "pr_auc_baseline": 0.7702676680146351,
+            "roc_auc": 0.9960159262363789,
+            "support": {
+              "benign": 1193,
+              "attack": 4000
+            },
+            "threshold": 4.0
+          },
+          "length_train_fit": {
+            "fpr": 0.0,
+            "f1": 0.4796655264158115,
+            "precision": 1.0,
+            "recall": 0.3155,
+            "pr_auc": 0.9981227873348293,
+            "pr_auc_baseline": 0.7702676680146351,
+            "roc_auc": 0.9965574182732606,
+            "support": {
+              "benign": 1193,
+              "attack": 4000
+            },
+            "threshold": 40.4
+          }
+        },
+        {
+          "manifest": "data/processed/splits/parent_domain_group_seed43.json",
+          "method": "grouped_by_parent_domain_group",
+          "record_type": {
+            "fpr": 0.0,
+            "f1": 1.0,
+            "precision": 1.0,
+            "recall": 1.0,
+            "pr_auc": 1.0,
+            "pr_auc_baseline": 0.7702676680146351,
+            "roc_auc": 1.0,
+            "support": {
+              "benign": 1193,
+              "attack": 4000
+            },
+            "threshold": null
+          },
+          "entropy_train_fit": {
+            "fpr": 0.0,
+            "f1": 0.5795454545454546,
+            "precision": 1.0,
+            "recall": 0.408,
+            "pr_auc": 0.99741677238886,
+            "pr_auc_baseline": 0.7702676680146351,
+            "roc_auc": 0.992446563285834,
+            "support": {
+              "benign": 1193,
+              "attack": 4000
+            },
+            "threshold": 4.1312
+          },
+          "entropy_4.0_literature": {
+            "fpr": 0.002514668901927913,
+            "f1": 0.7577967416602017,
+            "precision": 0.9987730061349693,
+            "recall": 0.6105,
+            "pr_auc": 0.99741677238886,
+            "pr_auc_baseline": 0.7702676680146351,
+            "roc_auc": 0.992446563285834,
+            "support": {
+              "benign": 1193,
+              "attack": 4000
+            },
+            "threshold": 4.0
+          },
+          "length_train_fit": {
+            "fpr": 0.0075440067057837385,
+            "f1": 0.47884651868715616,
+            "precision": 0.992918961447679,
+            "recall": 0.3155,
+            "pr_auc": 0.994062577447336,
+            "pr_auc_baseline": 0.7702676680146351,
+            "roc_auc": 0.9822133277451802,
+            "support": {
+              "benign": 1193,
+              "attack": 4000
+            },
+            "threshold": 40.22
+          }
+        },
+        {
+          "manifest": "data/processed/splits/parent_domain_group_seed44.json",
+          "method": "grouped_by_parent_domain_group",
+          "record_type": {
+            "fpr": 0.0,
+            "f1": 1.0,
+            "precision": 1.0,
+            "recall": 1.0,
+            "pr_auc": 1.0,
+            "pr_auc_baseline": 0.7702676680146351,
+            "roc_auc": 1.0,
+            "support": {
+              "benign": 1193,
+              "attack": 4000
+            },
+            "threshold": null
+          },
+          "entropy_train_fit": {
+            "fpr": 0.0,
+            "f1": 0.9196488858879136,
+            "precision": 1.0,
+            "recall": 0.85125,
+            "pr_auc": 0.9999083118526717,
+            "pr_auc_baseline": 0.7702676680146351,
+            "roc_auc": 0.9997034786253143,
+            "support": {
+              "benign": 1193,
+              "attack": 4000
+            },
+            "threshold": 4.12878
+          },
+          "entropy_4.0_literature": {
+            "fpr": 0.003352891869237217,
+            "f1": 0.9904185577407968,
+            "precision": 0.9989827060020345,
+            "recall": 0.982,
+            "pr_auc": 0.9999083118526717,
+            "pr_auc_baseline": 0.7702676680146351,
+            "roc_auc": 0.9997034786253143,
+            "support": {
+              "benign": 1193,
+              "attack": 4000
+            },
+            "threshold": 4.0
+          },
+          "length_train_fit": {
+            "fpr": 0.008382229673093043,
+            "f1": 0.48450491307634164,
+            "precision": 0.9922600619195047,
+            "recall": 0.3205,
+            "pr_auc": 0.9964512559064909,
+            "pr_auc_baseline": 0.7702676680146351,
+            "roc_auc": 0.9903172673931265,
+            "support": {
+              "benign": 1193,
+              "attack": 4000
+            },
+            "threshold": 38.26
+          }
+        },
+        {
+          "manifest": "data/processed/splits/parent_domain_group_seed45.json",
+          "method": "grouped_by_parent_domain_group",
+          "record_type": {
+            "fpr": 0.0,
+            "f1": 1.0,
+            "precision": 1.0,
+            "recall": 1.0,
+            "pr_auc": 1.0,
+            "pr_auc_baseline": 0.7702676680146351,
+            "roc_auc": 1.0,
+            "support": {
+              "benign": 1193,
+              "attack": 4000
+            },
+            "threshold": null
+          },
+          "entropy_train_fit": {
+            "fpr": 0.0,
+            "f1": 0.5795454545454546,
+            "precision": 1.0,
+            "recall": 0.408,
+            "pr_auc": 0.9988361643762809,
+            "pr_auc_baseline": 0.7702676680146351,
+            "roc_auc": 0.9963566638725901,
+            "support": {
+              "benign": 1193,
+              "attack": 4000
+            },
+            "threshold": 4.1312
+          },
+          "entropy_4.0_literature": {
+            "fpr": 0.0,
+            "f1": 0.7581496429680223,
+            "precision": 1.0,
+            "recall": 0.6105,
+            "pr_auc": 0.9988361643762809,
+            "pr_auc_baseline": 0.7702676680146351,
+            "roc_auc": 0.9963566638725901,
+            "support": {
+              "benign": 1193,
+              "attack": 4000
+            },
+            "threshold": 4.0
+          },
+          "length_train_fit": {
+            "fpr": 0.0,
+            "f1": 0.4796655264158115,
+            "precision": 1.0,
+            "recall": 0.3155,
+            "pr_auc": 0.9977825816097683,
+            "pr_auc_baseline": 0.7702676680146351,
+            "roc_auc": 0.994836127409891,
+            "support": {
+              "benign": 1193,
+              "attack": 4000
+            },
+            "threshold": 40.4
+          }
+        },
+        {
+          "manifest": "data/processed/splits/parent_domain_group_seed46.json",
+          "method": "grouped_by_parent_domain_group",
+          "record_type": {
+            "fpr": 0.0,
+            "f1": 1.0,
+            "precision": 1.0,
+            "recall": 1.0,
+            "pr_auc": 1.0,
+            "pr_auc_baseline": 0.7702676680146351,
+            "roc_auc": 1.0,
+            "support": {
+              "benign": 1193,
+              "attack": 4000
+            },
+            "threshold": null
+          },
+          "entropy_train_fit": {
+            "fpr": 0.0,
+            "f1": 0.5795454545454546,
+            "precision": 1.0,
+            "recall": 0.408,
+            "pr_auc": 0.9968248852633127,
+            "pr_auc_baseline": 0.7702676680146351,
+            "roc_auc": 0.9912990360435875,
+            "support": {
+              "benign": 1193,
+              "attack": 4000
+            },
+            "threshold": 4.1312
+          },
+          "entropy_4.0_literature": {
+            "fpr": 0.0075440067057837385,
+            "f1": 0.7570919237327546,
+            "precision": 0.996328029375765,
+            "recall": 0.6105,
+            "pr_auc": 0.9968248852633127,
+            "pr_auc_baseline": 0.7702676680146351,
+            "roc_auc": 0.9912990360435875,
+            "support": {
+              "benign": 1193,
+              "attack": 4000
+            },
+            "threshold": 4.0
+          },
+          "length_train_fit": {
+            "fpr": 0.0075440067057837385,
+            "f1": 0.47884651868715616,
+            "precision": 0.992918961447679,
+            "recall": 0.3155,
+            "pr_auc": 0.9960866268953517,
+            "pr_auc_baseline": 0.7702676680146351,
+            "roc_auc": 0.9893853730092204,
+            "support": {
+              "benign": 1193,
+              "attack": 4000
+            },
+            "threshold": 40.22
+          }
+        }
+      ],
+      "methods": [
+        "grouped_by_parent_domain_group"
+      ],
+      "aggregate": {
+        "length_train_fit": {
+          "f1": {
+            "mean": 0.4803058006564554,
+            "sd": 0.0021312651197422997,
+            "n": 5
+          },
+          "pr_auc": {
+            "mean": 0.9965011658387553,
+            "sd": 0.0014417163059653676,
+            "n": 5
+          },
+          "precision": {
+            "mean": 0.9956195969629725,
+            "sd": 0.003584667393631302,
+            "n": 5
+          },
+          "recall": {
+            "mean": 0.3165,
+            "sd": 0.0020000000000000018,
+            "n": 5
+          },
+          "fpr": {
+            "mean": 0.004694048616932104,
+            "sd": 0.003844876761502,
+            "n": 5
+          },
+          "threshold": {
+            "mean": 39.9,
+            "sd": 0.8239417455136014,
+            "n": 5
+          }
+        },
+        "entropy_train_fit": {
+          "f1": {
+            "mean": 0.6475661408139464,
+            "sd": 0.13604137253698362,
+            "n": 5
+          },
+          "pr_auc": {
+            "mean": 0.9983419855668646,
+            "sd": 0.0010955346757589661,
+            "n": 5
+          },
+          "precision": {
+            "mean": 1.0,
+            "sd": 0.0,
+            "n": 5
+          },
+          "recall": {
+            "mean": 0.49665,
+            "sd": 0.17729999999999999,
+            "n": 5
+          },
+          "fpr": {
+            "mean": 0.0,
+            "sd": 0.0,
+            "n": 5
+          },
+          "threshold": {
+            "mean": 4.130716,
+            "sd": 0.0009679999999999467,
+            "n": 5
+          }
+        },
+        "entropy_4.0_literature": {
+          "f1": {
+            "mean": 0.8043213018139596,
+            "sd": 0.09304942952657799,
+            "n": 5
+          },
+          "pr_auc": {
+            "mean": 0.9983419855668646,
+            "sd": 0.0010955346757589661,
+            "n": 5
+          },
+          "precision": {
+            "mean": 0.9988167483025537,
+            "sd": 0.0013433797966931897,
+            "n": 5
+          },
+          "recall": {
+            "mean": 0.6848000000000001,
+            "sd": 0.14859999999999998,
+            "n": 5
+          },
+          "fpr": {
+            "mean": 0.002682313495389774,
+            "sd": 0.002775011795012045,
+            "n": 5
+          },
+          "threshold": {
+            "mean": 4.0,
+            "sd": 0.0,
+            "n": 5
+          }
+        },
+        "record_type": {
+          "f1": {
+            "mean": 1.0,
+            "sd": 0.0,
+            "n": 5
+          },
+          "pr_auc": {
+            "mean": 1.0,
+            "sd": 0.0,
+            "n": 5
+          },
+          "precision": {
+            "mean": 1.0,
+            "sd": 0.0,
+            "n": 5
+          },
+          "recall": {
+            "mean": 1.0,
+            "sd": 0.0,
+            "n": 5
+          },
+          "fpr": {
+            "mean": 0.0,
+            "sd": 0.0,
+            "n": 5
+          },
+          "threshold": {
+            "mean": null,
+            "sd": null,
+            "n": 0
+          }
+        }
+      }
+    },
+    "time": {
+      "per_seed": [
+        {
+          "manifest": "data/processed/splits/time_seed42.json",
+          "method": "time_per_class_chronological",
+          "record_type": {
+            "fpr": 0.0,
+            "f1": 1.0,
+            "precision": 1.0,
+            "recall": 1.0,
+            "pr_auc": 1.0,
+            "pr_auc_baseline": 0.5449591280653951,
+            "roc_auc": 1.0,
+            "support": {
+              "benign": 1169,
+              "attack": 1400
+            },
+            "threshold": null
+          },
+          "entropy_train_fit": {
+            "fpr": 0.09409751924721985,
+            "f1": 0.9621993127147767,
+            "precision": 0.9271523178807947,
+            "recall": 1.0,
+            "pr_auc": 0.9998302758442376,
+            "pr_auc_baseline": 0.5449591280653951,
+            "roc_auc": 0.9997940852987902,
+            "support": {
+              "benign": 1169,
+              "attack": 1400
+            },
+            "threshold": 3.814666
+          },
+          "entropy_4.0_literature": {
+            "fpr": 0.03592814371257485,
+            "f1": 0.9848644843365012,
+            "precision": 0.970853573907009,
+            "recall": 0.9992857142857143,
+            "pr_auc": 0.9998302758442376,
+            "pr_auc_baseline": 0.5449591280653951,
+            "roc_auc": 0.9997940852987902,
+            "support": {
+              "benign": 1169,
+              "attack": 1400
+            },
+            "threshold": 4.0
+          },
+          "length_train_fit": {
+            "fpr": 0.17964071856287425,
+            "f1": 0.9302325581395349,
+            "precision": 0.8695652173913043,
+            "recall": 1.0,
+            "pr_auc": 0.9912513837556567,
+            "pr_auc_baseline": 0.5449591280653951,
+            "roc_auc": 0.9924642551631431,
+            "support": {
+              "benign": 1169,
+              "attack": 1400
+            },
+            "threshold": 24.9
+          }
+        },
+        {
+          "manifest": "data/processed/splits/time_seed43.json",
+          "method": "time_per_class_chronological",
+          "record_type": {
+            "fpr": 0.0,
+            "f1": 1.0,
+            "precision": 1.0,
+            "recall": 1.0,
+            "pr_auc": 1.0,
+            "pr_auc_baseline": 0.5449591280653951,
+            "roc_auc": 1.0,
+            "support": {
+              "benign": 1169,
+              "attack": 1400
+            },
+            "threshold": null
+          },
+          "entropy_train_fit": {
+            "fpr": 0.09409751924721985,
+            "f1": 0.9621993127147767,
+            "precision": 0.9271523178807947,
+            "recall": 1.0,
+            "pr_auc": 0.9998302758442376,
+            "pr_auc_baseline": 0.5449591280653951,
+            "roc_auc": 0.9997940852987902,
+            "support": {
+              "benign": 1169,
+              "attack": 1400
+            },
+            "threshold": 3.814666
+          },
+          "entropy_4.0_literature": {
+            "fpr": 0.03592814371257485,
+            "f1": 0.9848644843365012,
+            "precision": 0.970853573907009,
+            "recall": 0.9992857142857143,
+            "pr_auc": 0.9998302758442376,
+            "pr_auc_baseline": 0.5449591280653951,
+            "roc_auc": 0.9997940852987902,
+            "support": {
+              "benign": 1169,
+              "attack": 1400
+            },
+            "threshold": 4.0
+          },
+          "length_train_fit": {
+            "fpr": 0.17964071856287425,
+            "f1": 0.9302325581395349,
+            "precision": 0.8695652173913043,
+            "recall": 1.0,
+            "pr_auc": 0.9912513837556567,
+            "pr_auc_baseline": 0.5449591280653951,
+            "roc_auc": 0.9924642551631431,
+            "support": {
+              "benign": 1169,
+              "attack": 1400
+            },
+            "threshold": 24.9
+          }
+        },
+        {
+          "manifest": "data/processed/splits/time_seed44.json",
+          "method": "time_per_class_chronological",
+          "record_type": {
+            "fpr": 0.0,
+            "f1": 1.0,
+            "precision": 1.0,
+            "recall": 1.0,
+            "pr_auc": 1.0,
+            "pr_auc_baseline": 0.5449591280653951,
+            "roc_auc": 1.0,
+            "support": {
+              "benign": 1169,
+              "attack": 1400
+            },
+            "threshold": null
+          },
+          "entropy_train_fit": {
+            "fpr": 0.09409751924721985,
+            "f1": 0.9621993127147767,
+            "precision": 0.9271523178807947,
+            "recall": 1.0,
+            "pr_auc": 0.9998302758442376,
+            "pr_auc_baseline": 0.5449591280653951,
+            "roc_auc": 0.9997940852987902,
+            "support": {
+              "benign": 1169,
+              "attack": 1400
+            },
+            "threshold": 3.814666
+          },
+          "entropy_4.0_literature": {
+            "fpr": 0.03592814371257485,
+            "f1": 0.9848644843365012,
+            "precision": 0.970853573907009,
+            "recall": 0.9992857142857143,
+            "pr_auc": 0.9998302758442376,
+            "pr_auc_baseline": 0.5449591280653951,
+            "roc_auc": 0.9997940852987902,
+            "support": {
+              "benign": 1169,
+              "attack": 1400
+            },
+            "threshold": 4.0
+          },
+          "length_train_fit": {
+            "fpr": 0.17964071856287425,
+            "f1": 0.9302325581395349,
+            "precision": 0.8695652173913043,
+            "recall": 1.0,
+            "pr_auc": 0.9912513837556567,
+            "pr_auc_baseline": 0.5449591280653951,
+            "roc_auc": 0.9924642551631431,
+            "support": {
+              "benign": 1169,
+              "attack": 1400
+            },
+            "threshold": 24.9
+          }
+        },
+        {
+          "manifest": "data/processed/splits/time_seed45.json",
+          "method": "time_per_class_chronological",
+          "record_type": {
+            "fpr": 0.0,
+            "f1": 1.0,
+            "precision": 1.0,
+            "recall": 1.0,
+            "pr_auc": 1.0,
+            "pr_auc_baseline": 0.5449591280653951,
+            "roc_auc": 1.0,
+            "support": {
+              "benign": 1169,
+              "attack": 1400
+            },
+            "threshold": null
+          },
+          "entropy_train_fit": {
+            "fpr": 0.09409751924721985,
+            "f1": 0.9621993127147767,
+            "precision": 0.9271523178807947,
+            "recall": 1.0,
+            "pr_auc": 0.9998302758442376,
+            "pr_auc_baseline": 0.5449591280653951,
+            "roc_auc": 0.9997940852987902,
+            "support": {
+              "benign": 1169,
+              "attack": 1400
+            },
+            "threshold": 3.814666
+          },
+          "entropy_4.0_literature": {
+            "fpr": 0.03592814371257485,
+            "f1": 0.9848644843365012,
+            "precision": 0.970853573907009,
+            "recall": 0.9992857142857143,
+            "pr_auc": 0.9998302758442376,
+            "pr_auc_baseline": 0.5449591280653951,
+            "roc_auc": 0.9997940852987902,
+            "support": {
+              "benign": 1169,
+              "attack": 1400
+            },
+            "threshold": 4.0
+          },
+          "length_train_fit": {
+            "fpr": 0.17964071856287425,
+            "f1": 0.9302325581395349,
+            "precision": 0.8695652173913043,
+            "recall": 1.0,
+            "pr_auc": 0.9912513837556567,
+            "pr_auc_baseline": 0.5449591280653951,
+            "roc_auc": 0.9924642551631431,
+            "support": {
+              "benign": 1169,
+              "attack": 1400
+            },
+            "threshold": 24.9
+          }
+        },
+        {
+          "manifest": "data/processed/splits/time_seed46.json",
+          "method": "time_per_class_chronological",
+          "record_type": {
+            "fpr": 0.0,
+            "f1": 1.0,
+            "precision": 1.0,
+            "recall": 1.0,
+            "pr_auc": 1.0,
+            "pr_auc_baseline": 0.5449591280653951,
+            "roc_auc": 1.0,
+            "support": {
+              "benign": 1169,
+              "attack": 1400
+            },
+            "threshold": null
+          },
+          "entropy_train_fit": {
+            "fpr": 0.09409751924721985,
+            "f1": 0.9621993127147767,
+            "precision": 0.9271523178807947,
+            "recall": 1.0,
+            "pr_auc": 0.9998302758442376,
+            "pr_auc_baseline": 0.5449591280653951,
+            "roc_auc": 0.9997940852987902,
+            "support": {
+              "benign": 1169,
+              "attack": 1400
+            },
+            "threshold": 3.814666
+          },
+          "entropy_4.0_literature": {
+            "fpr": 0.03592814371257485,
+            "f1": 0.9848644843365012,
+            "precision": 0.970853573907009,
+            "recall": 0.9992857142857143,
+            "pr_auc": 0.9998302758442376,
+            "pr_auc_baseline": 0.5449591280653951,
+            "roc_auc": 0.9997940852987902,
+            "support": {
+              "benign": 1169,
+              "attack": 1400
+            },
+            "threshold": 4.0
+          },
+          "length_train_fit": {
+            "fpr": 0.17964071856287425,
+            "f1": 0.9302325581395349,
+            "precision": 0.8695652173913043,
+            "recall": 1.0,
+            "pr_auc": 0.9912513837556567,
+            "pr_auc_baseline": 0.5449591280653951,
+            "roc_auc": 0.9924642551631431,
+            "support": {
+              "benign": 1169,
+              "attack": 1400
+            },
+            "threshold": 24.9
+          }
+        }
+      ],
+      "methods": [
+        "time_per_class_chronological"
+      ],
+      "aggregate": {
+        "length_train_fit": {
+          "f1": {
+            "mean": 0.9302325581395349,
+            "sd": 0.0,
+            "n": 5
+          },
+          "pr_auc": {
+            "mean": 0.9912513837556567,
+            "sd": 0.0,
+            "n": 5
+          },
+          "precision": {
+            "mean": 0.8695652173913043,
+            "sd": 0.0,
+            "n": 5
+          },
+          "recall": {
+            "mean": 1.0,
+            "sd": 0.0,
+            "n": 5
+          },
+          "fpr": {
+            "mean": 0.17964071856287425,
+            "sd": 0.0,
+            "n": 5
+          },
+          "threshold": {
+            "mean": 24.9,
+            "sd": 0.0,
+            "n": 5
+          }
+        },
+        "entropy_train_fit": {
+          "f1": {
+            "mean": 0.9621993127147767,
+            "sd": 0.0,
+            "n": 5
+          },
+          "pr_auc": {
+            "mean": 0.9998302758442376,
+            "sd": 0.0,
+            "n": 5
+          },
+          "precision": {
+            "mean": 0.9271523178807947,
+            "sd": 0.0,
+            "n": 5
+          },
+          "recall": {
+            "mean": 1.0,
+            "sd": 0.0,
+            "n": 5
+          },
+          "fpr": {
+            "mean": 0.09409751924721985,
+            "sd": 0.0,
+            "n": 5
+          },
+          "threshold": {
+            "mean": 3.814666,
+            "sd": 0.0,
+            "n": 5
+          }
+        },
+        "entropy_4.0_literature": {
+          "f1": {
+            "mean": 0.9848644843365012,
+            "sd": 0.0,
+            "n": 5
+          },
+          "pr_auc": {
+            "mean": 0.9998302758442376,
+            "sd": 0.0,
+            "n": 5
+          },
+          "precision": {
+            "mean": 0.970853573907009,
+            "sd": 0.0,
+            "n": 5
+          },
+          "recall": {
+            "mean": 0.9992857142857143,
+            "sd": 0.0,
+            "n": 5
+          },
+          "fpr": {
+            "mean": 0.03592814371257485,
+            "sd": 0.0,
+            "n": 5
+          },
+          "threshold": {
+            "mean": 4.0,
+            "sd": 0.0,
+            "n": 5
+          }
+        },
+        "record_type": {
+          "f1": {
+            "mean": 1.0,
+            "sd": 0.0,
+            "n": 5
+          },
+          "pr_auc": {
+            "mean": 1.0,
+            "sd": 0.0,
+            "n": 5
+          },
+          "precision": {
+            "mean": 1.0,
+            "sd": 0.0,
+            "n": 5
+          },
+          "recall": {
+            "mean": 1.0,
+            "sd": 0.0,
+            "n": 5
+          },
+          "fpr": {
+            "mean": 0.0,
+            "sd": 0.0,
+            "n": 5
+          },
+          "threshold": {
+            "mean": null,
+            "sd": null,
+            "n": 0
+          }
+        }
+      }
+    },
+    "lofo": {
+      "dns2tcp": {
+        "recall": 0.317875,
+        "support": {
+          "attack": 8000
+        }
+      },
+      "dnsexfiltrator": {
+        "recall": 0.3825,
+        "support": {
+          "attack": 2000
+        }
+      },
+      "headline": {
+        "unseen_tool_recall_min": 0.317875,
+        "unseen_tool_recall_mean": 0.3501875,
+        "families": 2
+      }
+    }
+  }
+}

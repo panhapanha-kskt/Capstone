@@ -1,0 +1,24 @@
+{
+  "merged_at": "2026-10-24T09:16:53Z",
+  "total_records": 18353,
+  "source_files": [
+    {
+      "path": "data/processed/labeled_tunnels.json",
+      "type": "json",
+      "records": 10000,
+      "checksum": "831aab545e62e154"
+    },
+    {
+      "path": "data/processed/labeled_benign.json",
+      "type": "json",
+      "records": 8353,
+      "checksum": "d3ebd6cfe9d53494"
+    }
+  ],
+  "source_counts": {
+    "json_files": 2,
+    "csv_files": 1,
+    "pcap_converted": 0,
+    "log_converted": 0
+  }
+}

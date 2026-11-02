@@ -1,0 +1,27 @@
+{
+  "threshold": 0.5,
+  "decision": "rf_only",
+  "features": [
+    "query_length",
+    "query_entropy",
+    "has_digits",
+    "subdomain_count",
+    "longest_label",
+    "digit_ratio",
+    "unique_char_ratio",
+    "uniq_subdomains_5m",
+    "uniq_ratio_5m",
+    "info_chars_per_min",
+    "nxdomain_share_5m",
+    "qpm_client_5m",
+    "iat_std_5m",
+    "bigram_logprob"
+  ],
+  "fpr_budget": 0.001,
+  "calibrated": true,
+  "window_seconds": 300,
+  "val_recall": 1.0,
+  "val_fpr": 0.0,
+  "dataset_version": "7eeea41b875f49881983475573a8d370efa3e798209dec9053e4b132a2da23ea",
+  "split": "manifest:time_seed42.json"
+}

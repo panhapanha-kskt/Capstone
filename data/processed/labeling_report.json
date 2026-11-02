@@ -1,0 +1,82 @@
+{
+  "rows": 18353,
+  "attack": 10000,
+  "benign": 8353,
+  "by_label_source": {
+    "provenance": 18353
+  },
+  "labeling_functions_fired": {},
+  "parents_with_attack_votes": {
+    "dns2tcp-key.com": {
+      "queries": 4000,
+      "unique_subdomains": 4000,
+      "unique_ratio": 1.0,
+      "information_chars": 255031,
+      "long_encoded_share": 0.3205,
+      "tunnel_record_share": 1.0,
+      "p95_length": 194.0,
+      "clients": 1,
+      "attack_votes": [
+        "many_unique_subdomains",
+        "high_information",
+        "tunnel_record_types"
+      ],
+      "ordinary": false
+    },
+    "dns2tcp-txt.com": {
+      "queries": 4000,
+      "unique_subdomains": 4000,
+      "unique_ratio": 1.0,
+      "information_chars": 251233,
+      "long_encoded_share": 0.3155,
+      "tunnel_record_share": 1.0,
+      "p95_length": 194.0,
+      "clients": 1,
+      "attack_votes": [
+        "many_unique_subdomains",
+        "high_information",
+        "tunnel_record_types"
+      ],
+      "ordinary": false
+    },
+    "daumel.xyz": {
+      "queries": 2000,
+      "unique_subdomains": 1986,
+      "unique_ratio": 0.993,
+      "information_chars": 64892,
+      "long_encoded_share": 0.0,
+      "tunnel_record_share": 1.0,
+      "p95_length": 44.0,
+      "clients": 1,
+      "attack_votes": [
+        "many_unique_subdomains",
+        "high_information",
+        "tunnel_record_types"
+      ],
+      "ordinary": false
+    }
+  },
+  "nxdomain_enumeration": [],
+  "manifest_windows": [],
+  "settings": {
+    "manifest_skew_seconds": 2,
+    "min_unique_subdomains": 50,
+    "min_unique_ratio": 0.8,
+    "min_information_chars": 4096,
+    "long_label_chars": 52,
+    "long_subdomain_chars": 40,
+    "min_subdomain_entropy": 4.0,
+    "min_share": 0.5,
+    "tunnel_record_min_subdomains": 20,
+    "nxdomain_share": 0.8,
+    "ordinary_max_subdomains": 10,
+    "ordinary_max_p95_length": 40,
+    "min_attack_votes": 2,
+    "window_seconds": 0
+  },
+  "warnings": [],
+  "labeling_config_hash": "9bc9c9557e8cc5a0",
+  "abstain_share_by_source": {},
+  "abstain_share_by_family": {},
+  "window_seconds": 0
+}

@@ -29,6 +29,7 @@ Usage:
 
 import argparse
 import csv
+import hashlib
 import json
 import math
 import os
@@ -86,14 +87,28 @@ SECOND_LEVEL = {
 
 def load_settings() -> dict:
     cfg = dict(DEFAULTS)
+    # N9: optional per-time-window stats. 0 keeps the previous whole-batch behaviour.
+    cfg.setdefault("window_seconds", 0)
     try:
         from dns_detect.config import settings
         lab = getattr(settings, "labeling", None)
         if lab is not None:
-            cfg.update({k: v for k, v in vars(lab).items() if k in DEFAULTS})
+            cfg.update({k: v for k, v in vars(lab).items() if k in cfg})
     except Exception:
         pass
     return cfg
+
+
+def labeling_config_hash(cfg: dict, allowlist: set | None = None) -> str:
+    """
+    N9/N14: short sha256 of the frozen labeling settings + sorted allowlist.
+    Written into `training_metadata.json` so a model can be traced back to the
+    exact rules that produced its labels.
+    """
+    frozen = {k: cfg[k] for k in sorted(cfg)}
+    payload = json.dumps(frozen, sort_keys=True, default=str).encode("utf-8")
+    allow_bytes = ("\n".join(sorted(allowlist or set()))).encode("utf-8")
+    return hashlib.sha256(payload + b"\0" + allow_bytes).hexdigest()[:16]
 
 
 def entropy(s: str) -> float:
@@ -196,15 +211,39 @@ def manifest_decision(rec: dict, windows: list, skew: float):
 # LABELING FUNCTIONS (traffic analysis per parent domain)
 # ─────────────────────────────────────────────
 
+def _window_bucket(ts_series: pd.Series, window_seconds: int) -> pd.Series:
+    """N9: integer bucket id per row = floor(epoch_seconds / window_seconds). NaN → 0."""
+    if window_seconds <= 0:
+        return pd.Series([0] * len(ts_series), index=ts_series.index)
+    ts = pd.to_datetime(ts_series, errors="coerce")
+    if getattr(ts.dt, "tz", None) is not None:
+        ts = ts.dt.tz_convert(None)
+    secs = (ts - pd.Timestamp("1970-01-01")).dt.total_seconds()
+    buckets = (secs // float(window_seconds)).fillna(0.0).astype("int64")
+    return buckets
+
+
 def domain_stats(records: list, cfg: dict) -> tuple:
-    """Per-parent and per-(client, parent) statistics over ALL rows, plus the LF votes they imply."""
+    """
+    Per-parent (optionally per (parent, time-window)) and per-(client, parent) statistics
+    over ALL rows, plus the LF votes they imply.
+
+    N9: when `cfg['window_seconds'] > 0`, statistics group by (parent_domain, time_window)
+    so a long-lived benign domain that once carried a tunnel is only labeled attack within
+    the hour the tunnel was active. The returned `parents` dict is still keyed by the
+    parent domain (its value is the *max* vote set across windows) for backward compat;
+    callers that need per-window detail use the extra `by_window` dict.
+    """
+    window_seconds = int(cfg.get("window_seconds", 0) or 0)
     df = pd.DataFrame({
         "domain": [str(r.get("domain") or r.get("query") or "").lower().rstrip(".") for r in records],
         "client": [str(r.get("client_ip", "")) for r in records],
         "qtype": [str(r.get("query_type", "")).upper() for r in records],
         "rcode": [str(r.get("response_code", "unknown")).lower() for r in records],
+        "timestamp": [r.get("timestamp") for r in records],
     })
     df["parent"] = df["domain"].map(parent_domain)
+    df["window"] = _window_bucket(df["timestamp"], window_seconds)
     df["sub"] = [subdomain_part(d, p) for d, p in zip(df["domain"], df["parent"])]
     df["qlen"] = df["domain"].str.len()
     df["max_label"] = df["domain"].map(lambda d: max((len(x) for x in d.split(".")), default=0))
@@ -213,18 +252,17 @@ def domain_stats(records: list, cfg: dict) -> tuple:
         (df["sub"].str.len() >= cfg["long_subdomain_chars"]) & (df["sub"].map(sub_entropy) >= cfg["min_subdomain_entropy"]))
     df["tunnel_rr"] = df["qtype"].isin(TUNNEL_RECORD_TYPES)
 
-    parents = {}
-    for p, g in df.groupby("parent", sort=False):
+    def _stats_for(g: pd.DataFrame) -> dict:
         uniq_subs = g.loc[g["sub"] != "", "sub"].unique()
         n_uniq = len(uniq_subs)
         st = {
             "queries": int(len(g)),
             "unique_subdomains": n_uniq,
-            "unique_ratio": round(n_uniq / len(g), 4),
+            "unique_ratio": round(n_uniq / max(len(g), 1), 4),
             "information_chars": int(sum(len(s) for s in uniq_subs)),
             "long_encoded_share": round(float(g["long_encoded"].mean()), 4),
             "tunnel_record_share": round(float(g["tunnel_rr"].mean()), 4),
-            "p95_length": float(g["qlen"].quantile(0.95)),
+            "p95_length": float(g["qlen"].quantile(0.95)) if len(g) else 0.0,
             "clients": int(g["client"].nunique()),
         }
         votes = []
@@ -239,7 +277,33 @@ def domain_stats(records: list, cfg: dict) -> tuple:
         st["attack_votes"] = votes
         st["ordinary"] = (n_uniq <= cfg["ordinary_max_subdomains"] and st["p95_length"] < cfg["ordinary_max_p95_length"]
                           and st["tunnel_record_share"] < cfg["min_share"])
-        parents[p] = st
+        return st
+
+    parents = {}
+    parents_by_window: dict = {}
+    # When window_seconds > 0 (N9) we compute per (parent, window) first, then collapse to
+    # per-parent by UNION of votes across windows (so a parent whose first hour carried a
+    # tunnel still votes `tunnel_record_types` even if later hours were quiet).
+    if window_seconds > 0:
+        for (p, w), g in df.groupby(["parent", "window"], sort=False):
+            parents_by_window[(p, int(w))] = _stats_for(g)
+        for p, g in df.groupby("parent", sort=False):
+            # Union votes across windows for this parent; use whole-parent counts for the
+            # size fields so downstream reports still see the full picture.
+            windows_here = [v for (pp, _), v in parents_by_window.items() if pp == p]
+            agg_votes: list = []
+            seen = set()
+            for st in windows_here:
+                for v in st["attack_votes"]:
+                    if v not in seen:
+                        agg_votes.append(v)
+                        seen.add(v)
+            full = _stats_for(g)
+            full["attack_votes"] = agg_votes
+            parents[p] = full
+    else:
+        for p, g in df.groupby("parent", sort=False):
+            parents[p] = _stats_for(g)
 
     enum = set()
     known = df[df["rcode"] != "unknown"]
@@ -247,13 +311,25 @@ def domain_stats(records: list, cfg: dict) -> tuple:
         subs = g.loc[g["sub"] != "", "sub"]
         if subs.nunique() >= cfg["min_unique_subdomains"] and (g["rcode"] == "nxdomain").mean() >= cfg["nxdomain_share"]:
             enum.add((c, p))
-    return df, parents, enum
+    # N9: parents_by_window is empty when window_seconds <= 0 (previous behaviour).
+    # It is returned as an extra element to keep positional compatibility unless an
+    # updated caller unpacks it.
+    return df, parents, enum, parents_by_window
 
 
 def lf_decision(row_parent: str, row_client: str, row_domain: str, parents: dict, enum: set,
-                allowlist: set, cfg: dict) -> tuple:
-    """(label | None, family, votes) for one row from the labeling functions."""
-    st = parents.get(row_parent, {})
+                allowlist: set, cfg: dict, row_window: int | None = None,
+                parents_by_window: dict | None = None) -> tuple:
+    """
+    (label | None, family, votes) for one row from the labeling functions.
+    N9: when `row_window` is given and `parents_by_window` has a matching entry, votes are
+    read from the (parent, window) bucket — so a parent that only carried a tunnel for one
+    hour only votes `tunnel_record_types` inside that hour.
+    """
+    if row_window is not None and parents_by_window and (row_parent, int(row_window)) in parents_by_window:
+        st = parents_by_window[(row_parent, int(row_window))]
+    else:
+        st = parents.get(row_parent, {})
     votes = list(st.get("attack_votes", []))
     if (row_client, row_parent) in enum:
         votes.append("nxdomain_enumeration")
@@ -278,7 +354,7 @@ def label_records(records: list, manifest: str = None, allowlist: set = None, cf
     cfg = cfg or load_settings()
     allowlist = allowlist or set()
     windows = load_manifest(manifest) if manifest and os.path.isfile(manifest) else []
-    df, parents, enum = domain_stats(records, cfg)
+    df, parents, enum, parents_by_window = domain_stats(records, cfg)
 
     labeled, abstained = [], []
     by_source = Counter()
@@ -313,7 +389,9 @@ def label_records(records: list, manifest: str = None, allowlist: set = None, cf
             abstained.append(r)
             continue
         # 3. behaviour labeling functions
-        lab, fam, votes = lf_decision(parent, client, domain, parents, enum, allowlist, cfg)
+        row_window = int(df.at[i, "window"]) if "window" in df.columns else None
+        lab, fam, votes = lf_decision(parent, client, domain, parents, enum, allowlist, cfg,
+                                      row_window=row_window, parents_by_window=parents_by_window)
         lf_fired.update(votes)
         r["lf_votes"] = votes
         if lab is None:
@@ -338,6 +416,13 @@ def label_records(records: list, manifest: str = None, allowlist: set = None, cf
         warnings.append(f"{by_source['abstain']} row(s) left out of training (no confident label).")
 
     decided = {p: s for p, s in parents.items() if s["attack_votes"]}
+    # N7: abstention breakdown per attack family / per source so the training set's
+    # bias toward "easy" cases is visible rather than invisible in a log line.
+    abstain_by_source: Counter = Counter()
+    abstain_by_family: Counter = Counter()
+    for r in abstained:
+        abstain_by_source[str(r.get("source_file") or r.get("input_file") or r.get("source_type") or "unknown")] += 1
+        abstain_by_family[str(r.get("attack_family") or "unknown")] += 1
     report = {
         "rows": len(records),
         "attack": sum(1 for r in labeled if r["label"] == 1),
@@ -349,6 +434,11 @@ def label_records(records: list, manifest: str = None, allowlist: set = None, cf
         "manifest_windows": [{k: (str(v) if k in ("start", "end") else v) for k, v in w.items()} for w in windows],
         "settings": cfg,
         "warnings": warnings,
+        # N14: cfg + allowlist fingerprint, stored next to the data for provenance.
+        "labeling_config_hash": labeling_config_hash(cfg, allowlist),
+        "abstain_share_by_source": {k: v for k, v in abstain_by_source.most_common()},
+        "abstain_share_by_family": {k: v for k, v in abstain_by_family.most_common()},
+        "window_seconds": int(cfg.get("window_seconds", 0) or 0),
     }
     return labeled, abstained, report
 
@@ -358,9 +448,11 @@ def validate(records: list, allowlist: set = None, cfg: dict = None) -> dict:
     cfg = cfg or load_settings()
     truth = [int(float(r["label"])) for r in records if _is_label(r.get("label"))]
     rows = [r for r in records if _is_label(r.get("label"))]
-    df, parents, enum = domain_stats(rows, cfg)
+    df, parents, enum, parents_by_window = domain_stats(rows, cfg)
     pred = [lf_decision(df.at[i, "parent"], df.at[i, "client"], df.at[i, "domain"], parents, enum,
-                        allowlist or set(), cfg)[0] for i in range(len(rows))]
+                        allowlist or set(), cfg,
+                        row_window=int(df.at[i, "window"]) if "window" in df.columns else None,
+                        parents_by_window=parents_by_window)[0] for i in range(len(rows))]
 
     def score(pairs):
         tp = sum(1 for y, p in pairs if y == 1 and p == 1)

@@ -1,0 +1,128 @@
+{
+  "data_file": "/home/ounnha/Documents/Capstone/data/processed/merged_features_labeled.json",
+  "data": {
+    "rows": 18353,
+    "benign": 8353,
+    "attack": 10000,
+    "families": {
+      "dns2tcp": 8000,
+      "dnsexfiltrator": 2000
+    },
+    "duplicate_domains": 4471,
+    "duplicate_feature_rows": 13575,
+    "conflicting_vectors": 0
+  },
+  "shortcuts": {
+    "query_length": {
+      "roc_auc": 0.9908
+    },
+    "query_entropy": {
+      "roc_auc": 0.9923
+    },
+    "has_digits": {
+      "roc_auc": 0.9541
+    },
+    "answer_count": {
+      "roc_auc": null,
+      "note": "constant"
+    },
+    "subdomain_count": {
+      "roc_auc": 0.8735
+    },
+    "longest_label": {
+      "roc_auc": 0.9486
+    },
+    "digit_ratio": {
+      "roc_auc": 0.962
+    },
+    "unique_char_ratio": {
+      "roc_auc": 0.7482
+    }
+  },
+  "rf_importance": {
+    "query_entropy": 0.2969,
+    "query_length": 0.2451,
+    "digit_ratio": 0.1757,
+    "has_digits": 0.1514,
+    "longest_label": 0.0928,
+    "subdomain_count": 0.0303,
+    "unique_char_ratio": 0.0077,
+    "answer_count": 0.0
+  },
+  "duplicates": {
+    "random_split": {
+      "n": 5506,
+      "prevalence": 0.5449,
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0,
+      "pr_auc": 1.0,
+      "roc_auc": 1.0
+    },
+    "grouped_split": {
+      "n": 5432,
+      "prevalence": 0.5475,
+      "precision": 0.9993,
+      "recall": 1.0,
+      "f1": 0.9997,
+      "pr_auc": 1.0,
+      "roc_auc": 1.0
+    }
+  },
+  "leave_one_family_out": {
+    "dns2tcp": {
+      "n": 10506,
+      "prevalence": 0.7615,
+      "precision": 1.0,
+      "recall": 0.318,
+      "f1": 0.4825,
+      "pr_auc": 0.9744,
+      "roc_auc": 0.915
+    },
+    "dnsexfiltrator": {
+      "n": 4506,
+      "prevalence": 0.4439,
+      "precision": 1.0,
+      "recall": 0.5645,
+      "f1": 0.7216,
+      "pr_auc": 1.0,
+      "roc_auc": 1.0
+    }
+  },
+  "label_shuffle": {
+    "n": 18353,
+    "prevalence": 0.5449,
+    "precision": 0.5435,
+    "recall": 0.4965,
+    "f1": 0.5189,
+    "pr_auc": 0.5394,
+    "roc_auc": 0.4922
+  },
+  "verdicts": [
+    {
+      "status": "WARN",
+      "check": "shortcut",
+      "message": "'query_entropy' ALONE separates the classes (AUC 0.992). The task is easy on this data \u2014 report it; the 1.00 is not model sophistication."
+    },
+    {
+      "status": "PASS",
+      "check": "duplicates",
+      "message": "score holds without duplicate leakage (F1 gap +0.000)"
+    },
+    {
+      "status": "WARN",
+      "check": "lofo",
+      "message": "only 0.32 recall on 'dns2tcp' when it was never seen in training \u2014 the model partly memorizes tool patterns"
+    },
+    {
+      "status": "WARN",
+      "check": "lofo",
+      "message": "only 0.56 recall on 'dnsexfiltrator' when it was never seen in training \u2014 the model partly memorizes tool patterns"
+    },
+    {
+      "status": "PASS",
+      "check": "shuffle",
+      "message": "performance collapses to chance with shuffled labels \u2014 no pipeline leakage (note: does not test label circularity)"
+    }
+  ]
+}

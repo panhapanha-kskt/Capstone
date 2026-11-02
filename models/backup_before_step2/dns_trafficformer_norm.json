@@ -1,0 +1,23 @@
+{
+  "features": [
+    "query_length",
+    "query_entropy",
+    "subdomain_count",
+    "digit_ratio",
+    "longest_label"
+  ],
+  "min": [
+    4.0,
+    1.7925000190734863,
+    1.0,
+    0.0,
+    1.0
+  ],
+  "range": [
+    190.0,
+    3.4274001121520996,
+    4.0,
+    0.6000000238418579,
+    62.0
+  ]
+}

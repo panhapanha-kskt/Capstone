@@ -1,57 +1,74 @@
 #!/usr/bin/env python3
 """
-model.py — Path A: RF + Transformer Ensemble (8-feature classification)
-DNS Tunnel Detector — Week 5 ML Layer
+path_a.py — Path A: per-query tree ensemble (RF + HistGradientBoosting)
+DNS Tunnel Detector — ML layer
 
-Fixes from original:
-  - Uses shared dns_parser.py (no duplicated parsers)
-  - Transformer is a TRUE BINARY CLASSIFIER (sigmoid + binary_crossentropy)
-  - Stratified train/test split to ensure attack samples in both sets
-  - Threshold calibration via precision-recall curve
-  - Scaler saved/loaded alongside models
-  - Inference returns week3-compatible enriched JSON for ml_bridge.py
+Design:
+  - Inputs = PATH_A_FEATURES: 7 per-query features (FEATURES_8 without answer_count, which
+    only encodes the capture source) + behaviour features over a past-only 5-minute window
+    + a benign character-bigram score (features/aggregates.py).
+  - Split before any fitting; scaler, bigram model, calibration and threshold never see test.
+  - Validation is cut in two grouped halves: one calibrates the tree scores (isotonic), the
+    other chooses RF-only vs RF+GBT and the alarm threshold.
+  - Threshold = the lowest score whose false-alarm rate on validation benign rows stays within
+    training.path_a_max_fpr (a false-alarm budget), not the F1-optimal point at 54 % prevalence.
+  - The Transformer is trained + reported as a baseline only, never in the decision.
 
 Usage:
-  python model.py --train week3_features_all.json
-  python model.py --infer week3_features_all.json
-  python model.py --train dns_labeled.csv
-  python model.py --infer capture.pcap --rf-weight 0.4 --tf-weight 0.6
+  python -m dns_detect.models.path_a --train merged_features_labeled.json [--split-manifest m.json]
+  python -m dns_detect.models.path_a --infer week3_features_all.json [--output-json out.json]
 """
 
 import os
 import json
-import math
 import argparse
 import numpy as np
 import pandas as pd
 import joblib
 from pathlib import Path
-from collections import Counter
 from sklearn.ensemble import RandomForestClassifier, HistGradientBoostingClassifier
 from sklearn.metrics import (
-    classification_report, precision_recall_curve, roc_auc_score,
-    average_precision_score,
+    classification_report, roc_auc_score, average_precision_score,
 )
+from sklearn.model_selection import GroupShuffleSplit
 from sklearn.preprocessing import StandardScaler
 from tensorflow import keras
 from tensorflow.keras import layers
 
-# Import shared parser
-from dns_detect.parsing.dns_parser import load_as_dataframe, FEATURES_8, feature_vector_key
-from dns_detect.models.splits import drop_conflicting_groups, grouped_split, overlap_share
+from dns_detect.parsing.dns_parser import (
+    load_as_dataframe, FEATURES_8, PATH_A_FEATURES, feature_vector_key,
+)
+from dns_detect.features.aggregates import (
+    BigramModel, WINDOW_SECONDS, add_aggregate_features, domain_series,
+)
+from dns_detect.models.splits import (
+    grouped_split, overlap_share, partition_conflicting_groups, load_manifest_indices,
+)
+from dns_detect.models.thresholds import threshold_for_fpr
+from dns_detect.utils.dataset_hash import dataset_hash
 from dns_detect.utils.paths import PROJECT_ROOT
 
 SEQUENCE_LENGTH = 10
 _MODELS_DIR = str(PROJECT_ROOT / "models")
 MODEL_RF   = os.path.join(_MODELS_DIR, "dns_tunnel_rf.pkl")
-MODEL_GBT  = os.path.join(_MODELS_DIR, "dns_tunnel_gbt.pkl")      # Path A 2nd learner (research-backed)
+MODEL_GBT  = os.path.join(_MODELS_DIR, "dns_tunnel_gbt.pkl")
 MODEL_TF   = os.path.join(_MODELS_DIR, "dns_tunnel_transformer.keras")  # baseline only (not in decision)
 MODEL_SCALER = os.path.join(_MODELS_DIR, "dns_scaler.pkl")
 MODEL_THRESHOLD = os.path.join(_MODELS_DIR, "dns_threshold.json")
+MODEL_BIGRAM = os.path.join(_MODELS_DIR, "bigram_table.json")
+
+
+def _training_setting(name: str, default):
+    try:
+        from dns_detect.config import settings
+        v = getattr(settings.training, name, None)
+        return default if v is None else v
+    except Exception:
+        return default
 
 
 # ─────────────────────────────────────────────
-# TRANSFORMER ARCHITECTURE (binary classifier)
+# TRANSFORMER ARCHITECTURE (baseline only)
 # ─────────────────────────────────────────────
 
 def transformer_encoder(inputs, head_size, num_heads, ff_dim, dropout=0.0):
@@ -72,10 +89,7 @@ def transformer_encoder(inputs, head_size, num_heads, ff_dim, dropout=0.0):
 def build_transformer(input_shape, head_size=32, num_heads=2, ff_dim=64,
                       num_transformer_blocks=2, mlp_units=None,
                       dropout=0.1, mlp_dropout=0.1):
-    """
-    Binary classification transformer.
-    Output: sigmoid → probability of being tunneling/attack traffic.
-    """
+    """Binary classification transformer. Output: sigmoid → P(attack)."""
     if mlp_units is None:
         mlp_units = [64]
 
@@ -89,7 +103,6 @@ def build_transformer(input_shape, head_size=32, num_heads=2, ff_dim=64,
         x = layers.Dense(dim, activation="relu")(x)
         x = layers.Dropout(mlp_dropout)(x)
 
-    # sigmoid for binary classification (NOT regression)
     outputs = layers.Dense(1, activation="sigmoid")(x)
     return keras.Model(inputs, outputs)
 
@@ -107,79 +120,94 @@ def build_sequences_unlabeled(X: np.ndarray, seq_len: int) -> np.ndarray:
 
 
 # ─────────────────────────────────────────────
-# THRESHOLD CALIBRATION
+# THRESHOLD + CALIBRATION
 # ─────────────────────────────────────────────
 
-def calibrate_threshold(y_true: np.ndarray, y_scores: np.ndarray) -> float:
-    """
-    Find optimal classification threshold using F1 from precision-recall curve.
-    Returns the threshold that maximises F1 on the validation set.
-    """
-    precision, recall, thresholds = precision_recall_curve(y_true, y_scores)
-    # F1 = 2 * P * R / (P + R), avoid divide-by-zero
-    f1_scores = np.where(
-        (precision + recall) > 0,
-        2 * precision * recall / (precision + recall),
-        0.0
-    )
-    best_idx = np.argmax(f1_scores[:-1])  # thresholds is 1 shorter
-    best_threshold = float(thresholds[best_idx])
-    best_f1 = float(f1_scores[best_idx])
-    print(f"   Calibrated threshold: {best_threshold:.4f}  (F1={best_f1:.4f})")
-    return best_threshold
+def calibrate(model, X_cal: np.ndarray, y_cal: np.ndarray):
+    """Isotonic calibration of an already-fitted classifier on held-out rows (sigmoid if few rows)."""
+    if len(np.unique(y_cal)) < 2:
+        print("   [warn] calibration half has one class — scores left uncalibrated")
+        return model
+    from sklearn.calibration import CalibratedClassifierCV
+    method = "isotonic" if len(y_cal) >= 200 else "sigmoid"
+    try:
+        from sklearn.frozen import FrozenEstimator
+        cal = CalibratedClassifierCV(FrozenEstimator(model), method=method)
+    except ImportError:  # scikit-learn < 1.6
+        cal = CalibratedClassifierCV(model, method=method, cv="prefit")
+    return cal.fit(X_cal, y_cal)
+
+
+def _split_validation(val_idx: np.ndarray, groups: np.ndarray, y: np.ndarray, seed: int = 42):
+    """Grouped 50/50 cut of the validation rows: (calibration half, threshold half)."""
+    if len(val_idx) >= 20:
+        gss = GroupShuffleSplit(n_splits=10, test_size=0.5, random_state=seed)
+        for a, b in gss.split(val_idx, y[val_idx], groups[val_idx]):
+            cal, thr = val_idx[a], val_idx[b]
+            if len(np.unique(y[cal])) == 2 and len(np.unique(y[thr])) == 2:
+                return cal, thr
+    print("   [warn] validation too small to halve — calibration and threshold share it")
+    return val_idx, val_idx
 
 
 # ─────────────────────────────────────────────
-# TRAINING
+# FEATURES (one code path for training and inference)
 # ─────────────────────────────────────────────
 
-def train_random_forest(X_train, y_train, X_test, y_test):
+def build_feature_frame(df: pd.DataFrame, features, bigram=None) -> pd.DataFrame:
+    """Add whatever behaviour features `features` needs and zero-fill any still missing."""
+    df = add_aggregate_features(df, bigram, window_seconds=WINDOW_SECONDS, features=features)
+    for col in features:
+        if col not in df.columns:
+            df[col] = 0
+    return df
+
+
+def feature_matrix(df: pd.DataFrame, features) -> np.ndarray:
+    return df[list(features)].apply(pd.to_numeric, errors="coerce").fillna(0.0).to_numpy(dtype=float)
+
+
+def load_path_a_meta() -> dict:
+    """Feature list + bigram model the saved Path A was trained with (old models: FEATURES_8)."""
+    meta = {"features": list(FEATURES_8), "bigram": None}
+    if os.path.exists(MODEL_THRESHOLD):
+        with open(MODEL_THRESHOLD) as f:
+            meta["features"] = list(json.load(f).get("features", FEATURES_8))
+    if "bigram_logprob" in meta["features"]:
+        if not os.path.exists(MODEL_BIGRAM):
+            raise FileNotFoundError(f"{MODEL_BIGRAM} missing — retrain Path A")
+        meta["bigram"] = BigramModel.load(MODEL_BIGRAM)
+    return meta
+
+
+# ─────────────────────────────────────────────
+# LEARNERS
+# ─────────────────────────────────────────────
+
+def train_random_forest(X_train, y_train, X_val, y_val):
     print("\n── Random Forest ──────────────────────────────────────────────")
-    rf = RandomForestClassifier(
-        n_estimators=200,
-        class_weight="balanced",   # handles imbalanced attack/normal ratio
-        random_state=42,
-        n_jobs=-1
-    )
+    rf = RandomForestClassifier(n_estimators=200, class_weight="balanced", random_state=42, n_jobs=-1)
     rf.fit(X_train, y_train)
-    print(classification_report(y_test, rf.predict(X_test),
-                                 target_names=["benign", "attack"]))
-    joblib.dump(rf, MODEL_RF)
-    print(f"Saved → {MODEL_RF}")
+    print("   validation report (uncalibrated):")
+    print(classification_report(y_val, rf.predict(X_val), target_names=["benign", "attack"], zero_division=0))
     return rf
 
 
-def train_gradient_boosting(X_train, y_train, X_test, y_test):
-    """
-    Second tree learner for the Path A ensemble.
-
-    Gradient boosting typically edges out RF on NIDS tabular data and relies on a
-    different (more concentrated) subset of features, so soft-voting it with the RF
-    is a genuine 'two-opinion' tabular ensemble (see docs/ML_IMPROVEMENTS.md).
-    HistGradientBoostingClassifier is sklearn-native (no extra dependency).
-    """
+def train_gradient_boosting(X_train, y_train, X_val, y_val):
+    """Second tree learner; relies on features differently from RF (two-opinion ensemble)."""
     print("\n── Gradient Boosting (HistGradientBoosting) ────────────────────")
     gbt = HistGradientBoostingClassifier(
-        learning_rate=0.1,
-        max_iter=300,
-        early_stopping=True,
-        validation_fraction=0.15,
-        class_weight="balanced",   # handle attack/benign imbalance
-        random_state=42,
+        learning_rate=0.1, max_iter=300, early_stopping=True, validation_fraction=0.15,
+        class_weight="balanced", random_state=42,
     )
     gbt.fit(X_train, y_train)
-    print(classification_report(y_test, gbt.predict(X_test),
-                                target_names=["benign", "attack"]))
-    joblib.dump(gbt, MODEL_GBT)
-    print(f"Saved → {MODEL_GBT}")
+    print("   validation report (uncalibrated):")
+    print(classification_report(y_val, gbt.predict(X_val), target_names=["benign", "attack"], zero_division=0))
     return gbt
 
 
 def tree_ensemble_scores(rf_model, gbt_model, X_flat, decision="rf_gbt"):
-    """
-    Path A production score = soft-vote of the two tree learners (mean P(attack)),
-    or RF alone when the decision gate picked 'rf_only'. Aligned to X_flat length.
-    """
+    """Path A score = mean P(attack) of the two (calibrated) trees, or RF alone for 'rf_only'."""
     rf_probs = rf_model.predict_proba(X_flat)[:, 1]
     if decision == "rf_only" or gbt_model is None:
         return rf_probs
@@ -196,79 +224,60 @@ def load_path_a_models():
     return rf_model, gbt_model, scaler, threshold, decision
 
 
+def score_frame(df: pd.DataFrame):
+    """Score a records DataFrame with the saved Path A. Returns (scores, preds, threshold, decision)."""
+    rf_model, gbt_model, scaler, threshold, decision = load_path_a_models()
+    meta = load_path_a_meta()
+    feats = build_feature_frame(df, meta["features"], meta["bigram"])
+    X = scaler.transform(feature_matrix(feats, meta["features"]))
+    scores = tree_ensemble_scores(rf_model, gbt_model, X, decision)
+    return scores, (scores >= threshold).astype(int), threshold, decision
+
+
 def train_transformer(X_seq_train, y_seq_train, X_seq_test, y_seq_test):
-    print("\n── Transformer (Binary Classifier) ───────────────────────────")
+    print("\n── Transformer (Binary Classifier, baseline only) ────────────")
     model = build_transformer(
         input_shape=(SEQUENCE_LENGTH, X_seq_train.shape[2]),
         head_size=32, num_heads=2, ff_dim=64,
         num_transformer_blocks=2, mlp_units=[64],
         dropout=0.1, mlp_dropout=0.1,
     )
-    # Binary cross-entropy — correct loss for classification
-    model.compile(
-        optimizer="adam",
-        loss="binary_crossentropy",
-        metrics=["accuracy", keras.metrics.AUC(name="auc")]
-    )
-    model.summary()
-
+    model.compile(optimizer="adam", loss="binary_crossentropy",
+                  metrics=["accuracy", keras.metrics.AUC(name="auc")])
     model.fit(
         X_seq_train, y_seq_train,
         validation_data=(X_seq_test, y_seq_test),
-        epochs=30,
-        batch_size=32,
-        callbacks=[
-            keras.callbacks.EarlyStopping(
-                patience=5, restore_best_weights=True, monitor="val_auc", mode="max"
-            )
-        ],
-        verbose=1
+        epochs=30, batch_size=32,
+        callbacks=[keras.callbacks.EarlyStopping(patience=5, restore_best_weights=True,
+                                                 monitor="val_auc", mode="max")],
+        verbose=0,
     )
-    loss, acc, auc = model.evaluate(X_seq_test, y_seq_test, verbose=0)
-    print(f"Test accuracy: {acc:.4f}  |  Test loss: {loss:.4f}  |  Test AUC: {auc:.4f}")
     model.save(MODEL_TF)
     print(f"Saved → {MODEL_TF}")
     return model
 
 
 # ─────────────────────────────────────────────
-# ENSEMBLE INFERENCE
+# ENSEMBLE INFERENCE (legacy RF + Transformer API, kept for callers)
 # ─────────────────────────────────────────────
 
-def _ensemble_scores(rf_model, tf_model, X_flat, X_seq,
-                     rf_weight=0.5, tf_weight=0.5):
-    """
-    Weighted ensemble probability per sample, aligned to X_flat length.
-    The first `pad` samples (which have no full sequence window) fall
-    back to the RF score alone.
-    """
+def _ensemble_scores(rf_model, tf_model, X_flat, X_seq, rf_weight=0.5, tf_weight=0.5):
     rf_probs = rf_model.predict_proba(X_flat)[:, 1]
     tf_probs = tf_model.predict(X_seq, verbose=0).flatten()
     pad = len(rf_probs) - len(tf_probs)
-    return np.concatenate([
-        rf_probs[:pad],
-        rf_weight * rf_probs[pad:] + tf_weight * tf_probs
-    ])
+    return np.concatenate([rf_probs[:pad], rf_weight * rf_probs[pad:] + tf_weight * tf_probs])
 
 
-def ensemble_predict(rf_model, tf_model, X_flat, X_seq,
-                     threshold=0.5, rf_weight=0.5, tf_weight=0.5):
-    """
-    Weighted ensemble of RF + Transformer probabilities.
-    Both models output P(attack). Combined score >= threshold → attack.
-    """
-    combined = _ensemble_scores(rf_model, tf_model, X_flat, X_seq,
-                                rf_weight, tf_weight)
-    predictions = (combined >= threshold).astype(int)
-    return predictions, combined
+def ensemble_predict(rf_model, tf_model, X_flat, X_seq, threshold=0.5, rf_weight=0.5, tf_weight=0.5):
+    combined = _ensemble_scores(rf_model, tf_model, X_flat, X_seq, rf_weight, tf_weight)
+    return (combined >= threshold).astype(int), combined
 
 
 def load_threshold() -> float:
     """Load calibrated threshold from disk, default 0.5 if not found."""
     if os.path.exists(MODEL_THRESHOLD):
         with open(MODEL_THRESHOLD) as f:
-            data = json.load(f)
-        return float(data.get("threshold", 0.5))
+            return float(json.load(f).get("threshold", 0.5))
     return 0.5
 
 
@@ -282,35 +291,38 @@ def load_threshold_and_decision():
 
 
 # ─────────────────────────────────────────────
-# FULL TRAINING PIPELINE
+# METRICS
 # ─────────────────────────────────────────────
 
 def _metric_block(y_true, scores, threshold):
     """Threshold-dependent + threshold-free metrics for a score vector."""
     from sklearn.metrics import precision_score, recall_score, f1_score
-    preds = (scores >= threshold).astype(int)
-    prevalence = float((y_true == 1).mean())
+    y_true = np.asarray(y_true)
+    preds = (np.asarray(scores) >= threshold).astype(int)
+    n_ben = int((y_true == 0).sum())
     try:
         roc = float(roc_auc_score(y_true, scores))
     except Exception:
         roc = None
     try:
-        pr = float(average_precision_score(y_true, scores))  # PR-AUC
+        pr = float(average_precision_score(y_true, scores))
     except Exception:
         pr = None
     return {
         "precision": float(precision_score(y_true, preds, zero_division=0)),
         "recall":    float(recall_score(y_true, preds, zero_division=0)),
         "f1":        float(f1_score(y_true, preds, zero_division=0)),
-        "pr_auc":    pr,                 # PRIMARY for imbalanced data (Saito & Rehmsmeier)
-        "pr_auc_baseline": prevalence,   # random PR-AUC = class prevalence
-        "roc_auc":   roc,                # secondary
+        "fpr":       float(((preds == 1) & (y_true == 0)).sum() / n_ben) if n_ben else None,
+        "false_alarms": int(((preds == 1) & (y_true == 0)).sum()),
+        "pr_auc":    pr,
+        "pr_auc_baseline": float((y_true == 1).mean()) if len(y_true) else None,
+        "roc_auc":   roc,
         "threshold": float(threshold),
     }
 
 
 def _recall_by_family(y_true, preds, families):
-    """Per-attack-family recall on the test set (families aligned to rows)."""
+    """Per-attack-family recall (families aligned to rows)."""
     if families is None:
         return {}
     out = {}
@@ -323,15 +335,22 @@ def _recall_by_family(y_true, preds, families):
     return out
 
 
-def run_training(input_path: str, rf_weight=0.5, tf_weight=0.5, shuffle_labels=False):
+def _model_vector_key(df: pd.DataFrame, features) -> np.ndarray:
+    vals = df[list(features)].apply(pd.to_numeric, errors="coerce").fillna(0).astype(float).round(6)
+    return vals.astype(str).agg("|".join, axis=1).to_numpy()
+
+
+# ─────────────────────────────────────────────
+# FULL TRAINING PIPELINE
+# ─────────────────────────────────────────────
+
+def run_training(input_path: str, rf_weight=0.5, tf_weight=0.5, shuffle_labels=False,
+                 split_manifest: str = None, with_transformer: bool = True):
     print(f"\n[*] Loading training data: {input_path}")
     df = load_as_dataframe(input_path)
-
-    # Fill any missing feature columns
     for col in FEATURES_8:
         if col not in df.columns:
             df[col] = 0
-
     if "label" not in df.columns:
         raise ValueError(
             "Training data must have a 'label' column (0=benign, 1=attack). "
@@ -339,147 +358,157 @@ def run_training(input_path: str, rf_weight=0.5, tf_weight=0.5, shuffle_labels=F
         )
 
     # Rows without a label (abstained in Step 8) can't be used for supervised training.
-    unlabeled = df["label"].isna()
+    unlabeled = pd.to_numeric(df["label"], errors="coerce").isna()
     if unlabeled.any():
         print(f"[*] Dropped {int(unlabeled.sum())} row(s) without a label")
         df = df[~unlabeled].reset_index(drop=True)
-    df["label"] = df["label"].astype(int)
-
-    print(f"[*] Dataset: {len(df)} records  |  "
-          f"Benign: {(df['label']==0).sum()}  |  "
-          f"Attack: {(df['label']==1).sum()}")
-
-    X = df[FEATURES_8].values
-    y = df["label"].values
+    df["label"] = pd.to_numeric(df["label"]).astype(int)
+    y = df["label"].to_numpy()
+    print(f"[*] Dataset: {len(df)} records  |  Benign: {(y == 0).sum()}  |  Attack: {(y == 1).sum()}")
     if len(np.unique(y)) < 2:
-        # Checked before ANY artifact (scaler, models, threshold) is written,
-        # so a bad dataset never leaves the saved models half-overwritten.
-        raise SystemExit(
-            f"[error] Training data has a single class (label={int(y[0])} for all "
-            f"{len(y)} rows). Path A needs both benign and attack samples — "
-            f"add benign data. No model files were changed."
-        )
-    # attack_family (from ground-truth manifest labeling) for per-family recall
-    fam = df["attack_family"].values if "attack_family" in df.columns else np.array(["?"] * len(df))
-    # Trusted = real labels (file / provenance / manifest). Weak behaviour labels may train
-    # the model but never grade it.
+        # Checked before ANY artifact is written, so a bad dataset never half-overwrites models.
+        raise SystemExit(f"[error] Training data has a single class (label={int(y[0])}). "
+                         f"Path A needs benign and attack rows. No model files were changed.")
+
+    features = list(PATH_A_FEATURES)
+    max_fpr = float(_training_setting("path_a_max_fpr", 0.001))
+    print(f"[*] Path A features ({len(features)}): {', '.join(features)}")
+    print(f"[*] False-alarm budget: {max_fpr:.3%} of benign validation rows")
+
+    # Window features use no labels and only past traffic, so computing them before the
+    # split is what live detection does too. The bigram model needs training data → later.
+    df = build_feature_frame(df, [f for f in features if f != "bigram_logprob"])
+
+    fam = df["attack_family"].astype(str).to_numpy() if "attack_family" in df.columns \
+        else np.array(["?"] * len(df))
     trusted = (~df["label_source"].isin(["weak_behavioral"])).to_numpy() if "label_source" in df.columns \
         else np.ones(len(df), dtype=bool)
 
-    # ── STEP 1: SPLIT BEFORE SCALING (prevents data leakage) ──────
-    # Identical feature vectors are one group and stay in ONE split; otherwise most test
-    # rows have an exact twin in training (79.8% on the Week 2 data) and the test score
-    # measures memorisation. Vectors seen with both labels are dropped first.
+    # ── STEP 1: SPLIT BEFORE ANY FITTING ──────────────────────────
+    # Exact copies of the per-query vector stay on one side (exact-copy leakage, N2).
     groups = feature_vector_key(df).to_numpy()
-    keep, n_conflicts = drop_conflicting_groups(y, groups)
+    # Conflicts are judged on what the model sees (minus the bigram score, a function of
+    # the name). They are kept out of training and saved as an error-analysis set (N8).
+    keep, conflict_mask, n_conflicts = partition_conflicting_groups(
+        y, _model_vector_key(df, [f for f in features if f != "bigram_logprob"]))
     if n_conflicts:
-        print(f"[*] Dropped {int((~keep).sum())} rows in {n_conflicts} feature vector(s) seen with both labels")
-        X, y, fam, groups, trusted = X[keep], y[keep], fam[keep], groups[keep], trusted[keep]
-    tr_idx, val_idx, te_idx, split_method = grouped_split(y, groups, seed=42)
-    X_train_raw, y_train = X[tr_idx], y[tr_idx]
-    X_val_raw, y_val = X[val_idx], y[val_idx]
-    X_test_raw, y_test, fam_test = X[te_idx], y[te_idx], fam[te_idx]
-    trusted_test = trusted[te_idx]
-    test_twin_share = overlap_share(groups, tr_idx, te_idx)
-    print(f"[*] Split ({split_method}) → train={len(X_train_raw)}  val={len(X_val_raw)}  test={len(X_test_raw)}  "
-          f"| distinct vectors: {len(np.unique(groups))}  | test rows with a twin in train: {test_twin_share:.1%}")
+        print(f"[*] {int(conflict_mask.sum())} rows in {n_conflicts} model vector(s) carry both labels "
+              f"→ error-analysis set, not trained on")
+        try:
+            out = os.path.normpath(os.path.join(_MODELS_DIR, "..", "data", "processed", "conflicts.json"))
+            os.makedirs(os.path.dirname(out), exist_ok=True)
+            df.loc[conflict_mask].to_json(out, orient="records")
+            print(f"    saved → {out}")
+        except Exception as e:
+            print(f"    [warn] could not persist conflict partition: {e}")
 
-    # ── STEP 2: FIT SCALER ON TRAINING DATA ONLY ──────────────────
-    scaler = StandardScaler()
-    X_train = scaler.fit_transform(X_train_raw)
-    X_val   = scaler.transform(X_val_raw)
-    X_test  = scaler.transform(X_test_raw)
-    joblib.dump(scaler, MODEL_SCALER)
-    print(f"Saved → {MODEL_SCALER}  (fit on training data only)")
-
-    # ── STEP 3: TRAIN PRODUCTION LEARNERS (two trees) ─────────────
-    # Research: trees beat deep nets on small tabular data; RF + gradient
-    # boosting rely on features differently → a real two-opinion ensemble.
-    rf_model  = train_random_forest(X_train, y_train, X_test, y_test)
-    gbt_model = train_gradient_boosting(X_train, y_train, X_test, y_test)
-
-    # ── STEP 4: TRANSFORMER (BASELINE ONLY — excluded from decision) ──
-    # Kept + reported for the paper ("explored, underperformed on tabular data").
-    X_seq_tr, y_seq_tr   = build_sequences(X_train, y_train, SEQUENCE_LENGTH)
-    X_seq_val, y_seq_val = build_sequences(X_val, y_val, SEQUENCE_LENGTH)
-    X_seq_te, y_seq_te   = build_sequences(X_test, y_test, SEQUENCE_LENGTH)
-    tf_model = train_transformer(X_seq_tr, y_seq_tr, X_seq_val, y_seq_val)
-
-    # ── STEP 5: CALIBRATE + GATE (RF-only vs RF+GBT) ──────────────
-    # Calibrate each candidate's threshold on validation, then keep the
-    # combo ONLY if it beats RF-alone on the held-out test (plan's gate).
-    print("\n── Calibrating thresholds (validation set) ───────────────────")
-    val_rf  = tree_ensemble_scores(rf_model, None, X_val, "rf_only")
-    thr_rf  = calibrate_threshold(y_val, val_rf)
-    val_cmb = tree_ensemble_scores(rf_model, gbt_model, X_val, "rf_gbt")
-    thr_cmb = calibrate_threshold(y_val, val_cmb)
-
-    test_rf  = tree_ensemble_scores(rf_model, None, X_test, "rf_only")
-    test_cmb = tree_ensemble_scores(rf_model, gbt_model, X_test, "rf_gbt")
-    block_rf  = _metric_block(y_test, test_rf, thr_rf)
-    block_cmb = _metric_block(y_test, test_cmb, thr_cmb)
-
-    if block_cmb["f1"] >= block_rf["f1"]:
-        decision, threshold, chosen, chosen_scores = "rf_gbt", thr_cmb, block_cmb, test_cmb
+    if split_manifest:
+        tr_idx, val_idx, te_idx, missing, manifest = load_manifest_indices(split_manifest, df)
+        # Conflicts never train or calibrate; the shared test rows stay exactly as listed.
+        tr_idx, val_idx = tr_idx[keep[tr_idx]], val_idx[keep[val_idx]]
+        split_method = f"manifest:{os.path.basename(split_manifest)}"
+        if len(missing):
+            print(f"[*] {len(missing)} row(s) are not in the manifest and are left out")
+        if len(val_idx) == 0:
+            raise SystemExit("[error] manifest has no validation rows — Path A needs them for calibration")
     else:
-        decision, threshold, chosen, chosen_scores = "rf_only", thr_rf, block_rf, test_rf
-    print(f"\n[*] Decision gate → '{decision}' "
-          f"(RF+GBT F1={block_cmb['f1']:.4f} vs RF-only F1={block_rf['f1']:.4f})")
+        kept = np.where(keep)[0]
+        tr_r, val_r, te_r, split_method = grouped_split(y[kept], groups[kept], seed=42)
+        tr_idx, val_idx, te_idx = kept[tr_r], kept[val_r], kept[te_r]
+    test_twin_share = overlap_share(groups, tr_idx, te_idx)
+    print(f"[*] Split ({split_method}) → train={len(tr_idx)}  val={len(val_idx)}  test={len(te_idx)}  "
+          f"| test rows with an exact twin in train: {test_twin_share:.1%}")
 
+    # ── STEP 2: FIT EVERYTHING DATA-DEPENDENT ON TRAIN ONLY ───────
+    bigram = None
+    if "bigram_logprob" in features:
+        bigram = BigramModel().fit(domain_series(df.iloc[tr_idx][y[tr_idx] == 0]))
+        df["bigram_logprob"] = bigram.score_many(domain_series(df))
+    X_all = feature_matrix(df, features)
+    scaler = StandardScaler().fit(X_all[tr_idx])
+    X_train, X_val, X_test = (scaler.transform(X_all[i]) for i in (tr_idx, val_idx, te_idx))
+    y_train, y_val, y_test = y[tr_idx], y[val_idx], y[te_idx]
+    fam_test, trusted_test = fam[te_idx], trusted[te_idx]
+
+    rf_raw = train_random_forest(X_train, y_train, X_val, y_val)
+    gbt_raw = train_gradient_boosting(X_train, y_train, X_val, y_val)
+
+    transformer_block = None
+    if with_transformer:
+        X_seq_tr, y_seq_tr = build_sequences(X_train, y_train, SEQUENCE_LENGTH)
+        X_seq_val, y_seq_val = build_sequences(X_val, y_val, SEQUENCE_LENGTH)
+        X_seq_te, y_seq_te = build_sequences(X_test, y_test, SEQUENCE_LENGTH)
+        tf_model = train_transformer(X_seq_tr, y_seq_tr, X_seq_val, y_seq_val)
+        try:
+            transformer_block = _metric_block(y_seq_te, tf_model.predict(X_seq_te, verbose=0).flatten(), 0.5)
+        except Exception:
+            transformer_block = None
+
+    # ── STEP 3: CALIBRATE, GATE AND SET THE THRESHOLD ON VALIDATION ─
+    print("\n── Calibration + decision gate (validation only) ─────────────")
+    cal_rel, thr_rel = _split_validation(np.arange(len(val_idx)), groups[val_idx], y_val)
+    rf_model = calibrate(rf_raw, X_val[cal_rel], y_val[cal_rel])
+    gbt_model = calibrate(gbt_raw, X_val[cal_rel], y_val[cal_rel])
+    print(f"   calibration rows={len(cal_rel)}  threshold rows={len(thr_rel)}")
+
+    candidates = {}
+    for decision in ("rf_only", "rf_gbt"):
+        s = tree_ensemble_scores(rf_model, gbt_model, X_val[thr_rel], decision)
+        thr = threshold_for_fpr(y_val[thr_rel], s, max_fpr)
+        candidates[decision] = {"threshold": thr, **_metric_block(y_val[thr_rel], s, thr)}
+        print(f"   {decision:8s} threshold={thr:.4f}  val recall={candidates[decision]['recall']:.4f}  "
+              f"val FPR={candidates[decision]['fpr']:.4%}  val PR-AUC={candidates[decision]['pr_auc']}")
+    # Higher recall at the same budget wins; on a tie the simpler RF-only model is kept.
+    decision = "rf_gbt" if candidates["rf_gbt"]["recall"] > candidates["rf_only"]["recall"] else "rf_only"
+    threshold = candidates[decision]["threshold"]
+    if threshold > 1.0:
+        print("   [warn] no threshold meets the false-alarm budget on validation — Path A will never alarm. "
+              "Raise training.path_a_max_fpr or add validation data.")
+    print(f"[*] Decision gate (validation) → '{decision}'  threshold={threshold:.4f}")
+
+    dv = dataset_hash([input_path], features)
+    joblib.dump(rf_model, MODEL_RF)
+    joblib.dump(gbt_model, MODEL_GBT)
+    joblib.dump(scaler, MODEL_SCALER)
+    if bigram is not None:
+        bigram.save(MODEL_BIGRAM)
     with open(MODEL_THRESHOLD, "w") as f:
-        json.dump({"threshold": threshold, "decision": decision}, f)
-    print(f"Saved → {MODEL_THRESHOLD}  (decision: {decision})")
+        json.dump({
+            "threshold": threshold, "decision": decision, "features": features,
+            "fpr_budget": max_fpr, "calibrated": True, "window_seconds": WINDOW_SECONDS,
+            "val_recall": candidates[decision]["recall"], "val_fpr": candidates[decision]["fpr"],
+            "dataset_version": dv, "split": split_method,
+        }, f, indent=2)
+    print(f"Saved → {MODEL_RF}, {MODEL_GBT}, {MODEL_SCALER}, {MODEL_THRESHOLD}"
+          + (f", {MODEL_BIGRAM}" if bigram is not None else ""))
 
-    # ── STEP 6: HELD-OUT TEST REPORT (the numbers for the paper) ──
-    print("\n── Final Path A Evaluation (held-out test set) ───────────────")
+    # ── STEP 4: HELD-OUT TEST REPORT (first and only use of test) ──
+    print("\n── Final Path A evaluation (held-out test set) ───────────────")
+    chosen_scores = tree_ensemble_scores(rf_model, gbt_model, X_test, decision)
+    chosen = _metric_block(y_test, chosen_scores, threshold)
     preds = (chosen_scores >= threshold).astype(int)
-    print(classification_report(y_test, preds, target_names=["benign", "attack"]))
-    print(f"PR-AUC (primary): {chosen['pr_auc']}  (baseline={chosen['pr_auc_baseline']:.3f})  "
-          f"| ROC-AUC: {chosen['roc_auc']}")
-    # Only meaningful when labels came with families (manifest / provenance labeling)
-    recall_by_family = _recall_by_family(
-        y_test, preds, fam_test if "attack_family" in df.columns else None
-    )
-    if recall_by_family:
-        print("Per-attack-family recall:")
-        for k, v in recall_by_family.items():
-            print(f"  - {k}: recall={v['recall']:.3f}  (n={v['support']})")
+    print(classification_report(y_test, preds, target_names=["benign", "attack"], zero_division=0))
+    print(f"PR-AUC: {chosen['pr_auc']}  (baseline={chosen['pr_auc_baseline']:.3f})  | ROC-AUC: {chosen['roc_auc']}  "
+          f"| false alarms: {chosen['false_alarms']} / {int((y_test == 0).sum())} benign")
+    recall_by_family = _recall_by_family(y_test, preds, fam_test if "attack_family" in df.columns else None)
+    for k, v in recall_by_family.items():
+        print(f"  - {k}: recall={v['recall']:.3f}  (n={v['support']})")
 
-    # Same test set, real labels only (file / provenance / manifest) — the numbers to report
     trusted_block = None
     n_trusted = int(trusted_test.sum())
     if n_trusted and len(np.unique(y_test[trusted_test])) == 2:
         trusted_block = _metric_block(y_test[trusted_test], chosen_scores[trusted_test], threshold)
-        print(f"Trusted-label test rows: {n_trusted}/{len(y_test)}  →  F1={trusted_block['f1']:.4f}  "
-              f"PR-AUC={trusted_block['pr_auc']}")
-    else:
-        print(f"Trusted-label test rows: {n_trusted}/{len(y_test)} — not enough of both classes for metrics")
+        print(f"Trusted-label test rows: {n_trusted}/{len(y_test)}  →  F1={trusted_block['f1']:.4f}")
 
-    # Transformer baseline metrics (not used in the decision)
-    try:
-        tf_scores = tf_model.predict(X_seq_te, verbose=0).flatten()
-        tf_block = _metric_block(y_seq_te, tf_scores, 0.5)
-    except Exception:
-        tf_block = None
-
-    # ── STEP 7: OPTIONAL LABEL-SHUFFLE / PERMUTATION CHECK ────────
-    # Honest note: this catches PIPELINE leakage/overfitting, NOT circular
-    # labeling (labels-from-features is a real dependency). See docs/ML_IMPROVEMENTS.md.
     shuffle_block = None
     if shuffle_labels:
         print("\n── Label-shuffle check (train on permuted labels) ────────────")
-        rng = np.random.default_rng(42)
-        y_shuf = rng.permutation(y_train)
+        y_shuf = np.random.default_rng(42).permutation(y_train)
         rf_s = RandomForestClassifier(n_estimators=200, class_weight="balanced",
                                       random_state=42, n_jobs=-1).fit(X_train, y_shuf)
-        gbt_s = HistGradientBoostingClassifier(max_iter=300, class_weight="balanced",
-                                               random_state=42).fit(X_train, y_shuf)
-        s_scores = tree_ensemble_scores(rf_s, gbt_s, X_test, decision)
-        shuffle_block = _metric_block(y_test, s_scores, 0.5)
-        print(f"   Shuffled PR-AUC={shuffle_block['pr_auc']} (baseline≈{shuffle_block['pr_auc_baseline']:.3f}), "
-              f"ROC-AUC={shuffle_block['roc_auc']} → should collapse toward chance if leak-free")
+        shuffle_block = _metric_block(y_test, rf_s.predict_proba(X_test)[:, 1], 0.5)
+        print(f"   Shuffled PR-AUC={shuffle_block['pr_auc']} (baseline≈{shuffle_block['pr_auc_baseline']:.3f})")
 
-    # ── PERSIST METRICS (single source of truth for the paper) ────
     metrics_path = os.path.join(_MODELS_DIR, "evaluation_metrics.json")
     try:
         with open(metrics_path) as f:
@@ -487,77 +516,58 @@ def run_training(input_path: str, rf_weight=0.5, tf_weight=0.5, shuffle_labels=F
     except Exception:
         all_metrics = {}
     all_metrics["path_a"] = {
-        **chosen,                        # chosen decision's metrics (precision/recall/f1/pr_auc/roc_auc/threshold)
+        **chosen,
         "decision": decision,
-        "candidates": {"rf_only": block_rf, "rf_gbt": block_cmb},
-        "transformer_baseline": tf_block,   # reported, NOT in the decision
+        "features": features,
+        "fpr_budget": max_fpr,
+        "calibrated": True,
+        "validation_candidates": candidates,     # the gate's inputs — validation only
+        "transformer_baseline": transformer_block,
         "shuffle_labels": shuffle_block,
         "recall_by_family": recall_by_family,
         "seed": 42,
         "split": split_method,
-        "split_sizes": {"train": int(len(X_train)), "val": int(len(X_val)), "test": int(len(X_test))},
-        "split_groups": {"train": int(len(np.unique(groups[tr_idx]))), "val": int(len(np.unique(groups[val_idx]))),
-                         "test": int(len(np.unique(groups[te_idx])))},
+        "dataset_version": dv,
+        "split_sizes": {"train": int(len(tr_idx)), "val": int(len(val_idx)), "test": int(len(te_idx))},
         "test_rows_with_twin_in_train": test_twin_share,
-        "dropped_conflicting_vectors": int(n_conflicts),
+        "conflicting_vectors": int(n_conflicts),
         "test_support": {"benign": int((y_test == 0).sum()), "attack": int((y_test == 1).sum())},
-        # Metrics on test rows with real labels only; weak behaviour labels never grade the model
         "test_trusted_labels": trusted_block,
         "test_trusted_rows": n_trusted,
     }
     with open(metrics_path, "w") as f:
         json.dump(all_metrics, f, indent=2)
     print(f"[+] Metrics saved → {metrics_path}  (key: path_a)")
-
-    print("\n✅ Training complete. Artifacts saved:")
-    print(f"   {MODEL_RF}  |  {MODEL_GBT}  |  {MODEL_TF} (baseline)  |  {MODEL_SCALER}  |  {MODEL_THRESHOLD}")
+    print("\n✅ Path A training complete.")
 
 
 # ─────────────────────────────────────────────
 # INFERENCE PIPELINE
 # ─────────────────────────────────────────────
 
-def run_inference(input_path: str, rf_weight=0.5, tf_weight=0.5,
-                  output_json: str = None):
-    """
-    Load any supported file, run ensemble inference.
-    Saves results to CSV and optionally enriched JSON (for ml_bridge.py).
-    """
-    print(f"[*] Loading models...")
-    rf_model, gbt_model, scaler, threshold, decision = load_path_a_models()
+def run_inference(input_path: str, rf_weight=0.5, tf_weight=0.5, output_json: str = None):
+    """Score any supported file with the saved Path A; writes CSV and optionally enriched JSON."""
+    print("[*] Loading models...")
+    df = load_as_dataframe(input_path)
+    scores, preds, threshold, decision = score_frame(df)
     print(f"[*] Path A decision: {decision}  |  threshold: {threshold:.4f}")
 
-    df = load_as_dataframe(input_path)
-    for col in FEATURES_8:
-        if col not in df.columns:
-            df[col] = 0
-
-    X_scaled = scaler.transform(df[FEATURES_8].values)
-
-    scores = tree_ensemble_scores(rf_model, gbt_model, X_scaled, decision)
-    preds  = (scores >= threshold).astype(int)
-
     result_df = df.copy().reset_index(drop=True)
-    result_df["ml_score_A"]   = scores
-    result_df["ml_label_A"]   = preds
+    result_df["ml_score_A"] = scores
+    result_df["ml_label_A"] = preds
     result_df["ml_verdict_A"] = result_df["ml_label_A"].map({1: "ATTACK", 0: "benign"})
 
-    # Save CSV
-    stem     = Path(input_path).stem
-    out_csv  = f"{stem}_model_results.csv"
+    out_csv = f"{Path(input_path).stem}_model_results.csv"
     result_df.to_csv(out_csv, index=False)
     print(f"\n[+] CSV saved → {out_csv}")
     print(f"    Total analyzed : {len(preds)}")
     print(f"    Attack detected: {preds.sum()}")
     print(f"    Benign         : {(preds == 0).sum()}")
 
-    # Save enriched JSON for ml_bridge.py consumption
     if output_json:
-        records = result_df.to_dict(orient="records")
         with open(output_json, "w") as f:
-            json.dump(records, f, indent=2, default=str)
+            json.dump(result_df.to_dict(orient="records"), f, indent=2, default=str)
         print(f"[+] Enriched JSON saved → {output_json}")
-
     return result_df
 
 
@@ -567,42 +577,27 @@ def run_inference(input_path: str, rf_weight=0.5, tf_weight=0.5,
 
 def main():
     parser = argparse.ArgumentParser(
-        description="DNS Tunnel Detector — Path A: RF + Transformer Ensemble (8 features)",
+        description="DNS Tunnel Detector — Path A: calibrated RF + HistGBT on per-query + behaviour features",
         formatter_class=argparse.RawTextHelpFormatter,
-        epilog="""
-Examples:
-  # Train on Week 3 labeled JSON (after running ml_bridge.py --label-only)
-  python model.py --train week3_features_labeled.json
-
-  # Train on classic labeled CSV
-  python model.py --train dns_labeled.csv
-
-  # Infer on Week 3 features
-  python model.py --infer week3_features_all.json --output-json week3_with_ml_A.json
-
-  # Infer on PCAP
-  python model.py --infer capture.pcap
-
-  # Infer with custom ensemble weights
-  python model.py --infer traffic.json --rf-weight 0.4 --tf-weight 0.6
-        """
     )
-    parser.add_argument("--train",      metavar="FILE",  help="Labeled file to train both models")
-    parser.add_argument("--infer",      metavar="FILE",  help="File to run inference on")
-    parser.add_argument("--output-json",metavar="FILE",  help="Save inference results as JSON (for ml_bridge.py)")
-    parser.add_argument("--rf-weight",  type=float, default=0.5, help="(kept for CLI compat; RF+GBT soft-vote is 50/50)")
-    parser.add_argument("--tf-weight",  type=float, default=0.5, help="(deprecated; Transformer is a baseline, not in the decision)")
+    parser.add_argument("--train", metavar="FILE", help="Labeled file to train on")
+    parser.add_argument("--infer", metavar="FILE", help="File to run inference on")
+    parser.add_argument("--output-json", metavar="FILE", help="Save inference results as JSON")
+    parser.add_argument("--split-manifest", metavar="FILE", default=None,
+                        help="Use this shared split (data/processed/splits/*.json) instead of a new one")
+    parser.add_argument("--no-transformer", action="store_true",
+                        help="Skip the Transformer baseline (faster experiments)")
+    parser.add_argument("--rf-weight", type=float, default=0.5, help="(kept for CLI compat)")
+    parser.add_argument("--tf-weight", type=float, default=0.5, help="(deprecated)")
     parser.add_argument("--shuffle-labels", action="store_true",
-                        help="Also run a label-shuffle/permutation leakage check (Tier 3)")
+                        help="Also run a label-shuffle/permutation leakage check")
     args = parser.parse_args()
 
     if args.train:
-        run_training(args.train, args.rf_weight, args.tf_weight,
-                     shuffle_labels=args.shuffle_labels)
-
+        run_training(args.train, args.rf_weight, args.tf_weight, shuffle_labels=args.shuffle_labels,
+                     split_manifest=args.split_manifest, with_transformer=not args.no_transformer)
     if args.infer:
         run_inference(args.infer, args.rf_weight, args.tf_weight, args.output_json)
-
     if not args.train and not args.infer:
         parser.print_help()
 

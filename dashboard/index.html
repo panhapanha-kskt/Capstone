@@ -1,0 +1,342 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>DNS Detect Live</title>
+<style>
+:root {
+  --font-ui: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --font-data: ui-monospace, "SFMono-Regular", Consolas, Menlo, monospace;
+  --plane: #f3f5f8; --surface: #fcfcfd; --ink: #0e1217; --ink-2: #4a5360; --ink-3: #7b838e;
+  --grid: #e3e7ec; --axis: #c5ccd5; --ring: rgba(14,18,23,.10); --wash: rgba(14,18,23,.045);
+  --blue: #2a78d6; --orange: #eb6834; --good: #0ca30c; --warn: #fab219; --critical: #d03b3b;
+  --good-ink: #006300; --new-bg: rgba(42,120,214,.10);
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --plane: #0b0e12; --surface: #151a20; --ink: #eef1f4; --ink-2: #b9c0ca; --ink-3: #8a919b;
+    --grid: #252c35; --axis: #343c47; --ring: rgba(255,255,255,.10); --wash: rgba(255,255,255,.06);
+    --blue: #3987e5; --orange: #d95926; --good-ink: #0ca30c; --new-bg: rgba(57,135,229,.16);
+    color-scheme: dark;
+  }
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--plane); color: var(--ink); font: 14px/1.5 var(--font-ui);
+  padding: 20px max(16px, env(safe-area-inset-right, 0px)) 40px max(16px, env(safe-area-inset-left, 0px)); }
+.wrap { max-width: 1240px; margin: 0 auto; display: flex; flex-direction: column; gap: 16px; }
+h1, h2, p, dl, dd { margin: 0; }
+h1 { font-size: 22px; font-weight: 600; letter-spacing: -.01em; }
+h2 { font-size: 14px; font-weight: 600; }
+.eyebrow { font: 11px var(--font-data); letter-spacing: .08em; text-transform: uppercase; color: var(--ink-3); }
+.note { color: var(--ink-2); font-size: 12.5px; }
+.num { font-family: var(--font-data); font-variant-numeric: tabular-nums; }
+.dim { color: var(--ink-3); }
+
+.top { display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: 10px 20px; }
+.top-right { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+.badge { font: 600 11px var(--font-data); letter-spacing: .06em; padding: 3px 9px; border-radius: 999px; background: var(--wash); }
+.badge.demo { background: var(--warn); color: #0b0b0b; }
+.conn { display: inline-flex; align-items: center; gap: 7px; font-size: 12.5px; color: var(--ink-2); }
+.dot { width: 9px; height: 9px; border-radius: 50%; background: var(--good); }
+.dot.off { background: var(--critical); }
+button { font: 500 13px var(--font-ui); color: var(--ink); background: var(--surface); border: 0; box-shadow: 0 0 0 1px var(--axis);
+  border-radius: 6px; padding: 6px 12px; cursor: pointer; }
+button:hover { background: var(--wash); }
+button:focus-visible { outline: 2px solid var(--blue); outline-offset: 2px; }
+button:disabled { opacity: .5; cursor: default; }
+
+.card { background: var(--surface); border-radius: 10px; box-shadow: 0 0 0 1px var(--ring); }
+.status { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 22px; padding: 12px 16px; }
+.status .grow { flex: 1 1 260px; min-width: 0; }
+.status b { font-weight: 600; }
+.errbox { margin: 0 16px 14px; padding: 10px 12px; border-radius: 6px; background: var(--wash);
+  box-shadow: inset 3px 0 0 var(--critical); font: 12px/1.5 var(--font-data); white-space: pre-wrap; overflow-wrap: anywhere; max-height: 220px; overflow: auto; }
+
+.kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); }
+.kpi { padding: 14px 18px; border-right: 1px solid var(--grid); min-width: 0; }
+.kpi:last-child { border-right: 0; }
+.kpi .v { font: 500 28px/1.15 var(--font-data); letter-spacing: -.02em; margin: 2px 0; }
+.kpi .v small { font-size: 13px; color: var(--ink-3); letter-spacing: 0; margin-left: 6px; }
+.kpi .d { font-size: 12.5px; color: var(--ink-2); }
+@media (max-width: 800px) { .kpi { border-bottom: 1px solid var(--grid); } }
+
+.grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; align-items: start; }
+.span2 { grid-column: 1 / -1; }
+@media (max-width: 860px) { .grid { grid-template-columns: minmax(0, 1fr); } }
+.panel { padding: 16px 18px 18px; display: flex; flex-direction: column; gap: 12px; min-width: 0; }
+.panel header { display: flex; flex-direction: column; gap: 2px; }
+
+.bars { display: flex; flex-direction: column; gap: 9px; }
+.row { display: grid; grid-template-columns: minmax(90px, 42%) minmax(0, 1fr) 44px; align-items: center; gap: 10px; }
+.row .lab { font-size: 12.5px; color: var(--ink-2); overflow-wrap: anywhere; min-width: 0; }
+.row .lab.mono { font: 12px var(--font-data); }
+.row .val { font: 12.5px var(--font-data); text-align: right; }
+.track { position: relative; height: 10px; border-left: 1px solid var(--axis); }
+.track::before { content: ""; position: absolute; inset: 4px 0; border-top: 1px solid var(--grid); }
+.bar { position: absolute; left: 0; top: 0; height: 10px; border-radius: 0 4px 4px 0; background: var(--blue); min-width: 2px; transition: width .4s; }
+.bar.o { background: var(--orange); }
+.empty { color: var(--ink-3); font-size: 13px; padding: 6px 0; }
+
+.scroll { overflow-x: auto; max-height: 520px; overflow-y: auto; }
+table { width: 100%; border-collapse: collapse; font-size: 13px; }
+th { position: sticky; top: 0; background: var(--surface); text-align: left; font: 500 10.5px var(--font-data); letter-spacing: .06em;
+  text-transform: uppercase; color: var(--ink-3); padding: 6px 12px 6px 0; border-bottom: 1px solid var(--axis); white-space: nowrap; }
+td { padding: 8px 12px 8px 0; border-bottom: 1px solid var(--grid); vertical-align: top; }
+tr.new td { background: var(--new-bg); }
+td.t { font: 12px var(--font-data); white-space: nowrap; color: var(--ink-2); }
+td.d { font: 12px var(--font-data); overflow-wrap: anywhere; min-width: 140px; }
+td .tag { font: 10.5px var(--font-data); color: var(--ink-3); }
+.pill { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 500; white-space: nowrap; padding: 1px 9px 1px 7px; border-radius: 999px; background: var(--wash); }
+.pill svg { width: 10px; height: 10px; flex: none; }
+.pill.high svg { fill: var(--critical); } .pill.med svg { fill: var(--warn); }
+.pill.ok svg path { stroke: var(--good); }
+.newtag { font: 600 10px var(--font-data); letter-spacing: .06em; color: var(--blue); margin-left: 6px; }
+
+svg text { font: 11px var(--font-data); fill: var(--ink-2); }
+svg .t3 { fill: var(--ink-3); } svg .gl { stroke: var(--grid); } svg .ax { stroke: var(--axis); }
+.legend { display: flex; gap: 16px; font-size: 12px; color: var(--ink-2); }
+.legend i { display: inline-block; width: 12px; height: 3px; border-radius: 2px; margin-right: 6px; vertical-align: 3px; }
+.facts { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 10px 16px; }
+.facts dt { font-size: 11.5px; color: var(--ink-3); } .facts dd { font: 16px var(--font-data); }
+ul.reasons { margin: 0; padding-left: 18px; color: var(--ink-2); font-size: 13px; }
+footer { color: var(--ink-3); font-size: 12px; }
+@media (prefers-reduced-motion: reduce) { .bar { transition: none; } }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="top">
+    <div>
+      <div class="eyebrow">CADT capstone · DNS tunnel detection</div>
+      <h1>DNS Detect Live</h1>
+    </div>
+    <div class="top-right">
+      <span class="badge" id="mode">LIVE</span>
+      <span class="conn"><span class="dot" id="dot"></span><span id="connText">Connecting</span></span>
+      <button id="runBtn" type="button">Run now</button>
+    </div>
+  </div>
+
+  <section class="card" aria-label="Pipeline status">
+    <div class="status">
+      <div class="grow"><span id="pill"></span> <b id="stText">Starting</b> <span class="dim" id="stSub"></span></div>
+      <div class="note">Last run <span class="num" id="lastRun">never</span></div>
+      <div class="note">Took <span class="num" id="dur">–</span></div>
+      <div class="note">Runs <span class="num" id="runs">0</span></div>
+      <div class="note">Watching <span class="num" id="watch">–</span></div>
+    </div>
+    <div class="errbox" id="err" hidden></div>
+  </section>
+
+  <section class="card kpis" aria-label="Summary">
+    <div class="kpi"><div class="eyebrow">Alerts</div><div class="v num"><span id="kAlerts">0</span><small id="kNew"></small></div><div class="d">Total from the latest run</div></div>
+    <div class="kpi"><div class="eyebrow">High</div><div class="v num" id="kHigh">0</div><div class="d">Needs a look first</div></div>
+    <div class="kpi"><div class="eyebrow">Medium</div><div class="v num" id="kMed">0</div><div class="d">Worth reviewing</div></div>
+    <div class="kpi"><div class="eyebrow">Queries analysed</div><div class="v num" id="kQ">0</div><div class="d" id="kMl">ML rules: –</div></div>
+  </section>
+
+  <div class="grid">
+    <section class="card panel span2" aria-labelledby="hFeed">
+      <header><h2 id="hFeed">Alert feed</h2><p class="note">Newest first. Rows that appeared in the last 45 seconds are highlighted. Alerts that were already there when the dashboard started are not marked new.</p></header>
+      <div class="scroll"><table><thead><tr><th>Time</th><th>Severity</th><th>Rule</th><th>Client</th><th>Domain</th><th>MITRE</th></tr></thead><tbody id="feed"></tbody></table></div>
+    </section>
+
+    <section class="card panel" aria-labelledby="hHist">
+      <header><h2 id="hHist">Alerts over time</h2><p class="note">One point per pipeline run, so the line moves when new log lines are processed.</p></header>
+      <div class="legend"><span><i style="background:var(--blue)"></i>All alerts</span><span><i style="background:var(--orange)"></i>High</span></div>
+      <svg id="hist" viewBox="0 0 520 190" width="100%" role="img" aria-label="Alerts per pipeline run"></svg>
+    </section>
+
+    <section class="card panel" aria-labelledby="hRule">
+      <header><h2 id="hRule">Alerts by rule</h2></header>
+      <div class="bars" id="byRule"></div>
+    </section>
+
+    <section class="card panel" aria-labelledby="hIp">
+      <header><h2 id="hIp">Top clients</h2><p class="note">Source IPs with the most alerts.</p></header>
+      <div class="bars" id="topIp"></div>
+    </section>
+
+    <section class="card panel" aria-labelledby="hDom">
+      <header><h2 id="hDom">Top domains</h2><p class="note">Query names are shown as plain text because they come from the network.</p></header>
+      <div class="bars" id="topDom"></div>
+    </section>
+
+    <section class="card panel" aria-labelledby="hMit">
+      <header><h2 id="hMit">MITRE ATT&amp;CK techniques</h2></header>
+      <div class="bars" id="topTech"></div>
+    </section>
+
+    <section class="card panel" aria-labelledby="hMon">
+      <header><h2 id="hMon">Model health</h2><p class="note">From the monitoring step after each run.</p></header>
+      <div id="monHead"></div>
+      <div class="bars" id="psi"></div>
+      <dl class="facts" id="monFacts"></dl>
+    </section>
+  </div>
+  <footer>Reads <code>data/processed/week4_unified_alerts.json</code> and <code>monitoring_report.json</code>. The page refreshes every 2 seconds; new results appear after each pipeline run.</footer>
+</div>
+
+<script>
+(function () {
+  "use strict";
+  var $ = function (id) { return document.getElementById(id); };
+  var S = null, lastVersion = -1, failed = 0;
+
+  function el(tag, cls, text) { var e = document.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = text; return e; }
+  function clear(n) { while (n.firstChild) n.removeChild(n.firstChild); }
+  function n0(x) { return Number(x || 0).toLocaleString("en-US"); }
+  function ago(t, now) {
+    if (!t) return "never";
+    var s = Math.max(0, Math.round(now - t));
+    if (s < 60) return s + "s ago";
+    if (s < 3600) return Math.floor(s / 60) + "m " + (s % 60) + "s ago";
+    return Math.floor(s / 3600) + "h " + Math.floor(s % 3600 / 60) + "m ago";
+  }
+  var SVGS = {
+    high: '<svg viewBox="0 0 10 10" aria-hidden="true"><path d="M5 .5 9.5 9H.5z"/></svg>',
+    med: '<svg viewBox="0 0 10 10" aria-hidden="true"><path d="M5 .5 9.5 5 5 9.5.5 5z"/></svg>',
+    ok: '<svg viewBox="0 0 10 10" aria-hidden="true"><path d="M1 5.4 4 8.2 9.2 1.8" fill="none" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>'
+  };
+  function pill(kind, label) {
+    var p = el("span", "pill " + kind);
+    p.insertAdjacentHTML("afterbegin", SVGS[kind] || SVGS.ok);   // fixed markup, no data in it
+    p.appendChild(document.createTextNode(label));
+    return p;
+  }
+
+  function bars(id, pairs, o) {
+    o = o || {};
+    var host = $(id); clear(host);
+    if (!pairs || !pairs.length) { host.appendChild(el("div", "empty", "Nothing yet.")); return; }
+    var max = Math.max.apply(null, pairs.map(function (p) { return p[1]; })) || 1;
+    pairs.forEach(function (p) {
+      var row = el("div", "row");
+      var lab = el("div", "lab" + (o.mono ? " mono" : ""), p[0]); lab.title = p[0];
+      var tr = el("div", "track"), b = el("div", "bar" + (o.cls ? " " + o.cls : ""));
+      b.style.width = (p[1] / max * 100) + "%"; tr.appendChild(b);
+      row.appendChild(lab); row.appendChild(tr); row.appendChild(el("div", "val", String(p[1])));
+      host.appendChild(row);
+    });
+  }
+
+  function renderHistory(h) {
+    var svg = $("hist"); clear(svg);
+    var NS = "http://www.w3.org/2000/svg";
+    function mk(tag, a, t) { var e = document.createElementNS(NS, tag); for (var k in a) e.setAttribute(k, a[k]); if (t != null) e.textContent = t; svg.appendChild(e); return e; }
+    var L = 38, R = 508, T = 12, B = 164;
+    if (!h || h.length < 2) {
+      mk("text", { x: 260, y: 90, "text-anchor": "middle", "class": "t3" }, "Waiting for a second pipeline run");
+      return;
+    }
+    var maxY = Math.max.apply(null, h.map(function (p) { return p.total; }).concat([1]));
+    var top = maxY <= 5 ? 5 : Math.ceil(maxY / 5) * 5;
+    function X(i) { return L + i / (h.length - 1) * (R - L); }
+    function Y(v) { return B - v / top * (B - T); }
+    [0, .5, 1].forEach(function (f) {
+      var v = Math.round(top * f);
+      mk("line", { x1: L, x2: R, y1: Y(v), y2: Y(v), "class": f === 0 ? "ax" : "gl" });
+      mk("text", { x: L - 6, y: Y(v) + 4, "text-anchor": "end", "class": "t3" }, String(v));
+    });
+    function line(key, color) {
+      var pts = h.map(function (p, i) { return X(i) + "," + Y(p[key]); }).join(" ");
+      if (key === "total") mk("polygon", { points: L + "," + B + " " + pts + " " + R + "," + B, fill: color, opacity: .12 });
+      mk("polyline", { points: pts, fill: "none", stroke: color, "stroke-width": 2, "stroke-linejoin": "round" });
+      var last = h[h.length - 1];
+      mk("circle", { cx: X(h.length - 1), cy: Y(last[key]), r: 4, fill: color, stroke: "var(--surface)", "stroke-width": 2 });
+    }
+    line("total", "var(--blue)"); line("high", "var(--orange)");
+    function hhmm(t) { var d = new Date(t * 1000); return d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }); }
+    mk("text", { x: L, y: 184, "class": "t3" }, hhmm(h[0].t));
+    mk("text", { x: R, y: 184, "text-anchor": "end", "class": "t3" }, hhmm(h[h.length - 1].t));
+  }
+
+  function render(s) {
+    var p = s.pipeline, t = s.totals, now = s.now;
+    $("mode").textContent = s.mode === "demo" ? "DEMO DATA" : "LIVE";
+    $("mode").className = "badge" + (s.mode === "demo" ? " demo" : "");
+    $("runBtn").hidden = s.mode === "demo";
+    $("watch").textContent = s.mode === "demo" ? "invented alerts" : s.watch_dir;
+    $("watch").title = s.watch_dir;
+
+    var pillHost = $("pill"); clear(pillHost);
+    if (p.status === "error") { pillHost.appendChild(pill("high", "Error")); $("stText").textContent = "The last run failed"; $("stSub").textContent = t.alerts ? "Showing the previous results" : "No results yet"; }
+    else if (p.status === "running") { pillHost.appendChild(pill("med", "Running")); $("stText").textContent = p.step || "Working"; $("stSub").textContent = "Pipeline is processing new log lines"; }
+    else if (p.status === "starting") { pillHost.appendChild(pill("med", "Starting")); $("stText").textContent = "Starting up"; $("stSub").textContent = "The first run begins in a few seconds"; }
+    else { pillHost.appendChild(pill("ok", "Watching")); $("stText").textContent = "Waiting for new log lines"; $("stSub").textContent = "Runs again after the log changes"; }
+    $("runBtn").disabled = p.status === "running";
+    $("dur").textContent = p.last_duration == null ? "–" : p.last_duration.toFixed(1) + " s";
+    $("runs").textContent = p.runs;
+    var err = $("err"); err.hidden = !p.error; err.textContent = p.error || "";
+
+    $("kAlerts").textContent = n0(t.alerts);
+    $("kNew").textContent = t.new_alerts ? "+" + t.new_alerts + " new" : "";
+    $("kHigh").textContent = n0((t.by_severity || {}).High);
+    $("kMed").textContent = n0((t.by_severity || {}).Medium);
+    $("kQ").textContent = n0(t.queries);
+    $("kMl").textContent = "ML rules: " + (t.ml_active == null ? "–" : t.ml_active ? "active" : "off");
+
+    var tb = $("feed"); clear(tb);
+    if (!s.feed.length) {
+      var tr0 = el("tr"), td0 = el("td", "dim", "No alerts yet. They appear here after the first pipeline run."); td0.colSpan = 6; tr0.appendChild(td0); tb.appendChild(tr0);
+    }
+    s.feed.forEach(function (a) {
+      var tr = el("tr", a.is_new ? "new" : "");
+      var tm = (a.time || "").replace("T", " ").slice(11, 19);
+      tr.appendChild(el("td", "t", tm));
+      var ts = el("td"); ts.appendChild(pill(a.severity === "High" ? "high" : "med", a.severity || "?")); tr.appendChild(ts);
+      var tr3 = el("td"); tr3.appendChild(document.createTextNode(a.rule || ""));
+      if (a.is_new) tr3.appendChild(el("span", "newtag", "NEW"));
+      if (a.description) { var d = el("div", "tag", a.description); tr3.appendChild(d); }
+      tr.appendChild(tr3);
+      tr.appendChild(el("td", "t", a.client || ""));
+      var dm = el("td", "d", a.domain || ""); dm.title = a.domain || ""; tr.appendChild(dm);
+      tr.appendChild(el("td", "t", (a.techniques || []).join(" ")));
+      tb.appendChild(tr);
+    });
+
+    renderHistory(s.history);
+    bars("byRule", Object.keys(t.by_rule || {}).map(function (k) { return [k, t.by_rule[k]]; }).sort(function (a, b) { return b[1] - a[1]; }));
+    bars("topIp", s.top_clients, { mono: true });
+    bars("topDom", s.top_domains, { mono: true, cls: "o" });
+    bars("topTech", s.top_techniques, { mono: true });
+
+    var m = s.monitoring, mh = $("monHead"); clear(mh); clear($("psi")); clear($("monFacts"));
+    if (!m) { mh.appendChild(el("div", "empty", "No monitoring report yet.")); }
+    else {
+      var row = el("div"); row.appendChild(m.retrain_recommended ? pill("high", "Retrain recommended") : pill("ok", "Models look healthy")); mh.appendChild(row);
+      if (m.reasons && m.reasons.length) { var ul = el("ul", "reasons"); m.reasons.slice(0, 5).forEach(function (r) { ul.appendChild(el("li", null, r)); }); mh.appendChild(ul); }
+      var drift = m.drift || {}, pairs = Object.keys(drift).map(function (k) { return [k + " · " + drift[k].band, Math.round(drift[k].psi * 100) / 100]; });
+      if (pairs.length) { $("psi").appendChild(el("div", "eyebrow", "Drift (PSI)")); var holder = el("div", "bars"); holder.id = "psiBars"; $("psi").appendChild(holder); bars("psiBars", pairs, { mono: true }); }
+      var f = $("monFacts");
+      function fact(k, v) { var d = el("div"); d.appendChild(el("dt", null, k)); d.appendChild(el("dd", null, v)); f.appendChild(d); }
+      if (m.alert_volume) fact("Alert rate", (m.alert_volume.alert_rate * 100).toFixed(1) + "%");
+      if (m.score_health) fact("Mean ML score", String(m.score_health.mean));
+      if (s.models && s.models.last_trained) fact("Last trained", String(s.models.last_trained).slice(0, 10));
+      if (s.models && s.models.total_samples) fact("Training rows", n0(s.models.total_samples));
+    }
+  }
+
+  function tick(s) {
+    if (!s) return;
+    $("lastRun").textContent = ago(s.pipeline.last_run_at, Date.now() / 1000 + (s.now - s.clientNow));
+  }
+
+  function poll() {
+    fetch("/api/state", { cache: "no-store" }).then(function (r) { return r.json(); }).then(function (s) {
+      failed = 0; s.clientNow = Date.now() / 1000; S = s;
+      $("dot").className = "dot"; $("connText").textContent = "Connected";
+      if (s.version !== lastVersion) { lastVersion = s.version; render(s); }
+      tick(s);
+    }).catch(function () {
+      failed++;
+      if (failed >= 2) { $("dot").className = "dot off"; $("connText").textContent = "Server not reachable"; }
+    });
+  }
+  $("runBtn").addEventListener("click", function () { fetch("/api/run", { method: "POST" }).then(poll); });
+  poll(); setInterval(poll, 2000); setInterval(function () { tick(S); }, 1000);
+})();
+</script>
+</body>
+</html>

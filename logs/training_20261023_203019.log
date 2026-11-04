@@ -1,7 +1,0 @@
-
-[0;36m  ℹ  Script dir    : /home/ounnha/Documents/Capstone/scripts[0m
-[0;36m  ℹ  Model memory  : /home/ounnha/Documents/Capstone/models[0m
-[0;36m  ℹ  Data dir      : /home/ounnha/Documents/Capstone/data/processed[0m
-[0;36m  ℹ  Log file      : /home/ounnha/Documents/Capstone/logs/training_20261023_203019.log[0m
-[0;36m  ℹ  Training mode — RETRAIN: false  |  FORCE_RETRAIN: false[0m
-[0;36m  ℹ  Training needed — Path A: true  |  Path B: true[0m

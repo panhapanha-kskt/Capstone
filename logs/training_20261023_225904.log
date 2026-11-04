@@ -1,1119 +1,0 @@
-
-[0;36m  ℹ  Script dir    : /home/ounnha/Documents/Capstone/scripts[0m
-[0;36m  ℹ  Model memory  : /home/ounnha/Documents/Capstone/models[0m
-[0;36m  ℹ  Data dir      : /home/ounnha/Documents/Capstone/data/processed[0m
-[0;36m  ℹ  Log file      : /home/ounnha/Documents/Capstone/logs/training_20261023_225904.log[0m
-[0;36m  ℹ  Training mode — RETRAIN: false  |  FORCE_RETRAIN: true[0m
-[0;36m  ℹ  Training needed — Path A: true  |  Path B: true[0m
-================================================================================
-DNS FEATURE EXTRACTION FROM TECHNITIUM LOGS - WEEK 3
-Enhanced for Attack Tool Detection
-================================================================================
-
-📁 Single file mode: /home/ounnha/Documents/Capstone/data/raw/2026-03-18.log
-Processing log file: /home/ounnha/Documents/Capstone/data/raw/2026-03-18.log
-  Completed: 8190 lines processed, 8152 DNS queries extracted
-
-================================================================================
-DNS FEATURE EXTRACTION SUMMARY - WEEK 3 (ATTACK DETECTION FOCUS)
-================================================================================
-Total queries processed: 8152
-
-🔴 ATTACK DETECTION SUMMARY:
-   Suspicious queries: 2264 (27.8%)
-
-   Attack Type Breakdown:
-     • ENCODING: 1988
-     • NXDOMAIN_FLOOD: 351
-     • HIGH_ENTROPY: 38
-     • RANDOM_SUBDOMAIN: 2
-
-📅 Date range: 2026-03-18 to 2026-03-18
-   Unique domains: 8148
-   Unique client IPs: 1
-
-🎯 ATTACK TOOL PATTERNS DETECTED:
-   NXDOMAIN flood patterns: 351
-   Random subdomain patterns: 2
-   Amplification attempts: 0
-   Cache poisoning attempts: 0
-   High entropy domains: 38
-   Encoding patterns: 3201
-
-📊 FEATURE STATISTICS (for baseline establishment):
-------------------------------------------------------------
-
-entropy:
-  Mean: 3.4205
-  Std: 0.3263
-  Min: 2.4116
-  Max: 4.2221
-
-subdomain_depth:
-  Mean: 2.4993
-  Std: 0.5010
-  Min: 1.0000
-  Max: 3.0000
-
-query_length:
-  Mean: 23.0550
-  Std: 8.1227
-  Min: 9.0000
-  Max: 80.0000
-
-numeric_ratio:
-  Mean: 0.0194
-  Std: 0.0435
-  Min: 0.0000
-  Max: 0.4500
-
-first_label_entropy:
-  Mean: 2.5043
-  Std: 0.6946
-  Min: 0.0000
-  Max: 3.9620
-
-first_label_length:
-  Mean: 8.3706
-  Std: 4.8946
-  Min: 1.0000
-  Max: 44.0000
-
-⚠  TOP 10 MOST SUSPICIOUS DOMAINS:
-  1. 4fdaayvm7rrh2cz8-cdn.lab.local
-     Attacks: NXDOMAIN_FLOOD,HIGH_ENTROPY,ENCODING | Entropy: 4.12 | Length: 30
-  2. hul-performance-highlights.linode.lab.local
-     Attacks: NXDOMAIN_FLOOD,HIGH_ENTROPY,ENCODING | Entropy: 4.09 | Length: 43
-  3. financial-services-onboarding-apigw.financial-services-payments-apigw.lab.local
-     Attacks: NXDOMAIN_FLOOD,HIGH_ENTROPY,ENCODING | Entropy: 4.09 | Length: 79
-  4. capositivecovidtestreporting-staging.cp01.lab.local
-     Attacks: NXDOMAIN_FLOOD,HIGH_ENTROPY,ENCODING | Entropy: 4.07 | Length: 51
-  5. searchrecommendations-service-staging.secure-canalplay-chromecast.lab.local
-     Attacks: NXDOMAIN_FLOOD,HIGH_ENTROPY,ENCODING | Entropy: 4.07 | Length: 75
-  6. streaming5-shared-ln.streaming5-shared-ny.lab.local
-     Attacks: NXDOMAIN_FLOOD,HIGH_ENTROPY,ENCODING | Entropy: 4.06 | Length: 51
-  7. streaming5-shared-eu.lab.local
-     Attacks: NXDOMAIN_FLOOD,HIGH_ENTROPY,ENCODING | Entropy: 4.06 | Length: 30
-  8. watchesofswitzerland-uat.wifi-uat.lab.local
-     Attacks: NXDOMAIN_FLOOD,HIGH_ENTROPY,ENCODING | Entropy: 4.04 | Length: 43
-  9. webreconditioning-service-qa-staging.lab.local
-     Attacks: NXDOMAIN_FLOOD,HIGH_ENTROPY,ENCODING | Entropy: 4.02 | Length: 46
-  10. tj-pod3-smp-device-asset.workplacebenefits.lab.local
-     Attacks: NXDOMAIN_FLOOD,HIGH_ENTROPY | Entropy: 4.21 | Length: 52
-
-✅ Features exported to JSON: /home/ounnha/Documents/Capstone/data/processed/extracted_2026-03-18_1792825159.json
-   Total records: 8152
-================================================================================
-DNS FEATURE EXTRACTION FROM TECHNITIUM LOGS - WEEK 3
-Enhanced for Attack Tool Detection
-================================================================================
-
-📁 Single file mode: /home/ounnha/Documents/Capstone/data/raw/2026-03-19.log
-Processing log file: /home/ounnha/Documents/Capstone/data/raw/2026-03-19.log
-  Completed: 50 lines processed, 0 DNS queries extracted
-
-❌ No features extracted.
-================================================================================
-DNS FEATURE EXTRACTION FROM TECHNITIUM LOGS - WEEK 3
-Enhanced for Attack Tool Detection
-================================================================================
-
-📁 Single file mode: /home/ounnha/Documents/Capstone/data/raw/2026-03-20.log
-Processing log file: /home/ounnha/Documents/Capstone/data/raw/2026-03-20.log
-  Completed: 9 lines processed, 0 DNS queries extracted
-
-❌ No features extracted.
-  [json]   8152 records  ← /home/ounnha/Documents/Capstone/data/processed/extracted_2026-03-18_1792825159.json
-
-  Merged 8152 total records from 1 source file(s)
-  Provenance saved → /home/ounnha/Documents/Capstone/models/training_provenance.json
-  Registry updated → /home/ounnha/Documents/Capstone/models/trained_files_registry.json  (12 total trained files)
-
-======================================================================
-EXPLORATORY DATA ANALYSIS
-======================================================================
-Input: /home/ounnha/Documents/Capstone/data/processed/merged_features_all.json
-[*] Reading Week 3 features JSON: /home/ounnha/Documents/Capstone/data/processed/merged_features_all.json
-[*] Loaded 8152 Week 3 feature records.
-
-[*] Records: 8152
-[*] Columns: 36
-
-── Class balance (from attack_count) ─────────────────
-   attack = 2264  |  benign = 5888  |  attack rate = 27.8%
-
-── Missing values (model features) ───────────────────
-
-── Feature statistics ────────────────────────────────
-   feature                     mean       std       min       max
-   query_length              23.055     8.123     9.000    80.000
-   query_entropy              3.421     0.326     2.412     4.222
-   has_digits                 0.233     0.423     0.000     1.000
-   answer_count               0.000     0.016     0.000     1.000
-   subdomain_count            2.499     0.501     1.000     3.000
-   longest_label              8.371     4.895     1.000    44.000
-   digit_ratio                0.019     0.044     0.000     0.450
-   unique_char_ratio          0.566     0.086     0.237     0.773
-
-── Highly correlated feature pairs (|r| > 0.9) ───────
-   none
-
-── Warnings ──────────────────────────────────────────
-   ✅ none
-
-✅ EDA report saved → /home/ounnha/Documents/Capstone/data/processed/eda_report.json
-WARNING: All log messages before absl::InitializeLog() is called are written to STDERR
-I0000 00:00:1792825165.889277  109320 port.cc:153] oneDNN custom operations are on. You may see slightly different numerical results due to floating-point round-off errors from different computation orders. To turn them off, set the environment variable `TF_ENABLE_ONEDNN_OPTS=0`.
-I0000 00:00:1792825165.889676  109320 cudart_stub.cc:31] Could not find cuda drivers on your machine, GPU will not be used.
-I0000 00:00:1792825166.035013  109320 cpu_feature_guard.cc:227] This TensorFlow binary is optimized to use available CPU instructions in performance-critical operations.
-To enable the following instructions: AVX2 AVX_VNNI FMA, in other operations, rebuild TensorFlow with the appropriate compiler flags.
-WARNING: All log messages before absl::InitializeLog() is called are written to STDERR
-I0000 00:00:1792825168.238339  109320 port.cc:153] oneDNN custom operations are on. You may see slightly different numerical results due to floating-point round-off errors from different computation orders. To turn them off, set the environment variable `TF_ENABLE_ONEDNN_OPTS=0`.
-I0000 00:00:1792825168.238821  109320 cudart_stub.cc:31] Could not find cuda drivers on your machine, GPU will not be used.
-ERROR: Loading module scapy.layers.dcerpc
-Traceback (most recent call last):
-  File "/usr/lib/python3/dist-packages/scapy/main.py", line 312, in _load
-    mod = importlib.import_module(module)
-  File "/usr/lib/python3.13/importlib/__init__.py", line 88, in import_module
-    return _bootstrap._gcd_import(name[level:], package, level)
-           ~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "<frozen importlib._bootstrap>", line 1387, in _gcd_import
-  File "<frozen importlib._bootstrap>", line 1360, in _find_and_load
-  File "<frozen importlib._bootstrap>", line 1331, in _find_and_load_unlocked
-  File "<frozen importlib._bootstrap>", line 935, in _load_unlocked
-  File "<frozen importlib._bootstrap_external>", line 1023, in exec_module
-  File "<frozen importlib._bootstrap>", line 488, in _call_with_frames_removed
-  File "/usr/lib/python3/dist-packages/scapy/layers/dcerpc.py", line 98, in <module>
-    from scapy.layers.kerberos import (
-    ...<2 lines>...
-    )
-  File "/usr/lib/python3/dist-packages/scapy/layers/kerberos.py", line 163, in <module>
-    from scapy.layers.tls.crypto.groups import _ffdh_groups
-  File "/usr/lib/python3/dist-packages/scapy/layers/tls/crypto/groups.py", line 49, in <module>
-    class modp768(_FFDHParams):
-    ...<6 lines>...
-        mLen = 768
-  File "/usr/lib/python3/dist-packages/scapy/layers/tls/crypto/groups.py", line 40, in __new__
-    params = pn.parameters(default_backend())
-ValueError: Invalid DH parameters
-ERROR: Loading module scapy.layers.kerberos
-Traceback (most recent call last):
-  File "/usr/lib/python3/dist-packages/scapy/main.py", line 312, in _load
-    mod = importlib.import_module(module)
-  File "/usr/lib/python3.13/importlib/__init__.py", line 88, in import_module
-    return _bootstrap._gcd_import(name[level:], package, level)
-           ~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "<frozen importlib._bootstrap>", line 1387, in _gcd_import
-  File "<frozen importlib._bootstrap>", line 1360, in _find_and_load
-  File "<frozen importlib._bootstrap>", line 1331, in _find_and_load_unlocked
-  File "<frozen importlib._bootstrap>", line 935, in _load_unlocked
-  File "<frozen importlib._bootstrap_external>", line 1023, in exec_module
-  File "<frozen importlib._bootstrap>", line 488, in _call_with_frames_removed
-  File "/usr/lib/python3/dist-packages/scapy/layers/kerberos.py", line 163, in <module>
-    from scapy.layers.tls.crypto.groups import _ffdh_groups
-  File "/usr/lib/python3/dist-packages/scapy/layers/tls/crypto/groups.py", line 49, in <module>
-    class modp768(_FFDHParams):
-    ...<6 lines>...
-        mLen = 768
-  File "/usr/lib/python3/dist-packages/scapy/layers/tls/crypto/groups.py", line 40, in __new__
-    params = pn.parameters(default_backend())
-ValueError: Invalid DH parameters
-ERROR: Loading module scapy.layers.msrpce.rpcclient
-Traceback (most recent call last):
-  File "/usr/lib/python3/dist-packages/scapy/main.py", line 312, in _load
-    mod = importlib.import_module(module)
-  File "/usr/lib/python3.13/importlib/__init__.py", line 88, in import_module
-    return _bootstrap._gcd_import(name[level:], package, level)
-           ~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "<frozen importlib._bootstrap>", line 1387, in _gcd_import
-  File "<frozen importlib._bootstrap>", line 1360, in _find_and_load
-  File "<frozen importlib._bootstrap>", line 1331, in _find_and_load_unlocked
-  File "<frozen importlib._bootstrap>", line 935, in _load_unlocked
-  File "<frozen importlib._bootstrap_external>", line 1023, in exec_module
-  File "<frozen importlib._bootstrap>", line 488, in _call_with_frames_removed
-  File "/usr/lib/python3/dist-packages/scapy/layers/msrpce/rpcclient.py", line 16, in <module>
-    from scapy.layers.dcerpc import (
-    ...<28 lines>...
-    )
-  File "/usr/lib/python3/dist-packages/scapy/layers/dcerpc.py", line 98, in <module>
-    from scapy.layers.kerberos import (
-    ...<2 lines>...
-    )
-  File "/usr/lib/python3/dist-packages/scapy/layers/kerberos.py", line 163, in <module>
-    from scapy.layers.tls.crypto.groups import _ffdh_groups
-  File "/usr/lib/python3/dist-packages/scapy/layers/tls/crypto/groups.py", line 49, in <module>
-    class modp768(_FFDHParams):
-    ...<6 lines>...
-        mLen = 768
-  File "/usr/lib/python3/dist-packages/scapy/layers/tls/crypto/groups.py", line 40, in __new__
-    params = pn.parameters(default_backend())
-ValueError: Invalid DH parameters
-ERROR: Loading module scapy.layers.msrpce.rpcserver
-Traceback (most recent call last):
-  File "/usr/lib/python3/dist-packages/scapy/main.py", line 312, in _load
-    mod = importlib.import_module(module)
-  File "/usr/lib/python3.13/importlib/__init__.py", line 88, in import_module
-    return _bootstrap._gcd_import(name[level:], package, level)
-           ~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "<frozen importlib._bootstrap>", line 1387, in _gcd_import
-  File "<frozen importlib._bootstrap>", line 1360, in _find_and_load
-  File "<frozen importlib._bootstrap>", line 1331, in _find_and_load_unlocked
-  File "<frozen importlib._bootstrap>", line 935, in _load_unlocked
-  File "<frozen importlib._bootstrap_external>", line 1023, in exec_module
-  File "<frozen importlib._bootstrap>", line 488, in _call_with_frames_removed
-  File "/usr/lib/python3/dist-packages/scapy/layers/msrpce/rpcserver.py", line 19, in <module>
-    from scapy.layers.dcerpc import (
-    ...<18 lines>...
-    )
-  File "/usr/lib/python3/dist-packages/scapy/layers/dcerpc.py", line 98, in <module>
-    from scapy.layers.kerberos import (
-    ...<2 lines>...
-    )
-  File "/usr/lib/python3/dist-packages/scapy/layers/kerberos.py", line 163, in <module>
-    from scapy.layers.tls.crypto.groups import _ffdh_groups
-  File "/usr/lib/python3/dist-packages/scapy/layers/tls/crypto/groups.py", line 49, in <module>
-    class modp768(_FFDHParams):
-    ...<6 lines>...
-        mLen = 768
-  File "/usr/lib/python3/dist-packages/scapy/layers/tls/crypto/groups.py", line 40, in __new__
-    params = pn.parameters(default_backend())
-ValueError: Invalid DH parameters
-ERROR: Loading module scapy.layers.smbclient
-Traceback (most recent call last):
-  File "/usr/lib/python3/dist-packages/scapy/main.py", line 312, in _load
-    mod = importlib.import_module(module)
-  File "/usr/lib/python3.13/importlib/__init__.py", line 88, in import_module
-    return _bootstrap._gcd_import(name[level:], package, level)
-           ~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "<frozen importlib._bootstrap>", line 1387, in _gcd_import
-  File "<frozen importlib._bootstrap>", line 1360, in _find_and_load
-  File "<frozen importlib._bootstrap>", line 1331, in _find_and_load_unlocked
-  File "<frozen importlib._bootstrap>", line 935, in _load_unlocked
-  File "<frozen importlib._bootstrap_external>", line 1023, in exec_module
-  File "<frozen importlib._bootstrap>", line 488, in _call_with_frames_removed
-  File "/usr/lib/python3/dist-packages/scapy/layers/smbclient.py", line 34, in <module>
-    from scapy.layers.dcerpc import NDRUnion, find_dcerpc_interface
-  File "/usr/lib/python3/dist-packages/scapy/layers/dcerpc.py", line 98, in <module>
-    from scapy.layers.kerberos import (
-    ...<2 lines>...
-    )
-  File "/usr/lib/python3/dist-packages/scapy/layers/kerberos.py", line 163, in <module>
-    from scapy.layers.tls.crypto.groups import _ffdh_groups
-  File "/usr/lib/python3/dist-packages/scapy/layers/tls/crypto/groups.py", line 49, in <module>
-    class modp768(_FFDHParams):
-    ...<6 lines>...
-        mLen = 768
-  File "/usr/lib/python3/dist-packages/scapy/layers/tls/crypto/groups.py", line 40, in __new__
-    params = pn.parameters(default_backend())
-ValueError: Invalid DH parameters
-ERROR: Loading module scapy.layers.smbserver
-Traceback (most recent call last):
-  File "/usr/lib/python3/dist-packages/scapy/main.py", line 312, in _load
-    mod = importlib.import_module(module)
-  File "/usr/lib/python3.13/importlib/__init__.py", line 88, in import_module
-    return _bootstrap._gcd_import(name[level:], package, level)
-           ~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "<frozen importlib._bootstrap>", line 1387, in _gcd_import
-  File "<frozen importlib._bootstrap>", line 1360, in _find_and_load
-  File "<frozen importlib._bootstrap>", line 1331, in _find_and_load_unlocked
-  File "<frozen importlib._bootstrap>", line 935, in _load_unlocked
-  File "<frozen importlib._bootstrap_external>", line 1023, in exec_module
-  File "<frozen importlib._bootstrap>", line 488, in _call_with_frames_removed
-  File "/usr/lib/python3/dist-packages/scapy/layers/smbserver.py", line 33, in <module>
-    from scapy.layers.dcerpc import (
-    ...<2 lines>...
-    )
-  File "/usr/lib/python3/dist-packages/scapy/layers/dcerpc.py", line 98, in <module>
-    from scapy.layers.kerberos import (
-    ...<2 lines>...
-    )
-  File "/usr/lib/python3/dist-packages/scapy/layers/kerberos.py", line 163, in <module>
-    from scapy.layers.tls.crypto.groups import _ffdh_groups
-  File "/usr/lib/python3/dist-packages/scapy/layers/tls/crypto/groups.py", line 49, in <module>
-    class modp768(_FFDHParams):
-    ...<6 lines>...
-        mLen = 768
-  File "/usr/lib/python3/dist-packages/scapy/layers/tls/crypto/groups.py", line 40, in __new__
-    params = pn.parameters(default_backend())
-ValueError: Invalid DH parameters
-ERROR: Loading module scapy.layers.spnego
-Traceback (most recent call last):
-  File "/usr/lib/python3/dist-packages/scapy/main.py", line 312, in _load
-    mod = importlib.import_module(module)
-  File "/usr/lib/python3.13/importlib/__init__.py", line 88, in import_module
-    return _bootstrap._gcd_import(name[level:], package, level)
-           ~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "<frozen importlib._bootstrap>", line 1387, in _gcd_import
-  File "<frozen importlib._bootstrap>", line 1360, in _find_and_load
-  File "<frozen importlib._bootstrap>", line 1331, in _find_and_load_unlocked
-  File "<frozen importlib._bootstrap>", line 935, in _load_unlocked
-  File "<frozen importlib._bootstrap_external>", line 1023, in exec_module
-  File "<frozen importlib._bootstrap>", line 488, in _call_with_frames_removed
-  File "/usr/lib/python3/dist-packages/scapy/layers/spnego.py", line 84, in <module>
-    from scapy.layers.kerberos import (
-    ...<4 lines>...
-    )
-  File "/usr/lib/python3/dist-packages/scapy/layers/kerberos.py", line 163, in <module>
-    from scapy.layers.tls.crypto.groups import _ffdh_groups
-  File "/usr/lib/python3/dist-packages/scapy/layers/tls/crypto/groups.py", line 49, in <module>
-    class modp768(_FFDHParams):
-    ...<6 lines>...
-        mLen = 768
-  File "/usr/lib/python3/dist-packages/scapy/layers/tls/crypto/groups.py", line 40, in __new__
-    params = pn.parameters(default_backend())
-ValueError: Invalid DH parameters
-
-======================================================================
-ML BRIDGE — Connecting Week 3 → ML Models → Week 4
-======================================================================
-Input  : /home/ounnha/Documents/Capstone/data/processed/merged_features_all.json
-Output : /home/ounnha/Documents/Capstone/data/processed/merged_features_labeled.json
-
-[*] Loaded 8152 Week 3 records
-
-[*] LABEL ONLY MODE — generating labels from attack_count
-   Labels generated: 5888 benign  |  2264 attack
-   Attack rate: 27.8%
-
-✅ Labeled data saved → /home/ounnha/Documents/Capstone/data/processed/merged_features_labeled.json
-   Use for training: python Model.py --train /home/ounnha/Documents/Capstone/data/processed/merged_features_labeled.json
-WARNING: All log messages before absl::InitializeLog() is called are written to STDERR
-I0000 00:00:1792825176.907176  109478 port.cc:153] oneDNN custom operations are on. You may see slightly different numerical results due to floating-point round-off errors from different computation orders. To turn them off, set the environment variable `TF_ENABLE_ONEDNN_OPTS=0`.
-I0000 00:00:1792825176.907608  109478 cudart_stub.cc:31] Could not find cuda drivers on your machine, GPU will not be used.
-I0000 00:00:1792825177.020383  109478 cpu_feature_guard.cc:227] This TensorFlow binary is optimized to use available CPU instructions in performance-critical operations.
-To enable the following instructions: AVX2 AVX_VNNI FMA, in other operations, rebuild TensorFlow with the appropriate compiler flags.
-WARNING: All log messages before absl::InitializeLog() is called are written to STDERR
-I0000 00:00:1792825179.546695  109478 port.cc:153] oneDNN custom operations are on. You may see slightly different numerical results due to floating-point round-off errors from different computation orders. To turn them off, set the environment variable `TF_ENABLE_ONEDNN_OPTS=0`.
-I0000 00:00:1792825179.547254  109478 cudart_stub.cc:31] Could not find cuda drivers on your machine, GPU will not be used.
-ERROR: Loading module scapy.layers.dcerpc
-Traceback (most recent call last):
-  File "/usr/lib/python3/dist-packages/scapy/main.py", line 312, in _load
-    mod = importlib.import_module(module)
-  File "/usr/lib/python3.13/importlib/__init__.py", line 88, in import_module
-    return _bootstrap._gcd_import(name[level:], package, level)
-           ~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "<frozen importlib._bootstrap>", line 1387, in _gcd_import
-  File "<frozen importlib._bootstrap>", line 1360, in _find_and_load
-  File "<frozen importlib._bootstrap>", line 1331, in _find_and_load_unlocked
-  File "<frozen importlib._bootstrap>", line 935, in _load_unlocked
-  File "<frozen importlib._bootstrap_external>", line 1023, in exec_module
-  File "<frozen importlib._bootstrap>", line 488, in _call_with_frames_removed
-  File "/usr/lib/python3/dist-packages/scapy/layers/dcerpc.py", line 98, in <module>
-    from scapy.layers.kerberos import (
-    ...<2 lines>...
-    )
-  File "/usr/lib/python3/dist-packages/scapy/layers/kerberos.py", line 163, in <module>
-    from scapy.layers.tls.crypto.groups import _ffdh_groups
-  File "/usr/lib/python3/dist-packages/scapy/layers/tls/crypto/groups.py", line 49, in <module>
-    class modp768(_FFDHParams):
-    ...<6 lines>...
-        mLen = 768
-  File "/usr/lib/python3/dist-packages/scapy/layers/tls/crypto/groups.py", line 40, in __new__
-    params = pn.parameters(default_backend())
-ValueError: Invalid DH parameters
-ERROR: Loading module scapy.layers.kerberos
-Traceback (most recent call last):
-  File "/usr/lib/python3/dist-packages/scapy/main.py", line 312, in _load
-    mod = importlib.import_module(module)
-  File "/usr/lib/python3.13/importlib/__init__.py", line 88, in import_module
-    return _bootstrap._gcd_import(name[level:], package, level)
-           ~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "<frozen importlib._bootstrap>", line 1387, in _gcd_import
-  File "<frozen importlib._bootstrap>", line 1360, in _find_and_load
-  File "<frozen importlib._bootstrap>", line 1331, in _find_and_load_unlocked
-  File "<frozen importlib._bootstrap>", line 935, in _load_unlocked
-  File "<frozen importlib._bootstrap_external>", line 1023, in exec_module
-  File "<frozen importlib._bootstrap>", line 488, in _call_with_frames_removed
-  File "/usr/lib/python3/dist-packages/scapy/layers/kerberos.py", line 163, in <module>
-    from scapy.layers.tls.crypto.groups import _ffdh_groups
-  File "/usr/lib/python3/dist-packages/scapy/layers/tls/crypto/groups.py", line 49, in <module>
-    class modp768(_FFDHParams):
-    ...<6 lines>...
-        mLen = 768
-  File "/usr/lib/python3/dist-packages/scapy/layers/tls/crypto/groups.py", line 40, in __new__
-    params = pn.parameters(default_backend())
-ValueError: Invalid DH parameters
-ERROR: Loading module scapy.layers.msrpce.rpcclient
-Traceback (most recent call last):
-  File "/usr/lib/python3/dist-packages/scapy/main.py", line 312, in _load
-    mod = importlib.import_module(module)
-  File "/usr/lib/python3.13/importlib/__init__.py", line 88, in import_module
-    return _bootstrap._gcd_import(name[level:], package, level)
-           ~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "<frozen importlib._bootstrap>", line 1387, in _gcd_import
-  File "<frozen importlib._bootstrap>", line 1360, in _find_and_load
-  File "<frozen importlib._bootstrap>", line 1331, in _find_and_load_unlocked
-  File "<frozen importlib._bootstrap>", line 935, in _load_unlocked
-  File "<frozen importlib._bootstrap_external>", line 1023, in exec_module
-  File "<frozen importlib._bootstrap>", line 488, in _call_with_frames_removed
-  File "/usr/lib/python3/dist-packages/scapy/layers/msrpce/rpcclient.py", line 16, in <module>
-    from scapy.layers.dcerpc import (
-    ...<28 lines>...
-    )
-  File "/usr/lib/python3/dist-packages/scapy/layers/dcerpc.py", line 98, in <module>
-    from scapy.layers.kerberos import (
-    ...<2 lines>...
-    )
-  File "/usr/lib/python3/dist-packages/scapy/layers/kerberos.py", line 163, in <module>
-    from scapy.layers.tls.crypto.groups import _ffdh_groups
-  File "/usr/lib/python3/dist-packages/scapy/layers/tls/crypto/groups.py", line 49, in <module>
-    class modp768(_FFDHParams):
-    ...<6 lines>...
-        mLen = 768
-  File "/usr/lib/python3/dist-packages/scapy/layers/tls/crypto/groups.py", line 40, in __new__
-    params = pn.parameters(default_backend())
-ValueError: Invalid DH parameters
-ERROR: Loading module scapy.layers.msrpce.rpcserver
-Traceback (most recent call last):
-  File "/usr/lib/python3/dist-packages/scapy/main.py", line 312, in _load
-    mod = importlib.import_module(module)
-  File "/usr/lib/python3.13/importlib/__init__.py", line 88, in import_module
-    return _bootstrap._gcd_import(name[level:], package, level)
-           ~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "<frozen importlib._bootstrap>", line 1387, in _gcd_import
-  File "<frozen importlib._bootstrap>", line 1360, in _find_and_load
-  File "<frozen importlib._bootstrap>", line 1331, in _find_and_load_unlocked
-  File "<frozen importlib._bootstrap>", line 935, in _load_unlocked
-  File "<frozen importlib._bootstrap_external>", line 1023, in exec_module
-  File "<frozen importlib._bootstrap>", line 488, in _call_with_frames_removed
-  File "/usr/lib/python3/dist-packages/scapy/layers/msrpce/rpcserver.py", line 19, in <module>
-    from scapy.layers.dcerpc import (
-    ...<18 lines>...
-    )
-  File "/usr/lib/python3/dist-packages/scapy/layers/dcerpc.py", line 98, in <module>
-    from scapy.layers.kerberos import (
-    ...<2 lines>...
-    )
-  File "/usr/lib/python3/dist-packages/scapy/layers/kerberos.py", line 163, in <module>
-    from scapy.layers.tls.crypto.groups import _ffdh_groups
-  File "/usr/lib/python3/dist-packages/scapy/layers/tls/crypto/groups.py", line 49, in <module>
-    class modp768(_FFDHParams):
-    ...<6 lines>...
-        mLen = 768
-  File "/usr/lib/python3/dist-packages/scapy/layers/tls/crypto/groups.py", line 40, in __new__
-    params = pn.parameters(default_backend())
-ValueError: Invalid DH parameters
-ERROR: Loading module scapy.layers.smbclient
-Traceback (most recent call last):
-  File "/usr/lib/python3/dist-packages/scapy/main.py", line 312, in _load
-    mod = importlib.import_module(module)
-  File "/usr/lib/python3.13/importlib/__init__.py", line 88, in import_module
-    return _bootstrap._gcd_import(name[level:], package, level)
-           ~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "<frozen importlib._bootstrap>", line 1387, in _gcd_import
-  File "<frozen importlib._bootstrap>", line 1360, in _find_and_load
-  File "<frozen importlib._bootstrap>", line 1331, in _find_and_load_unlocked
-  File "<frozen importlib._bootstrap>", line 935, in _load_unlocked
-  File "<frozen importlib._bootstrap_external>", line 1023, in exec_module
-  File "<frozen importlib._bootstrap>", line 488, in _call_with_frames_removed
-  File "/usr/lib/python3/dist-packages/scapy/layers/smbclient.py", line 34, in <module>
-    from scapy.layers.dcerpc import NDRUnion, find_dcerpc_interface
-  File "/usr/lib/python3/dist-packages/scapy/layers/dcerpc.py", line 98, in <module>
-    from scapy.layers.kerberos import (
-    ...<2 lines>...
-    )
-  File "/usr/lib/python3/dist-packages/scapy/layers/kerberos.py", line 163, in <module>
-    from scapy.layers.tls.crypto.groups import _ffdh_groups
-  File "/usr/lib/python3/dist-packages/scapy/layers/tls/crypto/groups.py", line 49, in <module>
-    class modp768(_FFDHParams):
-    ...<6 lines>...
-        mLen = 768
-  File "/usr/lib/python3/dist-packages/scapy/layers/tls/crypto/groups.py", line 40, in __new__
-    params = pn.parameters(default_backend())
-ValueError: Invalid DH parameters
-ERROR: Loading module scapy.layers.smbserver
-Traceback (most recent call last):
-  File "/usr/lib/python3/dist-packages/scapy/main.py", line 312, in _load
-    mod = importlib.import_module(module)
-  File "/usr/lib/python3.13/importlib/__init__.py", line 88, in import_module
-    return _bootstrap._gcd_import(name[level:], package, level)
-           ~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "<frozen importlib._bootstrap>", line 1387, in _gcd_import
-  File "<frozen importlib._bootstrap>", line 1360, in _find_and_load
-  File "<frozen importlib._bootstrap>", line 1331, in _find_and_load_unlocked
-  File "<frozen importlib._bootstrap>", line 935, in _load_unlocked
-  File "<frozen importlib._bootstrap_external>", line 1023, in exec_module
-  File "<frozen importlib._bootstrap>", line 488, in _call_with_frames_removed
-  File "/usr/lib/python3/dist-packages/scapy/layers/smbserver.py", line 33, in <module>
-    from scapy.layers.dcerpc import (
-    ...<2 lines>...
-    )
-  File "/usr/lib/python3/dist-packages/scapy/layers/dcerpc.py", line 98, in <module>
-    from scapy.layers.kerberos import (
-    ...<2 lines>...
-    )
-  File "/usr/lib/python3/dist-packages/scapy/layers/kerberos.py", line 163, in <module>
-    from scapy.layers.tls.crypto.groups import _ffdh_groups
-  File "/usr/lib/python3/dist-packages/scapy/layers/tls/crypto/groups.py", line 49, in <module>
-    class modp768(_FFDHParams):
-    ...<6 lines>...
-        mLen = 768
-  File "/usr/lib/python3/dist-packages/scapy/layers/tls/crypto/groups.py", line 40, in __new__
-    params = pn.parameters(default_backend())
-ValueError: Invalid DH parameters
-ERROR: Loading module scapy.layers.spnego
-Traceback (most recent call last):
-  File "/usr/lib/python3/dist-packages/scapy/main.py", line 312, in _load
-    mod = importlib.import_module(module)
-  File "/usr/lib/python3.13/importlib/__init__.py", line 88, in import_module
-    return _bootstrap._gcd_import(name[level:], package, level)
-           ~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "<frozen importlib._bootstrap>", line 1387, in _gcd_import
-  File "<frozen importlib._bootstrap>", line 1360, in _find_and_load
-  File "<frozen importlib._bootstrap>", line 1331, in _find_and_load_unlocked
-  File "<frozen importlib._bootstrap>", line 935, in _load_unlocked
-  File "<frozen importlib._bootstrap_external>", line 1023, in exec_module
-  File "<frozen importlib._bootstrap>", line 488, in _call_with_frames_removed
-  File "/usr/lib/python3/dist-packages/scapy/layers/spnego.py", line 84, in <module>
-    from scapy.layers.kerberos import (
-    ...<4 lines>...
-    )
-  File "/usr/lib/python3/dist-packages/scapy/layers/kerberos.py", line 163, in <module>
-    from scapy.layers.tls.crypto.groups import _ffdh_groups
-  File "/usr/lib/python3/dist-packages/scapy/layers/tls/crypto/groups.py", line 49, in <module>
-    class modp768(_FFDHParams):
-    ...<6 lines>...
-        mLen = 768
-  File "/usr/lib/python3/dist-packages/scapy/layers/tls/crypto/groups.py", line 40, in __new__
-    params = pn.parameters(default_backend())
-ValueError: Invalid DH parameters
-E0000 00:00:1792825185.070941  109478 cuda_platform.cc:52] failed call to cuInit: INTERNAL: CUDA error: Failed call to cuInit: UNKNOWN ERROR (303)
-
-[*] Loading training data: /home/ounnha/Documents/Capstone/data/processed/merged_features_labeled.json
-[*] Reading Week 3 features JSON: /home/ounnha/Documents/Capstone/data/processed/merged_features_labeled.json
-[*] Loaded 8152 Week 3 feature records.
-[*] Dataset: 8152 records  |  Benign: 5888  |  Attack: 2264
-[*] Split → train=5706  val=1223  test=1223
-Saved → /home/ounnha/Documents/Capstone/models/dns_scaler.pkl  (fit on training data only)
-
-── Random Forest ──────────────────────────────────────────────
-              precision    recall  f1-score   support
-
-      benign       0.97      0.96      0.96       884
-      attack       0.89      0.91      0.90       339
-
-    accuracy                           0.94      1223
-   macro avg       0.93      0.94      0.93      1223
-weighted avg       0.95      0.94      0.94      1223
-
-Saved → /home/ounnha/Documents/Capstone/models/dns_tunnel_rf.pkl
-
-── Gradient Boosting (HistGradientBoosting) ────────────────────
-              precision    recall  f1-score   support
-
-      benign       0.98      0.96      0.97       884
-      attack       0.89      0.96      0.93       339
-
-    accuracy                           0.96      1223
-   macro avg       0.94      0.96      0.95      1223
-weighted avg       0.96      0.96      0.96      1223
-
-Saved → /home/ounnha/Documents/Capstone/models/dns_tunnel_gbt.pkl
-
-── Transformer (Binary Classifier) ───────────────────────────
-Model: "functional"
-┏━━━━━━━━━━━━━━━━━━━━━┳━━━━━━━━━━━━━━━━━━━┳━━━━━━━━━━━━┳━━━━━━━━━━━━━━━━━━━┓
-┃ Layer (type)        ┃ Output Shape      ┃    Param # ┃ Connected to      ┃
-┡━━━━━━━━━━━━━━━━━━━━━╇━━━━━━━━━━━━━━━━━━━╇━━━━━━━━━━━━╇━━━━━━━━━━━━━━━━━━━┩
-│ input_layer         │ (None, 10, 8)     │          0 │ -                 │
-│ (InputLayer)        │                   │            │                   │
-├─────────────────────┼───────────────────┼────────────┼───────────────────┤
-│ layer_normalization │ (None, 10, 8)     │         16 │ input_layer[0][0] │
-│ (LayerNormalizatio… │                   │            │                   │
-├─────────────────────┼───────────────────┼────────────┼───────────────────┤
-│ multi_head_attenti… │ (None, 10, 8)     │      2,248 │ layer_normalizat… │
-│ (MultiHeadAttentio… │                   │            │ layer_normalizat… │
-├─────────────────────┼───────────────────┼────────────┼───────────────────┤
-│ dropout_1 (Dropout) │ (None, 10, 8)     │          0 │ multi_head_atten… │
-├─────────────────────┼───────────────────┼────────────┼───────────────────┤
-│ add (Add)           │ (None, 10, 8)     │          0 │ dropout_1[0][0],  │
-│                     │                   │            │ input_layer[0][0] │
-├─────────────────────┼───────────────────┼────────────┼───────────────────┤
-│ layer_normalizatio… │ (None, 10, 8)     │         16 │ add[0][0]         │
-│ (LayerNormalizatio… │                   │            │                   │
-├─────────────────────┼───────────────────┼────────────┼───────────────────┤
-│ conv1d (Conv1D)     │ (None, 10, 64)    │        576 │ layer_normalizat… │
-├─────────────────────┼───────────────────┼────────────┼───────────────────┤
-│ dropout_2 (Dropout) │ (None, 10, 64)    │          0 │ conv1d[0][0]      │
-├─────────────────────┼───────────────────┼────────────┼───────────────────┤
-│ conv1d_1 (Conv1D)   │ (None, 10, 8)     │        520 │ dropout_2[0][0]   │
-├─────────────────────┼───────────────────┼────────────┼───────────────────┤
-│ add_1 (Add)         │ (None, 10, 8)     │          0 │ conv1d_1[0][0],   │
-│                     │                   │            │ add[0][0]         │
-├─────────────────────┼───────────────────┼────────────┼───────────────────┤
-│ layer_normalizatio… │ (None, 10, 8)     │         16 │ add_1[0][0]       │
-│ (LayerNormalizatio… │                   │            │                   │
-├─────────────────────┼───────────────────┼────────────┼───────────────────┤
-│ multi_head_attenti… │ (None, 10, 8)     │      2,248 │ layer_normalizat… │
-│ (MultiHeadAttentio… │                   │            │ layer_normalizat… │
-├─────────────────────┼───────────────────┼────────────┼───────────────────┤
-│ dropout_4 (Dropout) │ (None, 10, 8)     │          0 │ multi_head_atten… │
-├─────────────────────┼───────────────────┼────────────┼───────────────────┤
-│ add_2 (Add)         │ (None, 10, 8)     │          0 │ dropout_4[0][0],  │
-│                     │                   │            │ add_1[0][0]       │
-├─────────────────────┼───────────────────┼────────────┼───────────────────┤
-│ layer_normalizatio… │ (None, 10, 8)     │         16 │ add_2[0][0]       │
-│ (LayerNormalizatio… │                   │            │                   │
-├─────────────────────┼───────────────────┼────────────┼───────────────────┤
-│ conv1d_2 (Conv1D)   │ (None, 10, 64)    │        576 │ layer_normalizat… │
-├─────────────────────┼───────────────────┼────────────┼───────────────────┤
-│ dropout_5 (Dropout) │ (None, 10, 64)    │          0 │ conv1d_2[0][0]    │
-├─────────────────────┼───────────────────┼────────────┼───────────────────┤
-│ conv1d_3 (Conv1D)   │ (None, 10, 8)     │        520 │ dropout_5[0][0]   │
-├─────────────────────┼───────────────────┼────────────┼───────────────────┤
-│ add_3 (Add)         │ (None, 10, 8)     │          0 │ conv1d_3[0][0],   │
-│                     │                   │            │ add_2[0][0]       │
-├─────────────────────┼───────────────────┼────────────┼───────────────────┤
-│ global_average_poo… │ (None, 8)         │          0 │ add_3[0][0]       │
-│ (GlobalAveragePool… │                   │            │                   │
-├─────────────────────┼───────────────────┼────────────┼───────────────────┤
-│ dense (Dense)       │ (None, 64)        │        576 │ global_average_p… │
-├─────────────────────┼───────────────────┼────────────┼───────────────────┤
-│ dropout_6 (Dropout) │ (None, 64)        │          0 │ dense[0][0]       │
-├─────────────────────┼───────────────────┼────────────┼───────────────────┤
-│ dense_1 (Dense)     │ (None, 1)         │         65 │ dropout_6[0][0]   │
-└─────────────────────┴───────────────────┴────────────┴───────────────────┘
- Total params: 7,393 (28.88 KB)
- Trainable params: 7,393 (28.88 KB)
- Non-trainable params: 0 (0.00 B)
-Epoch 1/30
-[1m  1/179[0m [37m━━━━━━━━━━━━━━━━━━━━[0m [1m28:02[0m 9s/step - accuracy: 0.8125 - auc: 0.6795 - loss: 0.6251[1m  4/179[0m [37m━━━━━━━━━━━━━━━━━━━━[0m [1m3s[0m 22ms/step - accuracy: 0.6641 - auc: 0.4247 - loss: 0.6540 [1m  7/179[0m [37m━━━━━━━━━━━━━━━━━━━━[0m [1m3s[0m 19ms/step - accuracy: 0.7277 - auc: 0.4904 - loss: 0.6136[1m 10/179[0m [32m━[0m[37m━━━━━━━━━━━━━━━━━━━[0m [1m3s[0m 19ms/step - accuracy: 0.7188 - auc: 0.4701 - loss: 0.6143[1m 13/179[0m [32m━[0m[37m━━━━━━━━━━━━━━━━━━━[0m [1m3s[0m 18ms/step - accuracy: 0.7332 - auc: 0.4929 - loss: 0.5983[1m 16/179[0m [32m━[0m[37m━━━━━━━━━━━━━━━━━━━[0m [1m2s[0m 18ms/step - accuracy: 0.7305 - auc: 0.4771 - loss: 0.6041[1m 20/179[0m [32m━━[0m[37m━━━━━━━━━━━━━━━━━━[0m [1m2s[0m 17ms/step - accuracy: 0.7312 - auc: 0.4901 - loss: 0.5982[1m 24/179[0m [32m━━[0m[37m━━━━━━━━━━━━━━━━━━[0m [1m2s[0m 17ms/step - accuracy: 0.7318 - auc: 0.4789 - loss: 0.5999[1m 27/179[0m [32m━━━[0m[37m━━━━━━━━━━━━━━━━━[0m [1m2s[0m 17ms/step - accuracy: 0.7315 - auc: 0.4739 - loss: 0.6002[1m 31/179[0m [32m━━━[0m[37m━━━━━━━━━━━━━━━━━[0m [1m2s[0m 17ms/step - accuracy: 0.7288 - auc: 0.4761 - loss: 0.6014[1m 35/179[0m [32m━━━[0m[37m━━━━━━━━━━━━━━━━━[0m [1m2s[0m 17ms/step - accuracy: 0.7295 - auc: 0.4714 - loss: 0.6009[1m 39/179[0m [32m━━━━[0m[37m━━━━━━━━━━━━━━━━[0m [1m2s[0m 17ms/step - accuracy: 0.7316 - auc: 0.4774 - loss: 0.5970[1m 43/179[0m [32m━━━━[0m[37m━━━━━━━━━━━━━━━━[0m [1m2s[0m 17ms/step - accuracy: 0.7224 - auc: 0.4810 - loss: 0.6047[1m 47/179[0m [32m━━━━━[0m[37m━━━━━━━━━━━━━━━[0m [1m2s[0m 17ms/step - accuracy: 0.7214 - auc: 0.4873 - loss: 0.6042[1m 51/179[0m [32m━━━━━[0m[37m━━━━━━━━━━━━━━━[0m [1m2s[0m 17ms/step - accuracy: 0.7237 - auc: 0.4845 - loss: 0.6026[1m 55/179[0m [32m━━━━━━[0m[37m━━━━━━━━━━━━━━[0m [1m2s[0m 17ms/step - accuracy: 0.7267 - auc: 0.4881 - loss: 0.5990[1m 59/179[0m [32m━━━━━━[0m[37m━━━━━━━━━━━━━━[0m [1m1s[0m 16ms/step - accuracy: 0.7246 - auc: 0.4870 - loss: 0.6008[1m 63/179[0m [32m━━━━━━━[0m[37m━━━━━━━━━━━━━[0m [1m1s[0m 16ms/step - accuracy: 0.7267 - auc: 0.4875 - loss: 0.5983[1m 67/179[0m [32m━━━━━━━[0m[37m━━━━━━━━━━━━━[0m [1m1s[0m 16ms/step - accuracy: 0.7313 - auc: 0.4974 - loss: 0.5919[1m 70/179[0m [32m━━━━━━━[0m[37m━━━━━━━━━━━━━[0m [1m1s[0m 16ms/step - accuracy: 0.7317 - auc: 0.4983 - loss: 0.5916[1m 73/179[0m [32m━━━━━━━━[0m[37m━━━━━━━━━━━━[0m [1m1s[0m 16ms/step - accuracy: 0.7277 - auc: 0.4932 - loss: 0.5967[1m 77/179[0m [32m━━━━━━━━[0m[37m━━━━━━━━━━━━[0m [1m1s[0m 16ms/step - accuracy: 0.7281 - auc: 0.4937 - loss: 0.5961[1m 81/179[0m [32m━━━━━━━━━[0m[37m━━━━━━━━━━━[0m [1m1s[0m 16ms/step - accuracy: 0.7265 - auc: 0.4943 - loss: 0.5973[1m 85/179[0m [32m━━━━━━━━━[0m[37m━━━━━━━━━━━[0m [1m1s[0m 16ms/step - accuracy: 0.7235 - auc: 0.4949 - loss: 0.5998[1m 89/179[0m [32m━━━━━━━━━[0m[37m━━━━━━━━━━━[0m [1m1s[0m 16ms/step - accuracy: 0.7230 - auc: 0.4958 - loss: 0.6001[1m 93/179[0m [32m━━━━━━━━━━[0m[37m━━━━━━━━━━[0m [1m1s[0m 16ms/step - accuracy: 0.7191 - auc: 0.4989 - loss: 0.6033[1m 97/179[0m [32m━━━━━━━━━━[0m[37m━━━━━━━━━━[0m [1m1s[0m 16ms/step - accuracy: 0.7216 - auc: 0.4943 - loss: 0.6017[1m101/179[0m [32m━━━━━━━━━━━[0m[37m━━━━━━━━━[0m [1m1s[0m 16ms/step - accuracy: 0.7203 - auc: 0.4961 - loss: 0.6025[1m105/179[0m [32m━━━━━━━━━━━[0m[37m━━━━━━━━━[0m [1m1s[0m 16ms/step - accuracy: 0.7182 - auc: 0.4978 - loss: 0.6041[1m109/179[0m [32m━━━━━━━━━━━━[0m[37m━━━━━━━━[0m [1m1s[0m 16ms/step - accuracy: 0.7179 - auc: 0.4964 - loss: 0.6046[1m113/179[0m [32m━━━━━━━━━━━━[0m[37m━━━━━━━━[0m [1m1s[0m 16ms/step - accuracy: 0.7193 - auc: 0.4946 - loss: 0.6035[1m117/179[0m [32m━━━━━━━━━━━━━[0m[37m━━━━━━━[0m [1m1s[0m 16ms/step - accuracy: 0.7206 - auc: 0.4938 - loss: 0.6023[1m121/179[0m [32m━━━━━━━━━━━━━[0m[37m━━━━━━━[0m [1m0s[0m 16ms/step - accuracy: 0.7208 - auc: 0.4962 - loss: 0.6015[1m124/179[0m [32m━━━━━━━━━━━━━[0m[37m━━━━━━━[0m [1m0s[0m 16ms/step - accuracy: 0.7205 - auc: 0.4942 - loss: 0.6020[1m127/179[0m [32m━━━━━━━━━━━━━━[0m[37m━━━━━━[0m [1m0s[0m 16ms/step - accuracy: 0.7207 - auc: 0.4946 - loss: 0.6017[1m130/179[0m [32m━━━━━━━━━━━━━━[0m[37m━━━━━━[0m [1m0s[0m 16ms/step - accuracy: 0.7204 - auc: 0.4940 - loss: 0.6020[1m133/179[0m [32m━━━━━━━━━━━━━━[0m[37m━━━━━━[0m [1m0s[0m 16ms/step - accuracy: 0.7190 - auc: 0.4934 - loss: 0.6033[1m136/179[0m [32m━━━━━━━━━━━━━━━[0m[37m━━━━━[0m [1m0s[0m 16ms/step - accuracy: 0.7201 - auc: 0.4919 - loss: 0.6023[1m140/179[0m [32m━━━━━━━━━━━━━━━[0m[37m━━━━━[0m [1m0s[0m 16ms/step - accuracy: 0.7210 - auc: 0.4917 - loss: 0.6014[1m143/179[0m [32m━━━━━━━━━━━━━━━[0m[37m━━━━━[0m [1m0s[0m 16ms/step - accuracy: 0.7190 - auc: 0.4929 - loss: 0.6030[1m147/179[0m [32m━━━━━━━━━━━━━━━━[0m[37m━━━━[0m [1m0s[0m 16ms/step - accuracy: 0.7194 - auc: 0.4921 - loss: 0.6026[1m150/179[0m [32m━━━━━━━━━━━━━━━━[0m[37m━━━━[0m [1m0s[0m 16ms/step - accuracy: 0.7181 - auc: 0.4924 - loss: 0.6037[1m154/179[0m [32m━━━━━━━━━━━━━━━━━[0m[37m━━━[0m [1m0s[0m 16ms/step - accuracy: 0.7188 - auc: 0.4934 - loss: 0.6029[1m157/179[0m [32m━━━━━━━━━━━━━━━━━[0m[37m━━━[0m [1m0s[0m 16ms/step - accuracy: 0.7207 - auc: 0.4927 - loss: 0.6011[1m160/179[0m [32m━━━━━━━━━━━━━━━━━[0m[37m━━━[0m [1m0s[0m 16ms/step - accuracy: 0.7223 - auc: 0.4925 - loss: 0.5997[1m164/179[0m [32m━━━━━━━━━━━━━━━━━━[0m[37m━━[0m [1m0s[0m 16ms/step - accuracy: 0.7218 - auc: 0.4934 - loss: 0.5999[1m167/179[0m [32m━━━━━━━━━━━━━━━━━━[0m[37m━━[0m [1m0s[0m 16ms/step - accuracy: 0.7221 - auc: 0.4934 - loss: 0.5994[1m170/179[0m [32m━━━━━━━━━━━━━━━━━━[0m[37m━━[0m [1m0s[0m 17ms/step - accuracy: 0.7210 - auc: 0.4936 - loss: 0.6006[1m174/179[0m [32m━━━━━━━━━━━━━━━━━━━[0m[37m━[0m [1m0s[0m 16ms/step - accuracy: 0.7205 - auc: 0.4932 - loss: 0.6011[1m177/179[0m [32m━━━━━━━━━━━━━━━━━━━[0m[37m━[0m [1m0s[0m 16ms/step - accuracy: 0.7207 - auc: 0.4936 - loss: 0.6008[1m179/179[0m [32m━━━━━━━━━━━━━━━━━━━━[0m[37m[0m [1m14s[0m 23ms/step - accuracy: 0.7207 - auc: 0.4945 - loss: 0.6006 - val_accuracy: 0.7232 - val_auc: 0.5095 - val_loss: 0.5915
-Epoch 2/30
-[1m  1/179[0m [37m━━━━━━━━━━━━━━━━━━━━[0m [1m11s[0m 63ms/step - accuracy: 0.8438 - auc: 0.5630 - loss: 0.4776[1m  4/179[0m [37m━━━━━━━━━━━━━━━━━━━━[0m [1m3s[0m 22ms/step - accuracy: 0.7266 - auc: 0.5363 - loss: 0.5866 [1m  7/179[0m [37m━━━━━━━━━━━━━━━━━━━━[0m [1m3s[0m 20ms/step - accuracy: 0.7545 - auc: 0.4998 - loss: 0.5714[1m 10/179[0m [32m━[0m[37m━━━━━━━━━━━━━━━━━━━[0m [1m3s[0m 19ms/step - accuracy: 0.7469 - auc: 0.5392 - loss: 0.5746[1m 13/179[0m [32m━[0m[37m━━━━━━━━━━━━━━━━━━━[0m [1m3s[0m 19ms/step - accuracy: 0.7620 - auc: 0.5556 - loss: 0.5608[1m 16/179[0m [32m━[0m[37m━━━━━━━━━━━━━━━━━━━[0m [1m3s[0m 20ms/step - accuracy: 0.7637 - auc: 0.5398 - loss: 0.5595[1m 19/179[0m [32m━━[0m[37m━━━━━━━━━━━━━━━━━━[0m [1m3s[0m 20ms/step - accuracy: 0.7516 - auc: 0.5178 - loss: 0.5705[1m 22/179[0m [32m━━[0m[37m━━━━━━━━━━━━━━━━━━[0m [1m3s[0m 20ms/step - accuracy: 0.7415 - auc: 0.5090 - loss: 0.5794[1m 25/179[0m [32m━━[0m[37m━━━━━━━━━━━━━━━━━━[0m [1m3s[0m 20ms/step - accuracy: 0.7337 - auc: 0.4985 - loss: 0.5870[1m 28/179[0m [32m━━━[0m[37m━━━━━━━━━━━━━━━━━[0m [1m3s[0m 20ms/step - accuracy: 0.7310 - auc: 0.5023 - loss: 0.5891[1m 31/179[0m [32m━━━[0m[37m━━━━━━━━━━━━━━━━━[0m [1m2s[0m 20ms/step - accuracy: 0.7228 - auc: 0.5090 - loss: 0.5950[1m 35/179[0m [32m━━━[0m[37m━━━━━━━━━━━━━━━━━[0m [1m2s[0m 20ms/step - accuracy: 0.7179 - auc: 0.5006 - loss: 0.6003[1m 38/179[0m [32m━━━━[0m[37m━━━━━━━━━━━━━━━━[0m [1m2s[0m 19ms/step - accuracy: 0.7245 - auc: 0.4961 - loss: 0.5952[1m 41/179[0m [32m━━━━[0m[37m━━━━━━━━━━━━━━━━[0m [1m2s[0m 19ms/step - accuracy: 0.7287 - auc: 0.4889 - loss: 0.5926[1m 45/179[0m [32m━━━━━[0m[37m━━━━━━━━━━━━━━━[0m [1m2s[0m 19ms/step - accuracy: 0.7319 - auc: 0.4919 - loss: 0.5892[1m 49/179[0m [32m━━━━━[0m[37m━━━━━━━━━━━━━━━[0m [1m2s[0m 19ms/step - accuracy: 0.7309 - auc: 0.4933 - loss: 0.5898[1m 53/179[0m [32m━━━━━[0m[37m━━━━━━━━━━━━━━━[0m [1m2s[0m 19ms/step - accuracy: 0.7311 - auc: 0.4985 - loss: 0.5883[1m 55/179[0m [32m━━━━━━[0m[37m━━━━━━━━━━━━━━[0m [1m2s[0m 19ms/step - accuracy: 0.7290 - auc: 0.4954 - loss: 0.5906[1m 58/179[0m [32m━━━━━━[0m[37m━━━━━━━━━━━━━━[0m [1m2s[0m 19ms/step - accuracy: 0.7268 - auc: 0.4916 - loss: 0.5929[1m 61/179[0m [32m━━━━━━[0m[37m━━━━━━━━━━━━━━[0m [1m2s[0m 19ms/step - accuracy: 0.7244 - auc: 0.4896 - loss: 0.5953[1m 65/179[0m [32m━━━━━━━[0m[37m━━━━━━━━━━━━━[0m [1m2s[0m 19ms/step - accuracy: 0.7240 - auc: 0.4942 - loss: 0.5949[1m 68/179[0m [32m━━━━━━━[0m[37m━━━━━━━━━━━━━[0m [1m2s[0m 19ms/step - accuracy: 0.7252 - auc: 0.4973 - loss: 0.5933[1m 71/179[0m [32m━━━━━━━[0m[37m━━━━━━━━━━━━━[0m [1m2s[0m 19ms/step - accuracy: 0.7302 - auc: 0.5004 - loss: 0.5884[1m 74/179[0m [32m━━━━━━━━[0m[37m━━━━━━━━━━━━[0m [1m1s[0m 19ms/step - accuracy: 0.7285 - auc: 0.4960 - loss: 0.5905[1m 78/179[0m [32m━━━━━━━━[0m[37m━━━━━━━━━━━━[0m [1m1s[0m 18ms/step - accuracy: 0.7272 - auc: 0.5008 - loss: 0.5909[1m 81/179[0m [32m━━━━━━━━━[0m[37m━━━━━━━━━━━[0m [1m1s[0m 19ms/step - accuracy: 0.7265 - auc: 0.5011 - loss: 0.5914[1m 84/179[0m [32m━━━━━━━━━[0m[37m━━━━━━━━━━━[0m [1m1s[0m 19ms/step - accuracy: 0.7277 - auc: 0.5044 - loss: 0.5897[1m 87/179[0m [32m━━━━━━━━━[0m[37m━━━━━━━━━━━[0m [1m1s[0m 19ms/step - accuracy: 0.7256 - auc: 0.5060 - loss: 0.5914[1m 91/179[0m [32m━━━━━━━━━━[0m[37m━━━━━━━━━━[0m [1m1s[0m 19ms/step - accuracy: 0.7249 - auc: 0.5029 - loss: 0.5925[1m 94/179[0m [32m━━━━━━━━━━[0m[37m━━━━━━━━━━[0m [1m1s[0m 18ms/step - accuracy: 0.7237 - auc: 0.5024 - loss: 0.5937[1m 97/179[0m [32m━━━━━━━━━━[0m[37m━━━━━━━━━━[0m [1m1s[0m 19ms/step - accuracy: 0.7204 - auc: 0.5027 - loss: 0.5968[1m101/179[0m [32m━━━━━━━━━━━[0m[37m━━━━━━━━━[0m [1m1s[0m 18ms/step - accuracy: 0.7212 - auc: 0.5021 - loss: 0.5962[1m104/179[0m [32m━━━━━━━━━━━[0m[37m━━━━━━━━━[0m [1m1s[0m 18ms/step - accuracy: 0.7224 - auc: 0.4996 - loss: 0.5957[1m107/179[0m [32m━━━━━━━━━━━[0m[37m━━━━━━━━━[0m [1m1s[0m 18ms/step - accuracy: 0.7220 - auc: 0.4995 - loss: 0.5961[1m110/179[0m [32m━━━━━━━━━━━━[0m[37m━━━━━━━━[0m [1m1s[0m 18ms/step - accuracy: 0.7227 - auc: 0.5000 - loss: 0.5955[1m114/179[0m [32m━━━━━━━━━━━━[0m[37m━━━━━━━━[0m [1m1s[0m 18ms/step - accuracy: 0.7204 - auc: 0.5030 - loss: 0.5972[1m118/179[0m [32m━━━━━━━━━━━━━[0m[37m━━━━━━━[0m [1m1s[0m 18ms/step - accuracy: 0.7227 - auc: 0.5031 - loss: 0.5951[1m121/179[0m [32m━━━━━━━━━━━━━[0m[37m━━━━━━━[0m [1m1s[0m 18ms/step - accuracy: 0.7224 - auc: 0.5036 - loss: 0.5952[1m125/179[0m [32m━━━━━━━━━━━━━[0m[37m━━━━━━━[0m [1m0s[0m 18ms/step - accuracy: 0.7190 - auc: 0.5027 - loss: 0.5984[1m128/179[0m [32m━━━━━━━━━━━━━━[0m[37m━━━━━━[0m [1m0s[0m 18ms/step - accuracy: 0.7188 - auc: 0.5024 - loss: 0.5986[1m132/179[0m [32m━━━━━━━━━━━━━━[0m[37m━━━━━━[0m [1m0s[0m 18ms/step - accuracy: 0.7195 - auc: 0.5021 - loss: 0.5980[1m136/179[0m [32m━━━━━━━━━━━━━━━[0m[37m━━━━━[0m [1m0s[0m 18ms/step - accuracy: 0.7183 - auc: 0.5030 - loss: 0.5989[1m140/179[0m [32m━━━━━━━━━━━━━━━[0m[37m━━━━━[0m [1m0s[0m 18ms/step - accuracy: 0.7167 - auc: 0.5033 - loss: 0.6002[1m143/179[0m [32m━━━━━━━━━━━━━━━[0m[37m━━━━━[0m [1m0s[0m 18ms/step - accuracy: 0.7177 - auc: 0.5031 - loss: 0.5993[1m146/179[0m [32m━━━━━━━━━━━━━━━━[0m[37m━━━━[0m [1m0s[0m 18ms/step - accuracy: 0.7177 - auc: 0.5035 - loss: 0.5993[1m150/179[0m [32m━━━━━━━━━━━━━━━━[0m[37m━━━━[0m [1m0s[0m 18ms/step - accuracy: 0.7167 - auc: 0.5056 - loss: 0.5999[1m153/179[0m [32m━━━━━━━━━━━━━━━━━[0m[37m━━━[0m [1m0s[0m 18ms/step - accuracy: 0.7167 - auc: 0.5045 - loss: 0.6000[1m156/179[0m [32m━━━━━━━━━━━━━━━━━[0m[37m━━━[0m [1m0s[0m 18ms/step - accuracy: 0.7179 - auc: 0.5028 - loss: 0.5991[1m160/179[0m [32m━━━━━━━━━━━━━━━━━[0m[37m━━━[0m [1m0s[0m 18ms/step - accuracy: 0.7182 - auc: 0.5025 - loss: 0.5989[1m164/179[0m [32m━━━━━━━━━━━━━━━━━━[0m[37m━━[0m [1m0s[0m 18ms/step - accuracy: 0.7184 - auc: 0.5024 - loss: 0.5986[1m167/179[0m [32m━━━━━━━━━━━━━━━━━━[0m[37m━━[0m [1m0s[0m 18ms/step - accuracy: 0.7182 - auc: 0.5039 - loss: 0.5986[1m170/179[0m [32m━━━━━━━━━━━━━━━━━━[0m[37m━━[0m [1m0s[0m 18ms/step - accuracy: 0.7184 - auc: 0.5052 - loss: 0.5983[1m173/179[0m [32m━━━━━━━━━━━━━━━━━━━[0m[37m━[0m [1m0s[0m 18ms/step - accuracy: 0.7193 - auc: 0.5064 - loss: 0.5973[1m176/179[0m [32m━━━━━━━━━━━━━━━━━━━[0m[37m━[0m [1m0s[0m 18ms/step - accuracy: 0.7211 - auc: 0.5097 - loss: 0.5952[1m179/179[0m [32m━━━━━━━━━━━━━━━━━━━━[0m[37m[0m [1m0s[0m 18ms/step - accuracy: 0.7221 - auc: 0.5106 - loss: 0.5941[1m179/179[0m [32m━━━━━━━━━━━━━━━━━━━━[0m[37m[0m [1m4s[0m 20ms/step - accuracy: 0.7221 - auc: 0.5106 - loss: 0.5941 - val_accuracy: 0.7232 - val_auc: 0.4940 - val_loss: 0.5976
-Epoch 3/30
-[1m  1/179[0m [37m━━━━━━━━━━━━━━━━━━━━[0m [1m9s[0m 51ms/step - accuracy: 0.7188 - auc: 0.7053 - loss: 0.5688[1m  5/179[0m [37m━━━━━━━━━━━━━━━━━━━━[0m [1m2s[0m 16ms/step - accuracy: 0.7125 - auc: 0.5312 - loss: 0.6102[1m  8/179[0m [37m━━━━━━━━━━━━━━━━━━━━[0m [1m2s[0m 17ms/step - accuracy: 0.6953 - auc: 0.5412 - loss: 0.6332[1m 12/179[0m [32m━[0m[37m━━━━━━━━━━━━━━━━━━━[0m [1m2s[0m 17ms/step - accuracy: 0.6979 - auc: 0.5349 - loss: 0.6273[1m 16/179[0m [32m━[0m[37m━━━━━━━━━━━━━━━━━━━[0m [1m2s[0m 16ms/step - accuracy: 0.7109 - auc: 0.5058 - loss: 0.6133[1m 20/179[0m [32m━━[0m[37m━━━━━━━━━━━━━━━━━━[0m [1m2s[0m 16ms/step - accuracy: 0.7109 - auc: 0.5056 - loss: 0.6116[1m 23/179[0m [32m━━[0m[37m━━━━━━━━━━━━━━━━━━[0m [1m2s[0m 17ms/step - accuracy: 0.7024 - auc: 0.5054 - loss: 0.6197[1m 26/179[0m [32m━━[0m[37m━━━━━━━━━━━━━━━━━━[0m [1m2s[0m 17ms/step - accuracy: 0.7127 - auc: 0.4860 - loss: 0.6108[1m 29/179[0m [32m━━━[0m[37m━━━━━━━━━━━━━━━━━[0m [1m2s[0m 17ms/step - accuracy: 0.7166 - auc: 0.4880 - loss: 0.6058[1m 32/179[0m [32m━━━[0m[37m━━━━━━━━━━━━━━━━━[0m [1m2s[0m 17ms/step - accuracy: 0.7188 - auc: 0.4954 - loss: 0.6020[1m 35/179[0m [32m━━━[0m[37m━━━━━━━━━━━━━━━━━[0m [1m2s[0m 17ms/step - accuracy: 0.7205 - auc: 0.4949 - loss: 0.6001[1m 38/179[0m [32m━━━━[0m[37m━━━━━━━━━━━━━━━━[0m [1m2s[0m 17ms/step - accuracy: 0.7171 - auc: 0.4952 - loss: 0.6032[1m 41/179[0m [32m━━━━[0m[37m━━━━━━━━━━━━━━━━[0m [1m2s[0m 18ms/step - accuracy: 0.7157 - auc: 0.5019 - loss: 0.6031[1m 44/179[0m [32m━━━━[0m[37m━━━━━━━━━━━━━━━━[0m [1m2s[0m 18ms/step - accuracy: 0.7131 - auc: 0.4989 - loss: 0.6060[1m 47/179[0m [32m━━━━━[0m[37m━━━━━━━━━━━━━━━[0m [1m2s[0m 18ms/step - accuracy: 0.7128 - auc: 0.5014 - loss: 0.6056[1m 50/179[0m [32m━━━━━[0m[37m━━━━━━━━━━━━━━━[0m [1m2s[0m 18ms/step - accuracy: 0.7131 - auc: 0.5005 - loss: 0.6051[1m 53/179[0m [32m━━━━━[0m[37m━━━━━━━━━━━━━━━[0m [1m2s[0m 19ms/step - accuracy: 0.7158 - auc: 0.4968 - loss: 0.6030[1m 56/179[0m [32m━━━━━━[0m[37m━━━━━━━━━━━━━━[0m [1m2s[0m 19ms/step - accuracy: 0.7193 - auc: 0.4963 - loss: 0.5995[1m 59/179[0m [32m━━━━━━[0m[37m━━━━━━━━━━━━━━[0m [1m2s[0m 19ms/step - accuracy: 0.7172 - auc: 0.4975 - loss: 0.6012[1m 62/179[0m [32m━━━━━━[0m[37m━━━━━━━━━━━━━━[0m [1m2s[0m 19ms/step - accuracy: 0.7137 - auc: 0.5003 - loss: 0.6040[1m 65/179[0m [32m━━━━━━━[0m[37m━━━━━━━━━━━━━[0m [1m2s[0m 19ms/step - accuracy: 0.7115 - auc: 0.5024 - loss: 0.6056[1m 68/179[0m [32m━━━━━━━[0m[37m━━━━━━━━━━━━━[0m [1m2s[0m 19ms/step - accuracy: 0.7100 - auc: 0.5011 - loss: 0.6071[1m 71/179[0m [32m━━━━━━━[0m[37m━━━━━━━━━━━━━[0m [1m2s[0m 19ms/step - accuracy: 0.7104 - auc: 0.5055 - loss: 0.6059[1m 74/179[0m [32m━━━━━━━━[0m[37m━━━━━━━━━━━━[0m [1m2s[0m 19ms/step - accuracy: 0.7095 - auc: 0.5089 - loss: 0.6064[1m 77/179[0m [32m━━━━━━━━[0m[37m━━━━━━━━━━━━[0m [1m1s[0m 19ms/step - accuracy: 0.7070 - auc: 0.5088 - loss: 0.6087[1m 81/179[0m [32m━━━━━━━━━[0m[37m━━━━━━━━━━━[0m [1m1s[0m 19ms/step - accuracy: 0.7079 - auc: 0.5059 - loss: 0.6084[1m 84/179[0m [32m━━━━━━━━━[0m[37m━━━━━━━━━━━[0m [1m1s[0m 19ms/step - accuracy: 0.7098 - auc: 0.5007 - loss: 0.6076[1m 87/179[0m [32m━━━━━━━━━[0m[37m━━━━━━━━━━━[0m [1m1s[0m 19ms/step - accuracy: 0.7123 - auc: 0.4999 - loss: 0.6055[1m 90/179[0m [32m━━━━━━━━━━[0m[37m━━━━━━━━━━[0m [1m1s[0m 19ms/step - accuracy: 0.7128 - auc: 0.5015 - loss: 0.6047[1m 93/179[0m [32m━━━━━━━━━━[0m[37m━━━━━━━━━━[0m [1m1s[0m 19ms/step - accuracy: 0.7127 - auc: 0.5015 - loss: 0.6048[1m 96/179[0m [32m━━━━━━━━━━[0m[37m━━━━━━━━━━[0m [1m1s[0m 19ms/step - accuracy: 0.7119 - auc: 0.4987 - loss: 0.6058[1m 99/179[0m [32m━━━━━━━━━━━[0m[37m━━━━━━━━━[0m [1m1s[0m 19ms/step - accuracy: 0.7118 - auc: 0.5008 - loss: 0.6055[1m102/179[0m [32m━━━━━━━━━━━[0m[37m━━━━━━━━━[0m [1m1s[0m 19ms/step - accuracy: 0.7108 - auc: 0.5011 - loss: 0.6063[1m105/179[0m [32m━━━━━━━━━━━[0m[37m━━━━━━━━━[0m [1m1s[0m 19ms/step - accuracy: 0.7128 - auc: 0.5003 - loss: 0.6045[1m108/179[0m [32m━━━━━━━━━━━━[0m[37m━━━━━━━━[0m [1m1s[0m 19ms/step - accuracy: 0.7135 - auc: 0.5028 - loss: 0.6034[1m110/179[0m [32m━━━━━━━━━━━━[0m[37m━━━━━━━━[0m [1m1s[0m 19ms/step - accuracy: 0.7131 - auc: 0.5015 - loss: 0.6040[1m113/179[0m [32m━━━━━━━━━━━━[0m[37m━━━━━━━━[0m [1m1s[0m 19ms/step - accuracy: 0.7140 - auc: 0.5007 - loss: 0.6031[1m116/179[0m [32m━━━━━━━━━━━━[0m[37m━━━━━━━━[0m [1m1s[0m 19ms/step - accuracy: 0.7142 - auc: 0.5014 - loss: 0.6028[1m119/179[0m [32m━━━━━━━━━━━━━[0m[37m━━━━━━━[0m [1m1s[0m 19ms/step - accuracy: 0.7143 - auc: 0.5011 - loss: 0.6027[1m122/179[0m [32m━━━━━━━━━━━━━[0m[37m━━━━━━━[0m [1m1s[0m 20ms/step - accuracy: 0.7136 - auc: 0.5023 - loss: 0.6030[1m125/179[0m [32m━━━━━━━━━━━━━[0m[37m━━━━━━━[0m [1m1s[0m 19ms/step - accuracy: 0.7160 - auc: 0.5025 - loss: 0.6008[1m128/179[0m [32m━━━━━━━━━━━━━━[0m[37m━━━━━━[0m [1m0s[0m 19ms/step - accuracy: 0.7148 - auc: 0.5018 - loss: 0.6019[1m131/179[0m [32m━━━━━━━━━━━━━━[0m[37m━━━━━━[0m [1m0s[0m 19ms/step - accuracy: 0.7147 - auc: 0.4995 - loss: 0.6023[1m134/179[0m [32m━━━━━━━━━━━━━━[0m[37m━━━━━━[0m [1m0s[0m 19ms/step - accuracy: 0.7139 - auc: 0.5002 - loss: 0.6030[1m137/179[0m [32m━━━━━━━━━━━━━━━[0m[37m━━━━━[0m [1m0s[0m 19ms/step - accuracy: 0.7144 - auc: 0.4997 - loss: 0.6025[1m140/179[0m [32m━━━━━━━━━━━━━━━[0m[37m━━━━━[0m [1m0s[0m 19ms/step - accuracy: 0.7152 - auc: 0.4995 - loss: 0.6018[1m143/179[0m [32m━━━━━━━━━━━━━━━[0m[37m━━━━━[0m [1m0s[0m 19ms/step - accuracy: 0.7146 - auc: 0.5020 - loss: 0.6020[1m147/179[0m [32m━━━━━━━━━━━━━━━━[0m[37m━━━━[0m [1m0s[0m 19ms/step - accuracy: 0.7149 - auc: 0.4982 - loss: 0.6021[1m150/179[0m [32m━━━━━━━━━━━━━━━━[0m[37m━━━━[0m [1m0s[0m 19ms/step - accuracy: 0.7158 - auc: 0.4975 - loss: 0.6013[1m153/179[0m [32m━━━━━━━━━━━━━━━━━[0m[37m━━━[0m [1m0s[0m 19ms/step - accuracy: 0.7163 - auc: 0.4980 - loss: 0.6008[1m156/179[0m [32m━━━━━━━━━━━━━━━━━[0m[37m━━━[0m [1m0s[0m 19ms/step - accuracy: 0.7173 - auc: 0.4984 - loss: 0.5998[1m159/179[0m [32m━━━━━━━━━━━━━━━━━[0m[37m━━━[0m [1m0s[0m 19ms/step - accuracy: 0.7170 - auc: 0.4978 - loss: 0.6001[1m162/179[0m [32m━━━━━━━━━━━━━━━━━━[0m[37m━━[0m [1m0s[0m 19ms/step - accuracy: 0.7178 - auc: 0.4978 - loss: 0.5994[1m165/179[0m [32m━━━━━━━━━━━━━━━━━━[0m[37m━━[0m [1m0s[0m 19ms/step - accuracy: 0.7197 - auc: 0.4994 - loss: 0.5974[1m168/179[0m [32m━━━━━━━━━━━━━━━━━━[0m[37m━━[0m [1m0s[0m 19ms/step - accuracy: 0.7186 - auc: 0.4995 - loss: 0.5985[1m171/179[0m [32m━━━━━━━━━━━━━━━━━━━[0m[37m━[0m [1m0s[0m 19ms/step - accuracy: 0.7191 - auc: 0.5016 - loss: 0.5977[1m174/179[0m [32m━━━━━━━━━━━━━━━━━━━[0m[37m━[0m [1m0s[0m 19ms/step - accuracy: 0.7202 - auc: 0.5031 - loss: 0.5964[1m177/179[0m [32m━━━━━━━━━━━━━━━━━━━[0m[37m━[0m [1m0s[0m 19ms/step - accuracy: 0.7221 - auc: 0.5047 - loss: 0.5944[1m179/179[0m [32m━━━━━━━━━━━━━━━━━━━━[0m[37m[0m [1m4s[0m 23ms/step - accuracy: 0.7221 - auc: 0.5049 - loss: 0.5944 - val_accuracy: 0.7232 - val_auc: 0.4985 - val_loss: 0.5963
-Epoch 4/30
-[1m  1/179[0m [37m━━━━━━━━━━━━━━━━━━━━[0m [1m12s[0m 69ms/step - accuracy: 0.7500 - auc: 0.4010 - loss: 0.5772[1m  4/179[0m [37m━━━━━━━━━━━━━━━━━━━━[0m [1m3s[0m 22ms/step - accuracy: 0.6797 - auc: 0.4427 - loss: 0.6634 [1m  8/179[0m [37m━━━━━━━━━━━━━━━━━━━━[0m [1m3s[0m 18ms/step - accuracy: 0.7227 - auc: 0.4653 - loss: 0.6052[1m 11/179[0m [32m━[0m[37m━━━━━━━━━━━━━━━━━━━[0m [1m2s[0m 18ms/step - accuracy: 0.7386 - auc: 0.4996 - loss: 0.5805[1m 15/179[0m [32m━[0m[37m━━━━━━━━━━━━━━━━━━━[0m [1m2s[0m 18ms/step - accuracy: 0.7479 - auc: 0.4919 - loss: 0.5699[1m 18/179[0m [32m━━[0m[37m━━━━━━━━━━━━━━━━━━[0m [1m2s[0m 18ms/step - accuracy: 0.7344 - auc: 0.4921 - loss: 0.5861[1m 21/179[0m [32m━━[0m[37m━━━━━━━━━━━━━━━━━━[0m [1m2s[0m 18ms/step - accuracy: 0.7321 - auc: 0.4940 - loss: 0.5882[1m 25/179[0m [32m━━[0m[37m━━━━━━━━━━━━━━━━━━[0m [1m2s[0m 17ms/step - accuracy: 0.7312 - auc: 0.5091 - loss: 0.5866[1m 29/179[0m [32m━━━[0m[37m━━━━━━━━━━━━━━━━━[0m [1m2s[0m 17ms/step - accuracy: 0.7198 - auc: 0.5281 - loss: 0.5964[1m 32/179[0m [32m━━━[0m[37m━━━━━━━━━━━━━━━━━[0m [1m2s[0m 17ms/step - accuracy: 0.7246 - auc: 0.5230 - loss: 0.5910[1m 35/179[0m [32m━━━[0m[37m━━━━━━━━━━━━━━━━━[0m [1m2s[0m 17ms/step - accuracy: 0.7223 - auc: 0.5235 - loss: 0.5934[1m 38/179[0m [32m━━━━[0m[37m━━━━━━━━━━━━━━━━[0m [1m2s[0m 18ms/step - accuracy: 0.7245 - auc: 0.5264 - loss: 0.5903[1m 41/179[0m [32m━━━━[0m[37m━━━━━━━━━━━━━━━━[0m [1m2s[0m 18ms/step - accuracy: 0.7210 - auc: 0.5239 - loss: 0.5942[1m 44/179[0m [32m━━━━[0m[37m━━━━━━━━━━━━━━━━[0m [1m2s[0m 18ms/step - accuracy: 0.7280 - auc: 0.5167 - loss: 0.5881[1m 47/179[0m [32m━━━━━[0m[37m━━━━━━━━━━━━━━━[0m [1m2s[0m 18ms/step - accuracy: 0.7281 - auc: 0.5198 - loss: 0.5873[1m 50/179[0m [32m━━━━━[0m[37m━━━━━━━━━━━━━━━[0m [1m2s[0m 18ms/step - accuracy: 0.7294 - auc: 0.5180 - loss: 0.5861[1m 53/179[0m [32m━━━━━[0m[37m━━━━━━━━━━━━━━━[0m [1m2s[0m 18ms/step - accuracy: 0.7311 - auc: 0.5179 - loss: 0.5841[1m 57/179[0m [32m━━━━━━[0m[37m━━━━━━━━━━━━━━[0m [1m2s[0m 18ms/step - accuracy: 0.7259 - auc: 0.5147 - loss: 0.5898[1m 60/179[0m [32m━━━━━━[0m[37m━━━━━━━━━━━━━━[0m [1m2s[0m 18ms/step - accuracy: 0.7240 - auc: 0.5179 - loss: 0.5912[1m 63/179[0m [32m━━━━━━━[0m[37m━━━━━━━━━━━━━[0m [1m2s[0m 18ms/step - accuracy: 0.7237 - auc: 0.5185 - loss: 0.5913[1m 67/179[0m [32m━━━━━━━[0m[37m━━━━━━━━━━━━━[0m [1m1s[0m 18ms/step - accuracy: 0.7234 - auc: 0.5143 - loss: 0.5922[1m 70/179[0m [32m━━━━━━━[0m[37m━━━━━━━━━━━━━[0m [1m1s[0m 18ms/step - accuracy: 0.7228 - auc: 0.5146 - loss: 0.5927[1m 73/179[0m [32m━━━━━━━━[0m[37m━━━━━━━━━━━━[0m [1m1s[0m 18ms/step - accuracy: 0.7226 - auc: 0.5125 - loss: 0.5931[1m 76/179[0m [32m━━━━━━━━[0m[37m━━━━━━━━━━━━[0m [1m1s[0m 18ms/step - accuracy: 0.7225 - auc: 0.5106 - loss: 0.5936[1m 80/179[0m [32m━━━━━━━━[0m[37m━━━━━━━━━━━━[0m [1m1s[0m 18ms/step - accuracy: 0.7203 - auc: 0.5123 - loss: 0.5955[1m 84/179[0m [32m━━━━━━━━━[0m[37m━━━━━━━━━━━[0m [1m1s[0m 18ms/step - accuracy: 0.7199 - auc: 0.5133 - loss: 0.5956[1m 87/179[0m [32m━━━━━━━━━[0m[37m━━━━━━━━━━━[0m [1m1s[0m 18ms/step - accuracy: 0.7202 - auc: 0.5159 - loss: 0.5948[1m 90/179[0m [32m━━━━━━━━━━[0m[37m━━━━━━━━━━[0m [1m1s[0m 18ms/step - accuracy: 0.7212 - auc: 0.5148 - loss: 0.5940[1m 94/179[0m [32m━━━━━━━━━━[0m[37m━━━━━━━━━━[0m [1m1s[0m 17ms/step - accuracy: 0.7188 - auc: 0.5164 - loss: 0.5959[1m 97/179[0m [32m━━━━━━━━━━[0m[37m━━━━━━━━━━[0m [1m1s[0m 18ms/step - accuracy: 0.7207 - auc: 0.5159 - loss: 0.5941[1m101/179[0m [32m━━━━━━━━━━━[0m[37m━━━━━━━━━[0m [1m1s[0m 17ms/step - accuracy: 0.7243 - auc: 0.5121 - loss: 0.5912[1m104/179[0m [32m━━━━━━━━━━━[0m[37m━━━━━━━━━[0m [1m1s[0m 17ms/step - accuracy: 0.7254 - auc: 0.5132 - loss: 0.5900[1m107/179[0m [32m━━━━━━━━━━━[0m[37m━━━━━━━━━[0m [1m1s[0m 18ms/step - accuracy: 0.7272 - auc: 0.5137 - loss: 0.5882[1m111/179[0m [32m━━━━━━━━━━━━[0m[37m━━━━━━━━[0m [1m1s[0m 17ms/step - accuracy: 0.7230 - auc: 0.5078 - loss: 0.5934[1m114/179[0m [32m━━━━━━━━━━━━[0m[37m━━━━━━━━[0m [1m1s[0m 18ms/step - accuracy: 0.7218 - auc: 0.5077 - loss: 0.5946[1m117/179[0m [32m━━━━━━━━━━━━━[0m[37m━━━━━━━[0m [1m1s[0m 18ms/step - accuracy: 0.7233 - auc: 0.5080 - loss: 0.5930[1m120/179[0m [32m━━━━━━━━━━━━━[0m[37m━━━━━━━[0m [1m1s[0m 18ms/step - accuracy: 0.7229 - auc: 0.5092 - loss: 0.5931[1m124/179[0m [32m━━━━━━━━━━━━━[0m[37m━━━━━━━[0m [1m0s[0m 17ms/step - accuracy: 0.7233 - auc: 0.5088 - loss: 0.5927[1m128/179[0m [32m━━━━━━━━━━━━━━[0m[37m━━━━━━[0m [1m0s[0m 17ms/step - accuracy: 0.7227 - auc: 0.5075 - loss: 0.5935[1m131/179[0m [32m━━━━━━━━━━━━━━[0m[37m━━━━━━[0m [1m0s[0m 17ms/step - accuracy: 0.7223 - auc: 0.5072 - loss: 0.5938[1m134/179[0m [32m━━━━━━━━━━━━━━[0m[37m━━━━━━[0m [1m0s[0m 17ms/step - accuracy: 0.7229 - auc: 0.5066 - loss: 0.5932[1m137/179[0m [32m━━━━━━━━━━━━━━━[0m[37m━━━━━[0m [1m0s[0m 17ms/step - accuracy: 0.7245 - auc: 0.5044 - loss: 0.5921[1m141/179[0m [32m━━━━━━━━━━━━━━━[0m[37m━━━━━[0m [1m0s[0m 17ms/step - accuracy: 0.7254 - auc: 0.5048 - loss: 0.5911[1m145/179[0m [32m━━━━━━━━━━━━━━━━[0m[37m━━━━[0m [1m0s[0m 17ms/step - accuracy: 0.7250 - auc: 0.5053 - loss: 0.5913[1m148/179[0m [32m━━━━━━━━━━━━━━━━[0m[37m━━━━[0m [1m0s[0m 17ms/step - accuracy: 0.7255 - auc: 0.5058 - loss: 0.5908[1m152/179[0m [32m━━━━━━━━━━━━━━━━[0m[37m━━━━[0m [1m0s[0m 17ms/step - accuracy: 0.7233 - auc: 0.5068 - loss: 0.5927[1m155/179[0m [32m━━━━━━━━━━━━━━━━━[0m[37m━━━[0m [1m0s[0m 17ms/step - accuracy: 0.7230 - auc: 0.5058 - loss: 0.5931[1m159/179[0m [32m━━━━━━━━━━━━━━━━━[0m[37m━━━[0m [1m0s[0m 17ms/step - accuracy: 0.7221 - auc: 0.5082 - loss: 0.5937[1m162/179[0m [32m━━━━━━━━━━━━━━━━━━[0m[37m━━[0m [1m0s[0m 17ms/step - accuracy: 0.7218 - auc: 0.5090 - loss: 0.5939[1m165/179[0m [32m━━━━━━━━━━━━━━━━━━[0m[37m━━[0m [1m0s[0m 17ms/step - accuracy: 0.7225 - auc: 0.5088 - loss: 0.5933[1m168/179[0m [32m━━━━━━━━━━━━━━━━━━[0m[37m━━[0m [1m0s[0m 17ms/step - accuracy: 0.7215 - auc: 0.5097 - loss: 0.5942[1m172/179[0m [32m━━━━━━━━━━━━━━━━━━━[0m[37m━[0m [1m0s[0m 17ms/step - accuracy: 0.7213 - auc: 0.5096 - loss: 0.5945[1m175/179[0m [32m━━━━━━━━━━━━━━━━━━━[0m[37m━[0m [1m0s[0m 17ms/step - accuracy: 0.7212 - auc: 0.5108 - loss: 0.5943[1m178/179[0m [32m━━━━━━━━━━━━━━━━━━━[0m[37m━[0m [1m0s[0m 17ms/step - accuracy: 0.7221 - auc: 0.5102 - loss: 0.5936[1m179/179[0m [32m━━━━━━━━━━━━━━━━━━━━[0m[37m[0m [1m3s[0m 19ms/step - accuracy: 0.7221 - auc: 0.5103 - loss: 0.5935 - val_accuracy: 0.7232 - val_auc: 0.5041 - val_loss: 0.5914
-Epoch 5/30
-[1m  1/179[0m [37m━━━━━━━━━━━━━━━━━━━━[0m [1m11s[0m 63ms/step - accuracy: 0.6562 - auc: 0.5260 - loss: 0.6538[1m  4/179[0m [37m━━━━━━━━━━━━━━━━━━━━[0m [1m3s[0m 19ms/step - accuracy: 0.7734 - auc: 0.4923 - loss: 0.5482 [1m  8/179[0m [37m━━━━━━━━━━━━━━━━━━━━[0m [1m3s[0m 18ms/step - accuracy: 0.7266 - auc: 0.5100 - loss: 0.5892[1m 12/179[0m [32m━[0m[37m━━━━━━━━━━━━━━━━━━━[0m [1m2s[0m 17ms/step - accuracy: 0.7396 - auc: 0.5130 - loss: 0.5749[1m 16/179[0m [32m━[0m[37m━━━━━━━━━━━━━━━━━━━[0m [1m2s[0m 16ms/step - accuracy: 0.7324 - auc: 0.5060 - loss: 0.5828[1m 19/179[0m [32m━━[0m[37m━━━━━━━━━━━━━━━━━━[0m [1m2s[0m 17ms/step - accuracy: 0.7188 - auc: 0.5039 - loss: 0.5978[1m 23/179[0m [32m━━[0m[37m━━━━━━━━━━━━━━━━━━[0m [1m2s[0m 16ms/step - accuracy: 0.7228 - auc: 0.5041 - loss: 0.5939[1m 26/179[0m [32m━━[0m[37m━━━━━━━━━━━━━━━━━━[0m [1m2s[0m 17ms/step - accuracy: 0.7260 - auc: 0.5080 - loss: 0.5903[1m 30/179[0m [32m━━━[0m[37m━━━━━━━━━━━━━━━━━[0m [1m2s[0m 16ms/step - accuracy: 0.7333 - auc: 0.5119 - loss: 0.5823[1m 34/179[0m [32m━━━[0m[37m━━━━━━━━━━━━━━━━━[0m [1m2s[0m 16ms/step - accuracy: 0.7298 - auc: 0.5303 - loss: 0.5834[1m 37/179[0m [32m━━━━[0m[37m━━━━━━━━━━━━━━━━[0m [1m2s[0m 17ms/step - accuracy: 0.7247 - auc: 0.5369 - loss: 0.5874[1m 40/179[0m [32m━━━━[0m[37m━━━━━━━━━━━━━━━━[0m [1m2s[0m 17ms/step - accuracy: 0.7242 - auc: 0.5373 - loss: 0.5879[1m 43/179[0m [32m━━━━[0m[37m━━━━━━━━━━━━━━━━[0m [1m2s[0m 17ms/step - accuracy: 0.7195 - auc: 0.5463 - loss: 0.5914[1m 45/179[0m [32m━━━━━[0m[37m━━━━━━━━━━━━━━━[0m [1m2s[0m 18ms/step - accuracy: 0.7208 - auc: 0.5427 - loss: 0.5905[1m 47/179[0m [32m━━━━━[0m[37m━━━━━━━━━━━━━━━[0m [1m2s[0m 18ms/step - accuracy: 0.7214 - auc: 0.5425 - loss: 0.5900[1m 50/179[0m [32m━━━━━[0m[37m━━━━━━━━━━━━━━━[0m [1m2s[0m 18ms/step - accuracy: 0.7181 - auc: 0.5373 - loss: 0.5944[1m 54/179[0m [32m━━━━━━[0m[37m━━━━━━━━━━━━━━[0m [1m2s[0m 18ms/step - accuracy: 0.7159 - auc: 0.5301 - loss: 0.5980[1m 58/179[0m [32m━━━━━━[0m[37m━━━━━━━━━━━━━━[0m [1m2s[0m 18ms/step - accuracy: 0.7139 - auc: 0.5301 - loss: 0.5995[1m 61/179[0m [32m━━━━━━[0m[37m━━━━━━━━━━━━━━[0m [1m2s[0m 18ms/step - accuracy: 0.7162 - auc: 0.5287 - loss: 0.5974[1m 65/179[0m [32m━━━━━━━[0m[37m━━━━━━━━━━━━━[0m [1m2s[0m 18ms/step - accuracy: 0.7168 - auc: 0.5350 - loss: 0.5956[1m 69/179[0m [32m━━━━━━━[0m[37m━━━━━━━━━━━━━[0m [1m1s[0m 18ms/step - accuracy: 0.7237 - auc: 0.5294 - loss: 0.5900[1m 73/179[0m [32m━━━━━━━━[0m[37m━━━━━━━━━━━━[0m [1m1s[0m 17ms/step - accuracy: 0.7226 - auc: 0.5236 - loss: 0.5920[1m 76/179[0m [32m━━━━━━━━[0m[37m━━━━━━━━━━━━[0m [1m1s[0m 17ms/step - accuracy: 0.7225 - auc: 0.5220 - loss: 0.5923[1m 79/179[0m [32m━━━━━━━━[0m[37m━━━━━━━━━━━━[0m [1m1s[0m 17ms/step - accuracy: 0.7223 - auc: 0.5233 - loss: 0.5923[1m 83/179[0m [32m━━━━━━━━━[0m[37m━━━━━━━━━━━[0m [1m1s[0m 17ms/step - accuracy: 0.7248 - auc: 0.5266 - loss: 0.5893[1m 86/179[0m [32m━━━━━━━━━[0m[37m━━━━━━━━━━━[0m [1m1s[0m 17ms/step - accuracy: 0.7260 - auc: 0.5280 - loss: 0.5878[1m 90/179[0m [32m━━━━━━━━━━[0m[37m━━━━━━━━━━[0m [1m1s[0m 17ms/step - accuracy: 0.7285 - auc: 0.5317 - loss: 0.5849[1m 94/179[0m [32m━━━━━━━━━━[0m[37m━━━━━━━━━━[0m [1m1s[0m 17ms/step - accuracy: 0.7287 - auc: 0.5324 - loss: 0.5845[1m 97/179[0m [32m━━━━━━━━━━[0m[37m━━━━━━━━━━[0m [1m1s[0m 17ms/step - accuracy: 0.7281 - auc: 0.5312 - loss: 0.5855[1m101/179[0m [32m━━━━━━━━━━━[0m[37m━━━━━━━━━[0m [1m1s[0m 17ms/step - accuracy: 0.7287 - auc: 0.5292 - loss: 0.5852[1m104/179[0m [32m━━━━━━━━━━━[0m[37m━━━━━━━━━[0m [1m1s[0m 17ms/step - accuracy: 0.7278 - auc: 0.5295 - loss: 0.5861[1m108/179[0m [32m━━━━━━━━━━━━[0m[37m━━━━━━━━[0m [1m1s[0m 17ms/step - accuracy: 0.7277 - auc: 0.5299 - loss: 0.5862[1m112/179[0m [32m━━━━━━━━━━━━[0m[37m━━━━━━━━[0m [1m1s[0m 17ms/step - accuracy: 0.7277 - auc: 0.5293 - loss: 0.5863[1m115/179[0m [32m━━━━━━━━━━━━[0m[37m━━━━━━━━[0m [1m1s[0m 17ms/step - accuracy: 0.7277 - auc: 0.5262 - loss: 0.5866[1m119/179[0m [32m━━━━━━━━━━━━━[0m[37m━━━━━━━[0m [1m1s[0m 17ms/step - accuracy: 0.7266 - auc: 0.5254 - loss: 0.5877[1m123/179[0m [32m━━━━━━━━━━━━━[0m[37m━━━━━━━[0m [1m0s[0m 17ms/step - accuracy: 0.7264 - auc: 0.5277 - loss: 0.5876[1m127/179[0m [32m━━━━━━━━━━━━━━[0m[37m━━━━━━[0m [1m0s[0m 17ms/step - accuracy: 0.7256 - auc: 0.5296 - loss: 0.5880[1m131/179[0m [32m━━━━━━━━━━━━━━[0m[37m━━━━━━[0m [1m0s[0m 17ms/step - accuracy: 0.7252 - auc: 0.5284 - loss: 0.5886[1m135/179[0m [32m━━━━━━━━━━━━━━━[0m[37m━━━━━[0m [1m0s[0m 17ms/step - accuracy: 0.7234 - auc: 0.5299 - loss: 0.5901[1m139/179[0m [32m━━━━━━━━━━━━━━━[0m[37m━━━━━[0m [1m0s[0m 17ms/step - accuracy: 0.7219 - auc: 0.5307 - loss: 0.5913[1m143/179[0m [32m━━━━━━━━━━━━━━━[0m[37m━━━━━[0m [1m0s[0m 17ms/step - accuracy: 0.7222 - auc: 0.5291 - loss: 0.5912[1m147/179[0m [32m━━━━━━━━━━━━━━━━[0m[37m━━━━[0m [1m0s[0m 17ms/step - accuracy: 0.7222 - auc: 0.5293 - loss: 0.5912[1m150/179[0m [32m━━━━━━━━━━━━━━━━[0m[37m━━━━[0m [1m0s[0m 17ms/step - accuracy: 0.7219 - auc: 0.5295 - loss: 0.5915[1m153/179[0m [32m━━━━━━━━━━━━━━━━━[0m[37m━━━[0m [1m0s[0m 17ms/step - accuracy: 0.7210 - auc: 0.5291 - loss: 0.5923[1m157/179[0m [32m━━━━━━━━━━━━━━━━━[0m[37m━━━[0m [1m0s[0m 17ms/step - accuracy: 0.7225 - auc: 0.5283 - loss: 0.5910[1m161/179[0m [32m━━━━━━━━━━━━━━━━━[0m[37m━━━[0m [1m0s[0m 17ms/step - accuracy: 0.7238 - auc: 0.5293 - loss: 0.5896[1m165/179[0m [32m━━━━━━━━━━━━━━━━━━[0m[37m━━[0m [1m0s[0m 17ms/step - accuracy: 0.7235 - auc: 0.5282 - loss: 0.5900[1m168/179[0m [32m━━━━━━━━━━━━━━━━━━[0m[37m━━[0m [1m0s[0m 17ms/step - accuracy: 0.7223 - auc: 0.5273 - loss: 0.5913[1m171/179[0m [32m━━━━━━━━━━━━━━━━━━━[0m[37m━[0m [1m0s[0m 17ms/step - accuracy: 0.7213 - auc: 0.5286 - loss: 0.5920[1m175/179[0m [32m━━━━━━━━━━━━━━━━━━━[0m[37m━[0m [1m0s[0m 17ms/step - accuracy: 0.7207 - auc: 0.5294 - loss: 0.5924[1m179/179[0m [32m━━━━━━━━━━━━━━━━━━━━[0m[37m[0m [1m0s[0m 17ms/step - accuracy: 0.7221 - auc: 0.5286 - loss: 0.5911[1m179/179[0m [32m━━━━━━━━━━━━━━━━━━━━[0m[37m[0m [1m4s[0m 20ms/step - accuracy: 0.7221 - auc: 0.5286 - loss: 0.5911 - val_accuracy: 0.7232 - val_auc: 0.4944 - val_loss: 0.5916
-Epoch 6/30
-[1m  1/179[0m [37m━━━━━━━━━━━━━━━━━━━━[0m [1m11s[0m 67ms/step - accuracy: 0.5625 - auc: 0.6270 - loss: 0.7210[1m  4/179[0m [37m━━━━━━━━━━━━━━━━━━━━[0m [1m3s[0m 18ms/step - accuracy: 0.6719 - auc: 0.4618 - loss: 0.6443 [1m  8/179[0m [37m━━━━━━━━━━━━━━━━━━━━[0m [1m2s[0m 17ms/step - accuracy: 0.7109 - auc: 0.4645 - loss: 0.6068[1m 11/179[0m [32m━[0m[37m━━━━━━━━━━━━━━━━━━━[0m [1m2s[0m 17ms/step - accuracy: 0.7017 - auc: 0.4912 - loss: 0.6133[1m 15/179[0m [32m━[0m[37m━━━━━━━━━━━━━━━━━━━[0m [1m2s[0m 17ms/step - accuracy: 0.6917 - auc: 0.5096 - loss: 0.6217[1m 18/179[0m [32m━━[0m[37m━━━━━━━━━━━━━━━━━━[0m [1m2s[0m 17ms/step - accuracy: 0.6910 - auc: 0.4980 - loss: 0.6236[1m 22/179[0m [32m━━[0m[37m━━━━━━━━━━━━━━━━━━[0m [1m2s[0m 17ms/step - accuracy: 0.7045 - auc: 0.4901 - loss: 0.6110[1m 26/179[0m [32m━━[0m[37m━━━━━━━━━━━━━━━━━━[0m [1m2s[0m 16ms/step - accuracy: 0.7127 - auc: 0.5037 - loss: 0.6019[1m 30/179[0m [32m━━━[0m[37m━━━━━━━━━━━━━━━━━[0m [1m2s[0m 17ms/step - accuracy: 0.7177 - auc: 0.5074 - loss: 0.5969[1m 33/179[0m [32m━━━[0m[37m━━━━━━━━━━━━━━━━━[0m [1m2s[0m 17ms/step - accuracy: 0.7188 - auc: 0.4994 - loss: 0.5968[1m 37/179[0m [32m━━━━[0m[37m━━━━━━━━━━━━━━━━[0m [1m2s[0m 17ms/step - accuracy: 0.7221 - auc: 0.5037 - loss: 0.5930[1m 41/179[0m [32m━━━━[0m[37m━━━━━━━━━━━━━━━━[0m [1m2s[0m 17ms/step - accuracy: 0.7149 - auc: 0.5128 - loss: 0.5987[1m 45/179[0m [32m━━━━━[0m[37m━━━━━━━━━━━━━━━[0m [1m2s[0m 17ms/step - accuracy: 0.7146 - auc: 0.5175 - loss: 0.5989[1m 48/179[0m [32m━━━━━[0m[37m━━━━━━━━━━━━━━━[0m [1m2s[0m 17ms/step - accuracy: 0.7142 - auc: 0.5152 - loss: 0.5992[1m 51/179[0m [32m━━━━━[0m[37m━━━━━━━━━━━━━━━[0m [1m2s[0m 17ms/step - accuracy: 0.7145 - auc: 0.5163 - loss: 0.5988[1m 55/179[0m [32m━━━━━━[0m[37m━━━━━━━━━━━━━━[0m [1m2s[0m 17ms/step - accuracy: 0.7176 - auc: 0.5180 - loss: 0.5957[1m 58/179[0m [32m━━━━━━[0m[37m━━━━━━━━━━━━━━[0m [1m2s[0m 17ms/step - accuracy: 0.7161 - auc: 0.5209 - loss: 0.5967[1m 61/179[0m [32m━━━━━━[0m[37m━━━━━━━━━━━━━━[0m [1m1s[0m 17ms/step - accuracy: 0.7177 - auc: 0.5168 - loss: 0.5955[1m 65/179[0m [32m━━━━━━━[0m[37m━━━━━━━━━━━━━[0m [1m1s[0m 17ms/step - accuracy: 0.7149 - auc: 0.5190 - loss: 0.5980[1m 69/179[0m [32m━━━━━━━[0m[37m━━━━━━━━━━━━━[0m [1m1s[0m 17ms/step - accuracy: 0.7147 - auc: 0.5228 - loss: 0.5978[1m 73/179[0m [32m━━━━━━━━[0m[37m━━━━━━━━━━━━[0m [1m1s[0m 17ms/step - accuracy: 0.7145 - auc: 0.5260 - loss: 0.5976[1m 77/179[0m [32m━━━━━━━━[0m[37m━━━━━━━━━━━━[0m [1m1s[0m 17ms/step - accuracy: 0.7171 - auc: 0.5251 - loss: 0.5952[1m 80/179[0m [32m━━━━━━━━[0m[37m━━━━━━━━━━━━[0m [1m1s[0m 17ms/step - accuracy: 0.7172 - auc: 0.5280 - loss: 0.5948[1m 84/179[0m [32m━━━━━━━━━[0m[37m━━━━━━━━━━━[0m [1m1s[0m 17ms/step - accuracy: 0.7180 - auc: 0.5295 - loss: 0.5939[1m 88/179[0m [32m━━━━━━━━━[0m[37m━━━━━━━━━━━[0m [1m1s[0m 17ms/step - accuracy: 0.7166 - auc: 0.5298 - loss: 0.5950[1m 92/179[0m [32m━━━━━━━━━━[0m[37m━━━━━━━━━━[0m [1m1s[0m 17ms/step - accuracy: 0.7198 - auc: 0.5304 - loss: 0.5920[1m 96/179[0m [32m━━━━━━━━━━[0m[37m━━━━━━━━━━[0m [1m1s[0m 17ms/step - accuracy: 0.7217 - auc: 0.5306 - loss: 0.5901[1m100/179[0m [32m━━━━━━━━━━━[0m[37m━━━━━━━━━[0m [1m1s[0m 17ms/step - accuracy: 0.7191 - auc: 0.5287 - loss: 0.5929[1m103/179[0m [32m━━━━━━━━━━━[0m[37m━━━━━━━━━[0m [1m1s[0m 17ms/step - accuracy: 0.7206 - auc: 0.5317 - loss: 0.5910[1m106/179[0m [32m━━━━━━━━━━━[0m[37m━━━━━━━━━[0m [1m1s[0m 17ms/step - accuracy: 0.7196 - auc: 0.5359 - loss: 0.5915[1m109/179[0m [32m━━━━━━━━━━━━[0m[37m━━━━━━━━[0m [1m1s[0m 17ms/step - accuracy: 0.7199 - auc: 0.5354 - loss: 0.5913[1m113/179[0m [32m━━━━━━━━━━━━[0m[37m━━━━━━━━[0m [1m1s[0m 17ms/step - accuracy: 0.7210 - auc: 0.5341 - loss: 0.5903[1m117/179[0m [32m━━━━━━━━━━━━━[0m[37m━━━━━━━[0m [1m1s[0m 17ms/step - accuracy: 0.7209 - auc: 0.5342 - loss: 0.5904[1m120/179[0m [32m━━━━━━━━━━━━━[0m[37m━━━━━━━[0m [1m0s[0m 17ms/step - accuracy: 0.7221 - auc: 0.5336 - loss: 0.5892[1m123/179[0m [32m━━━━━━━━━━━━━[0m[37m━━━━━━━[0m [1m0s[0m 17ms/step - accuracy: 0.7243 - auc: 0.5348 - loss: 0.5869[1m126/179[0m [32m━━━━━━━━━━━━━━[0m[37m━━━━━━[0m [1m0s[0m 17ms/step - accuracy: 0.7237 - auc: 0.5355 - loss: 0.5874[1m129/179[0m [32m━━━━━━━━━━━━━━[0m[37m━━━━━━[0m [1m0s[0m 17ms/step - accuracy: 0.7246 - auc: 0.5359 - loss: 0.5865[1m133/179[0m [32m━━━━━━━━━━━━━━[0m[37m━━━━━━[0m [1m0s[0m 17ms/step - accuracy: 0.7234 - auc: 0.5349 - loss: 0.5878[1m136/179[0m [32m━━━━━━━━━━━━━━━[0m[37m━━━━━[0m [1m0s[0m 17ms/step - accuracy: 0.7243 - auc: 0.5347 - loss: 0.5870[1m139/179[0m [32m━━━━━━━━━━━━━━━[0m[37m━━━━━[0m [1m0s[0m 17ms/step - accuracy: 0.7232 - auc: 0.5345 - loss: 0.5882[1m142/179[0m [32m━━━━━━━━━━━━━━━[0m[37m━━━━━[0m [1m0s[0m 17ms/step - accuracy: 0.7232 - auc: 0.5329 - loss: 0.5886[1m146/179[0m [32m━━━━━━━━━━━━━━━━[0m[37m━━━━[0m [1m0s[0m 17ms/step - accuracy: 0.7228 - auc: 0.5335 - loss: 0.5889[1m150/179[0m [32m━━━━━━━━━━━━━━━━[0m[37m━━━━[0m [1m0s[0m 17ms/step - accuracy: 0.7233 - auc: 0.5325 - loss: 0.5886[1m153/179[0m [32m━━━━━━━━━━━━━━━━━[0m[37m━━━[0m [1m0s[0m 17ms/step - accuracy: 0.7237 - auc: 0.5323 - loss: 0.5883[1m156/179[0m [32m━━━━━━━━━━━━━━━━━[0m[37m━━━[0m [1m0s[0m 17ms/step - accuracy: 0.7226 - auc: 0.5307 - loss: 0.5896[1m158/179[0m [32m━━━━━━━━━━━━━━━━━[0m[37m━━━[0m [1m0s[0m 17ms/step - accuracy: 0.7227 - auc: 0.5312 - loss: 0.5893[1m160/179[0m [32m━━━━━━━━━━━━━━━━━[0m[37m━━━[0m [1m0s[0m 17ms/step - accuracy: 0.7232 - auc: 0.5304 - loss: 0.5889[1m163/179[0m [32m━━━━━━━━━━━━━━━━━━[0m[37m━━[0m [1m0s[0m 17ms/step - accuracy: 0.7224 - auc: 0.5310 - loss: 0.5896[1m166/179[0m [32m━━━━━━━━━━━━━━━━━━[0m[37m━━[0m [1m0s[0m 17ms/step - accuracy: 0.7220 - auc: 0.5300 - loss: 0.5901[1m169/179[0m [32m━━━━━━━━━━━━━━━━━━[0m[37m━━[0m [1m0s[0m 17ms/step - accuracy: 0.7228 - auc: 0.5301 - loss: 0.5893[1m173/179[0m [32m━━━━━━━━━━━━━━━━━━━[0m[37m━[0m [1m0s[0m 17ms/step - accuracy: 0.7213 - auc: 0.5306 - loss: 0.5907[1m176/179[0m [32m━━━━━━━━━━━━━━━━━━━[0m[37m━[0m [1m0s[0m 17ms/step - accuracy: 0.7221 - auc: 0.5313 - loss: 0.5898[1m179/179[0m [32m━━━━━━━━━━━━━━━━━━━━[0m[37m[0m [1m4s[0m 19ms/step - accuracy: 0.7221 - auc: 0.5303 - loss: 0.5899 - val_accuracy: 0.7232 - val_auc: 0.5031 - val_loss: 0.5928
-Test accuracy: 0.7232  |  Test loss: 0.5915  |  Test AUC: 0.5095
-Saved → /home/ounnha/Documents/Capstone/models/dns_tunnel_transformer.keras
-
-── Calibrating thresholds (validation set) ───────────────────
-   Calibrated threshold: 0.5650  (F1=0.9176)
-   Calibrated threshold: 0.6446  (F1=0.9312)
-
-[*] Decision gate → 'rf_gbt' (RF+GBT F1=0.9152 vs RF-only F1=0.9021)
-Saved → /home/ounnha/Documents/Capstone/models/dns_threshold.json  (decision: rf_gbt)
-
-── Final Path A Evaluation (held-out test set) ───────────────
-              precision    recall  f1-score   support
-
-      benign       0.97      0.96      0.97       884
-      attack       0.91      0.92      0.92       339
-
-    accuracy                           0.95      1223
-   macro avg       0.94      0.94      0.94      1223
-weighted avg       0.95      0.95      0.95      1223
-
-PR-AUC (primary): 0.948001526205042  (baseline=0.277)  | ROC-AUC: 0.9873062907940576
-Per-attack-family recall:
-  - ?: recall=0.923  (n=339)
-[+] Metrics saved → /home/ounnha/Documents/Capstone/models/evaluation_metrics.json  (key: path_a)
-
-✅ Training complete. Artifacts saved:
-   /home/ounnha/Documents/Capstone/models/dns_tunnel_rf.pkl  |  /home/ounnha/Documents/Capstone/models/dns_tunnel_gbt.pkl  |  /home/ounnha/Documents/Capstone/models/dns_tunnel_transformer.keras (baseline)  |  /home/ounnha/Documents/Capstone/models/dns_scaler.pkl  |  /home/ounnha/Documents/Capstone/models/dns_threshold.json
-WARNING: All log messages before absl::InitializeLog() is called are written to STDERR
-I0000 00:00:1792825219.605698  110353 port.cc:153] oneDNN custom operations are on. You may see slightly different numerical results due to floating-point round-off errors from different computation orders. To turn them off, set the environment variable `TF_ENABLE_ONEDNN_OPTS=0`.
-I0000 00:00:1792825219.605905  110353 cudart_stub.cc:31] Could not find cuda drivers on your machine, GPU will not be used.
-I0000 00:00:1792825219.644109  110353 cpu_feature_guard.cc:227] This TensorFlow binary is optimized to use available CPU instructions in performance-critical operations.
-To enable the following instructions: AVX2 AVX_VNNI FMA, in other operations, rebuild TensorFlow with the appropriate compiler flags.
-WARNING: All log messages before absl::InitializeLog() is called are written to STDERR
-I0000 00:00:1792825221.254789  110353 port.cc:153] oneDNN custom operations are on. You may see slightly different numerical results due to floating-point round-off errors from different computation orders. To turn them off, set the environment variable `TF_ENABLE_ONEDNN_OPTS=0`.
-I0000 00:00:1792825221.255745  110353 cudart_stub.cc:31] Could not find cuda drivers on your machine, GPU will not be used.
-ERROR: Loading module scapy.layers.dcerpc
-Traceback (most recent call last):
-  File "/usr/lib/python3/dist-packages/scapy/main.py", line 312, in _load
-    mod = importlib.import_module(module)
-  File "/usr/lib/python3.13/importlib/__init__.py", line 88, in import_module
-    return _bootstrap._gcd_import(name[level:], package, level)
-           ~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "<frozen importlib._bootstrap>", line 1387, in _gcd_import
-  File "<frozen importlib._bootstrap>", line 1360, in _find_and_load
-  File "<frozen importlib._bootstrap>", line 1331, in _find_and_load_unlocked
-  File "<frozen importlib._bootstrap>", line 935, in _load_unlocked
-  File "<frozen importlib._bootstrap_external>", line 1023, in exec_module
-  File "<frozen importlib._bootstrap>", line 488, in _call_with_frames_removed
-  File "/usr/lib/python3/dist-packages/scapy/layers/dcerpc.py", line 98, in <module>
-    from scapy.layers.kerberos import (
-    ...<2 lines>...
-    )
-  File "/usr/lib/python3/dist-packages/scapy/layers/kerberos.py", line 163, in <module>
-    from scapy.layers.tls.crypto.groups import _ffdh_groups
-  File "/usr/lib/python3/dist-packages/scapy/layers/tls/crypto/groups.py", line 49, in <module>
-    class modp768(_FFDHParams):
-    ...<6 lines>...
-        mLen = 768
-  File "/usr/lib/python3/dist-packages/scapy/layers/tls/crypto/groups.py", line 40, in __new__
-    params = pn.parameters(default_backend())
-ValueError: Invalid DH parameters
-ERROR: Loading module scapy.layers.kerberos
-Traceback (most recent call last):
-  File "/usr/lib/python3/dist-packages/scapy/main.py", line 312, in _load
-    mod = importlib.import_module(module)
-  File "/usr/lib/python3.13/importlib/__init__.py", line 88, in import_module
-    return _bootstrap._gcd_import(name[level:], package, level)
-           ~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "<frozen importlib._bootstrap>", line 1387, in _gcd_import
-  File "<frozen importlib._bootstrap>", line 1360, in _find_and_load
-  File "<frozen importlib._bootstrap>", line 1331, in _find_and_load_unlocked
-  File "<frozen importlib._bootstrap>", line 935, in _load_unlocked
-  File "<frozen importlib._bootstrap_external>", line 1023, in exec_module
-  File "<frozen importlib._bootstrap>", line 488, in _call_with_frames_removed
-  File "/usr/lib/python3/dist-packages/scapy/layers/kerberos.py", line 163, in <module>
-    from scapy.layers.tls.crypto.groups import _ffdh_groups
-  File "/usr/lib/python3/dist-packages/scapy/layers/tls/crypto/groups.py", line 49, in <module>
-    class modp768(_FFDHParams):
-    ...<6 lines>...
-        mLen = 768
-  File "/usr/lib/python3/dist-packages/scapy/layers/tls/crypto/groups.py", line 40, in __new__
-    params = pn.parameters(default_backend())
-ValueError: Invalid DH parameters
-ERROR: Loading module scapy.layers.msrpce.rpcclient
-Traceback (most recent call last):
-  File "/usr/lib/python3/dist-packages/scapy/main.py", line 312, in _load
-    mod = importlib.import_module(module)
-  File "/usr/lib/python3.13/importlib/__init__.py", line 88, in import_module
-    return _bootstrap._gcd_import(name[level:], package, level)
-           ~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "<frozen importlib._bootstrap>", line 1387, in _gcd_import
-  File "<frozen importlib._bootstrap>", line 1360, in _find_and_load
-  File "<frozen importlib._bootstrap>", line 1331, in _find_and_load_unlocked
-  File "<frozen importlib._bootstrap>", line 935, in _load_unlocked
-  File "<frozen importlib._bootstrap_external>", line 1023, in exec_module
-  File "<frozen importlib._bootstrap>", line 488, in _call_with_frames_removed
-  File "/usr/lib/python3/dist-packages/scapy/layers/msrpce/rpcclient.py", line 16, in <module>
-    from scapy.layers.dcerpc import (
-    ...<28 lines>...
-    )
-  File "/usr/lib/python3/dist-packages/scapy/layers/dcerpc.py", line 98, in <module>
-    from scapy.layers.kerberos import (
-    ...<2 lines>...
-    )
-  File "/usr/lib/python3/dist-packages/scapy/layers/kerberos.py", line 163, in <module>
-    from scapy.layers.tls.crypto.groups import _ffdh_groups
-  File "/usr/lib/python3/dist-packages/scapy/layers/tls/crypto/groups.py", line 49, in <module>
-    class modp768(_FFDHParams):
-    ...<6 lines>...
-        mLen = 768
-  File "/usr/lib/python3/dist-packages/scapy/layers/tls/crypto/groups.py", line 40, in __new__
-    params = pn.parameters(default_backend())
-ValueError: Invalid DH parameters
-ERROR: Loading module scapy.layers.msrpce.rpcserver
-Traceback (most recent call last):
-  File "/usr/lib/python3/dist-packages/scapy/main.py", line 312, in _load
-    mod = importlib.import_module(module)
-  File "/usr/lib/python3.13/importlib/__init__.py", line 88, in import_module
-    return _bootstrap._gcd_import(name[level:], package, level)
-           ~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "<frozen importlib._bootstrap>", line 1387, in _gcd_import
-  File "<frozen importlib._bootstrap>", line 1360, in _find_and_load
-  File "<frozen importlib._bootstrap>", line 1331, in _find_and_load_unlocked
-  File "<frozen importlib._bootstrap>", line 935, in _load_unlocked
-  File "<frozen importlib._bootstrap_external>", line 1023, in exec_module
-  File "<frozen importlib._bootstrap>", line 488, in _call_with_frames_removed
-  File "/usr/lib/python3/dist-packages/scapy/layers/msrpce/rpcserver.py", line 19, in <module>
-    from scapy.layers.dcerpc import (
-    ...<18 lines>...
-    )
-  File "/usr/lib/python3/dist-packages/scapy/layers/dcerpc.py", line 98, in <module>
-    from scapy.layers.kerberos import (
-    ...<2 lines>...
-    )
-  File "/usr/lib/python3/dist-packages/scapy/layers/kerberos.py", line 163, in <module>
-    from scapy.layers.tls.crypto.groups import _ffdh_groups
-  File "/usr/lib/python3/dist-packages/scapy/layers/tls/crypto/groups.py", line 49, in <module>
-    class modp768(_FFDHParams):
-    ...<6 lines>...
-        mLen = 768
-  File "/usr/lib/python3/dist-packages/scapy/layers/tls/crypto/groups.py", line 40, in __new__
-    params = pn.parameters(default_backend())
-ValueError: Invalid DH parameters
-ERROR: Loading module scapy.layers.smbclient
-Traceback (most recent call last):
-  File "/usr/lib/python3/dist-packages/scapy/main.py", line 312, in _load
-    mod = importlib.import_module(module)
-  File "/usr/lib/python3.13/importlib/__init__.py", line 88, in import_module
-    return _bootstrap._gcd_import(name[level:], package, level)
-           ~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "<frozen importlib._bootstrap>", line 1387, in _gcd_import
-  File "<frozen importlib._bootstrap>", line 1360, in _find_and_load
-  File "<frozen importlib._bootstrap>", line 1331, in _find_and_load_unlocked
-  File "<frozen importlib._bootstrap>", line 935, in _load_unlocked
-  File "<frozen importlib._bootstrap_external>", line 1023, in exec_module
-  File "<frozen importlib._bootstrap>", line 488, in _call_with_frames_removed
-  File "/usr/lib/python3/dist-packages/scapy/layers/smbclient.py", line 34, in <module>
-    from scapy.layers.dcerpc import NDRUnion, find_dcerpc_interface
-  File "/usr/lib/python3/dist-packages/scapy/layers/dcerpc.py", line 98, in <module>
-    from scapy.layers.kerberos import (
-    ...<2 lines>...
-    )
-  File "/usr/lib/python3/dist-packages/scapy/layers/kerberos.py", line 163, in <module>
-    from scapy.layers.tls.crypto.groups import _ffdh_groups
-  File "/usr/lib/python3/dist-packages/scapy/layers/tls/crypto/groups.py", line 49, in <module>
-    class modp768(_FFDHParams):
-    ...<6 lines>...
-        mLen = 768
-  File "/usr/lib/python3/dist-packages/scapy/layers/tls/crypto/groups.py", line 40, in __new__
-    params = pn.parameters(default_backend())
-ValueError: Invalid DH parameters
-ERROR: Loading module scapy.layers.smbserver
-Traceback (most recent call last):
-  File "/usr/lib/python3/dist-packages/scapy/main.py", line 312, in _load
-    mod = importlib.import_module(module)
-  File "/usr/lib/python3.13/importlib/__init__.py", line 88, in import_module
-    return _bootstrap._gcd_import(name[level:], package, level)
-           ~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "<frozen importlib._bootstrap>", line 1387, in _gcd_import
-  File "<frozen importlib._bootstrap>", line 1360, in _find_and_load
-  File "<frozen importlib._bootstrap>", line 1331, in _find_and_load_unlocked
-  File "<frozen importlib._bootstrap>", line 935, in _load_unlocked
-  File "<frozen importlib._bootstrap_external>", line 1023, in exec_module
-  File "<frozen importlib._bootstrap>", line 488, in _call_with_frames_removed
-  File "/usr/lib/python3/dist-packages/scapy/layers/smbserver.py", line 33, in <module>
-    from scapy.layers.dcerpc import (
-    ...<2 lines>...
-    )
-  File "/usr/lib/python3/dist-packages/scapy/layers/dcerpc.py", line 98, in <module>
-    from scapy.layers.kerberos import (
-    ...<2 lines>...
-    )
-  File "/usr/lib/python3/dist-packages/scapy/layers/kerberos.py", line 163, in <module>
-    from scapy.layers.tls.crypto.groups import _ffdh_groups
-  File "/usr/lib/python3/dist-packages/scapy/layers/tls/crypto/groups.py", line 49, in <module>
-    class modp768(_FFDHParams):
-    ...<6 lines>...
-        mLen = 768
-  File "/usr/lib/python3/dist-packages/scapy/layers/tls/crypto/groups.py", line 40, in __new__
-    params = pn.parameters(default_backend())
-ValueError: Invalid DH parameters
-ERROR: Loading module scapy.layers.spnego
-Traceback (most recent call last):
-  File "/usr/lib/python3/dist-packages/scapy/main.py", line 312, in _load
-    mod = importlib.import_module(module)
-  File "/usr/lib/python3.13/importlib/__init__.py", line 88, in import_module
-    return _bootstrap._gcd_import(name[level:], package, level)
-           ~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "<frozen importlib._bootstrap>", line 1387, in _gcd_import
-  File "<frozen importlib._bootstrap>", line 1360, in _find_and_load
-  File "<frozen importlib._bootstrap>", line 1331, in _find_and_load_unlocked
-  File "<frozen importlib._bootstrap>", line 935, in _load_unlocked
-  File "<frozen importlib._bootstrap_external>", line 1023, in exec_module
-  File "<frozen importlib._bootstrap>", line 488, in _call_with_frames_removed
-  File "/usr/lib/python3/dist-packages/scapy/layers/spnego.py", line 84, in <module>
-    from scapy.layers.kerberos import (
-    ...<4 lines>...
-    )
-  File "/usr/lib/python3/dist-packages/scapy/layers/kerberos.py", line 163, in <module>
-    from scapy.layers.tls.crypto.groups import _ffdh_groups
-  File "/usr/lib/python3/dist-packages/scapy/layers/tls/crypto/groups.py", line 49, in <module>
-    class modp768(_FFDHParams):
-    ...<6 lines>...
-        mLen = 768
-  File "/usr/lib/python3/dist-packages/scapy/layers/tls/crypto/groups.py", line 40, in __new__
-    params = pn.parameters(default_backend())
-ValueError: Invalid DH parameters
-E0000 00:00:1792825224.048505  110353 cuda_platform.cc:52] failed call to cuInit: INTERNAL: CUDA error: Failed call to cuInit: UNKNOWN ERROR (303)
-[*] Loaded 8152 records × 5 features from /home/ounnha/Documents/Capstone/data/processed/merged_features_labeled.json  (attacks=2264, benign=5888, clients=1)
-[*] Path B features: query_length, query_entropy, subdomain_count, digit_ratio, longest_label
-[*] Chronological split → train=5706  val=1223  test=1223
-[*] Per-feature normalization saved → /home/ounnha/Documents/Capstone/models/dns_trafficformer_norm.json  (train-derived)
-[*] Per-client windows → train=5687  val=1204  test=1204
-[*] Benign-only training windows: 59 (dropped 5628 attack windows)
-[!] Only 0 benign val windows — calibrating threshold on ALL val windows (threshold less trustworthy)
-Model: "trafficformer_reconstruction"
-┏━━━━━━━━━━━━━━━━━━━━━┳━━━━━━━━━━━━━━━━━━━┳━━━━━━━━━━━━┳━━━━━━━━━━━━━━━━━━━┓
-┃ Layer (type)        ┃ Output Shape      ┃    Param # ┃ Connected to      ┃
-┡━━━━━━━━━━━━━━━━━━━━━╇━━━━━━━━━━━━━━━━━━━╇━━━━━━━━━━━━╇━━━━━━━━━━━━━━━━━━━┩
-│ input_layer         │ (None, 20, 5)     │          0 │ -                 │
-│ (InputLayer)        │                   │            │                   │
-├─────────────────────┼───────────────────┼────────────┼───────────────────┤
-│ layer_normalization │ (None, 20, 5)     │         10 │ input_layer[0][0] │
-│ (LayerNormalizatio… │                   │            │                   │
-├─────────────────────┼───────────────────┼────────────┼───────────────────┤
-│ multi_head_attenti… │ (None, 20, 5)     │      4,421 │ layer_normalizat… │
-│ (MultiHeadAttentio… │                   │            │ layer_normalizat… │
-├─────────────────────┼───────────────────┼────────────┼───────────────────┤
-│ dropout_1 (Dropout) │ (None, 20, 5)     │          0 │ multi_head_atten… │
-├─────────────────────┼───────────────────┼────────────┼───────────────────┤
-│ add (Add)           │ (None, 20, 5)     │          0 │ dropout_1[0][0],  │
-│                     │                   │            │ input_layer[0][0] │
-├─────────────────────┼───────────────────┼────────────┼───────────────────┤
-│ layer_normalizatio… │ (None, 20, 5)     │         10 │ add[0][0]         │
-│ (LayerNormalizatio… │                   │            │                   │
-├─────────────────────┼───────────────────┼────────────┼───────────────────┤
-│ conv1d (Conv1D)     │ (None, 20, 3)     │         18 │ layer_normalizat… │
-├─────────────────────┼───────────────────┼────────────┼───────────────────┤
-│ dropout_2 (Dropout) │ (None, 20, 3)     │          0 │ conv1d[0][0]      │
-├─────────────────────┼───────────────────┼────────────┼───────────────────┤
-│ conv1d_1 (Conv1D)   │ (None, 20, 5)     │         20 │ dropout_2[0][0]   │
-├─────────────────────┼───────────────────┼────────────┼───────────────────┤
-│ add_1 (Add)         │ (None, 20, 5)     │          0 │ conv1d_1[0][0],   │
-│                     │                   │            │ add[0][0]         │
-├─────────────────────┼───────────────────┼────────────┼───────────────────┤
-│ layer_normalizatio… │ (None, 20, 5)     │         10 │ add_1[0][0]       │
-│ (LayerNormalizatio… │                   │            │                   │
-├─────────────────────┼───────────────────┼────────────┼───────────────────┤
-│ multi_head_attenti… │ (None, 20, 5)     │      4,421 │ layer_normalizat… │
-│ (MultiHeadAttentio… │                   │            │ layer_normalizat… │
-├─────────────────────┼───────────────────┼────────────┼───────────────────┤
-│ dropout_4 (Dropout) │ (None, 20, 5)     │          0 │ multi_head_atten… │
-├─────────────────────┼───────────────────┼────────────┼───────────────────┤
-│ add_2 (Add)         │ (None, 20, 5)     │          0 │ dropout_4[0][0],  │
-│                     │                   │            │ add_1[0][0]       │
-├─────────────────────┼───────────────────┼────────────┼───────────────────┤
-│ layer_normalizatio… │ (None, 20, 5)     │         10 │ add_2[0][0]       │
-│ (LayerNormalizatio… │                   │            │                   │
-├─────────────────────┼───────────────────┼────────────┼───────────────────┤
-│ conv1d_2 (Conv1D)   │ (None, 20, 3)     │         18 │ layer_normalizat… │
-├─────────────────────┼───────────────────┼────────────┼───────────────────┤
-│ dropout_5 (Dropout) │ (None, 20, 3)     │          0 │ conv1d_2[0][0]    │
-├─────────────────────┼───────────────────┼────────────┼───────────────────┤
-│ conv1d_3 (Conv1D)   │ (None, 20, 5)     │         20 │ dropout_5[0][0]   │
-├─────────────────────┼───────────────────┼────────────┼───────────────────┤
-│ add_3 (Add)         │ (None, 20, 5)     │          0 │ conv1d_3[0][0],   │
-│                     │                   │            │ add_2[0][0]       │
-├─────────────────────┼───────────────────┼────────────┼───────────────────┤
-│ layer_normalizatio… │ (None, 20, 5)     │         10 │ add_3[0][0]       │
-│ (LayerNormalizatio… │                   │            │                   │
-├─────────────────────┼───────────────────┼────────────┼───────────────────┤
-│ multi_head_attenti… │ (None, 20, 5)     │      4,421 │ layer_normalizat… │
-│ (MultiHeadAttentio… │                   │            │ layer_normalizat… │
-├─────────────────────┼───────────────────┼────────────┼───────────────────┤
-│ dropout_7 (Dropout) │ (None, 20, 5)     │          0 │ multi_head_atten… │
-├─────────────────────┼───────────────────┼────────────┼───────────────────┤
-│ add_4 (Add)         │ (None, 20, 5)     │          0 │ dropout_7[0][0],  │
-│                     │                   │            │ add_3[0][0]       │
-├─────────────────────┼───────────────────┼────────────┼───────────────────┤
-│ layer_normalizatio… │ (None, 20, 5)     │         10 │ add_4[0][0]       │
-│ (LayerNormalizatio… │                   │            │                   │
-├─────────────────────┼───────────────────┼────────────┼───────────────────┤
-│ conv1d_4 (Conv1D)   │ (None, 20, 3)     │         18 │ layer_normalizat… │
-├─────────────────────┼───────────────────┼────────────┼───────────────────┤
-│ dropout_8 (Dropout) │ (None, 20, 3)     │          0 │ conv1d_4[0][0]    │
-├─────────────────────┼───────────────────┼────────────┼───────────────────┤
-│ conv1d_5 (Conv1D)   │ (None, 20, 5)     │         20 │ dropout_8[0][0]   │
-├─────────────────────┼───────────────────┼────────────┼───────────────────┤
-│ add_5 (Add)         │ (None, 20, 5)     │          0 │ conv1d_5[0][0],   │
-│                     │                   │            │ add_4[0][0]       │
-├─────────────────────┼───────────────────┼────────────┼───────────────────┤
-│ dense (Dense)       │ (None, 20, 64)    │        384 │ add_5[0][0]       │
-├─────────────────────┼───────────────────┼────────────┼───────────────────┤
-│ dropout_9 (Dropout) │ (None, 20, 64)    │          0 │ dense[0][0]       │
-├─────────────────────┼───────────────────┼────────────┼───────────────────┤
-│ dense_1 (Dense)     │ (None, 20, 5)     │        325 │ dropout_9[0][0]   │
-└─────────────────────┴───────────────────┴────────────┴───────────────────┘
- Total params: 14,146 (55.26 KB)
- Trainable params: 14,146 (55.26 KB)
- Non-trainable params: 0 (0.00 B)
-Epoch 1/200
-[1m1/2[0m [32m━━━━━━━━━━[0m[37m━━━━━━━━━━[0m [1m4s[0m 5s/step - loss: 0.2300
-Epoch 1: val_loss improved from None to 0.05501, saving model to /home/ounnha/Documents/Capstone/models/dns_trafficformer.h5
-WARNING:absl:You are saving your model as an HDF5 file via `model.save()` or `keras.saving.save_model(model)`. This file format is considered legacy. We recommend using instead the native Keras format, e.g. `model.save('my_model.keras')` or `keras.saving.save_model(model, 'my_model.keras')`. 
-
-Epoch 1: finished saving model to /home/ounnha/Documents/Capstone/models/dns_trafficformer.h5
-[1m2/2[0m [32m━━━━━━━━━━━━━━━━━━━━[0m[37m[0m [1m5s[0m 679ms/step - loss: 0.2336 - val_loss: 0.0550
-Epoch 2/200
-[1m1/2[0m [32m━━━━━━━━━━[0m[37m━━━━━━━━━━[0m [1m0s[0m 39ms/step - loss: 0.2159
-Epoch 2: val_loss improved from 0.05501 to 0.05242, saving model to /home/ounnha/Documents/Capstone/models/dns_trafficformer.h5
-WARNING:absl:You are saving your model as an HDF5 file via `model.save()` or `keras.saving.save_model(model)`. This file format is considered legacy. We recommend using instead the native Keras format, e.g. `model.save('my_model.keras')` or `keras.saving.save_model(model, 'my_model.keras')`. 
-
-Epoch 2: finished saving model to /home/ounnha/Documents/Capstone/models/dns_trafficformer.h5
-[1m2/2[0m [32m━━━━━━━━━━━━━━━━━━━━[0m[37m[0m [1m0s[0m 439ms/step - loss: 0.2168 - val_loss: 0.0524
-Epoch 3/200
-[1m1/2[0m [32m━━━━━━━━━━[0m[37m━━━━━━━━━━[0m [1m0s[0m 29ms/step - loss: 0.2059
-Epoch 3: val_loss improved from 0.05242 to 0.05036, saving model to /home/ounnha/Documents/Capstone/models/dns_trafficformer.h5
-WARNING:absl:You are saving your model as an HDF5 file via `model.save()` or `keras.saving.save_model(model)`. This file format is considered legacy. We recommend using instead the native Keras format, e.g. `model.save('my_model.keras')` or `keras.saving.save_model(model, 'my_model.keras')`. 
-
-Epoch 3: finished saving model to /home/ounnha/Documents/Capstone/models/dns_trafficformer.h5
-[1m2/2[0m [32m━━━━━━━━━━━━━━━━━━━━[0m[37m[0m [1m0s[0m 251ms/step - loss: 0.2031 - val_loss: 0.0504
-Epoch 4/200
-[1m1/2[0m [32m━━━━━━━━━━[0m[37m━━━━━━━━━━[0m [1m0s[0m 26ms/step - loss: 0.1886
-Epoch 4: val_loss improved from 0.05036 to 0.04855, saving model to /home/ounnha/Documents/Capstone/models/dns_trafficformer.h5
-WARNING:absl:You are saving your model as an HDF5 file via `model.save()` or `keras.saving.save_model(model)`. This file format is considered legacy. We recommend using instead the native Keras format, e.g. `model.save('my_model.keras')` or `keras.saving.save_model(model, 'my_model.keras')`. 
-
-Epoch 4: finished saving model to /home/ounnha/Documents/Capstone/models/dns_trafficformer.h5
-[1m2/2[0m [32m━━━━━━━━━━━━━━━━━━━━[0m[37m[0m [1m0s[0m 394ms/step - loss: 0.1917 - val_loss: 0.0485
-Epoch 5/200
-[1m1/2[0m [32m━━━━━━━━━━[0m[37m━━━━━━━━━━[0m [1m0s[0m 32ms/step - loss: 0.1862
-Epoch 5: val_loss improved from 0.04855 to 0.04705, saving model to /home/ounnha/Documents/Capstone/models/dns_trafficformer.h5
-WARNING:absl:You are saving your model as an HDF5 file via `model.save()` or `keras.saving.save_model(model)`. This file format is considered legacy. We recommend using instead the native Keras format, e.g. `model.save('my_model.keras')` or `keras.saving.save_model(model, 'my_model.keras')`. 
-
-Epoch 5: finished saving model to /home/ounnha/Documents/Capstone/models/dns_trafficformer.h5
-[1m2/2[0m [32m━━━━━━━━━━━━━━━━━━━━[0m[37m[0m [1m0s[0m 373ms/step - loss: 0.1809 - val_loss: 0.0470
-Epoch 6/200
-[1m1/2[0m [32m━━━━━━━━━━[0m[37m━━━━━━━━━━[0m [1m0s[0m 53ms/step - loss: 0.1716
-Epoch 6: val_loss improved from 0.04705 to 0.04597, saving model to /home/ounnha/Documents/Capstone/models/dns_trafficformer.h5
-WARNING:absl:You are saving your model as an HDF5 file via `model.save()` or `keras.saving.save_model(model)`. This file format is considered legacy. We recommend using instead the native Keras format, e.g. `model.save('my_model.keras')` or `keras.saving.save_model(model, 'my_model.keras')`. 
-
-Epoch 6: finished saving model to /home/ounnha/Documents/Capstone/models/dns_trafficformer.h5
-[1m2/2[0m [32m━━━━━━━━━━━━━━━━━━━━[0m[37m[0m [1m0s[0m 395ms/step - loss: 0.1745 - val_loss: 0.0460
-Epoch 7/200
-[1m1/2[0m [32m━━━━━━━━━━[0m[37m━━━━━━━━━━[0m [1m0s[0m 25ms/step - loss: 0.1656
-Epoch 7: val_loss improved from 0.04597 to 0.04529, saving model to /home/ounnha/Documents/Capstone/models/dns_trafficformer.h5
-WARNING:absl:You are saving your model as an HDF5 file via `model.save()` or `keras.saving.save_model(model)`. This file format is considered legacy. We recommend using instead the native Keras format, e.g. `model.save('my_model.keras')` or `keras.saving.save_model(model, 'my_model.keras')`. 
-
-Epoch 7: finished saving model to /home/ounnha/Documents/Capstone/models/dns_trafficformer.h5
-[1m2/2[0m [32m━━━━━━━━━━━━━━━━━━━━[0m[37m[0m [1m0s[0m 430ms/step - loss: 0.1651 - val_loss: 0.0453
-Epoch 8/200
-[1m1/2[0m [32m━━━━━━━━━━[0m[37m━━━━━━━━━━[0m [1m0s[0m 40ms/step - loss: 0.1647
-Epoch 8: val_loss improved from 0.04529 to 0.04500, saving model to /home/ounnha/Documents/Capstone/models/dns_trafficformer.h5
-WARNING:absl:You are saving your model as an HDF5 file via `model.save()` or `keras.saving.save_model(model)`. This file format is considered legacy. We recommend using instead the native Keras format, e.g. `model.save('my_model.keras')` or `keras.saving.save_model(model, 'my_model.keras')`. 
-
-Epoch 8: finished saving model to /home/ounnha/Documents/Capstone/models/dns_trafficformer.h5
-[1m2/2[0m [32m━━━━━━━━━━━━━━━━━━━━[0m[37m[0m [1m1s[0m 555ms/step - loss: 0.1614 - val_loss: 0.0450
-Epoch 9/200
-[1m1/2[0m [32m━━━━━━━━━━[0m[37m━━━━━━━━━━[0m [1m0s[0m 53ms/step - loss: 0.1522
-Epoch 9: val_loss did not improve from 0.04500
-[1m2/2[0m [32m━━━━━━━━━━━━━━━━━━━━[0m[37m[0m [1m1s[0m 473ms/step - loss: 0.1512 - val_loss: 0.0450
-Epoch 10/200
-[1m1/2[0m [32m━━━━━━━━━━[0m[37m━━━━━━━━━━[0m [1m0s[0m 43ms/step - loss: 0.1455
-Epoch 10: val_loss did not improve from 0.04500
-[1m2/2[0m [32m━━━━━━━━━━━━━━━━━━━━[0m[37m[0m [1m0s[0m 400ms/step - loss: 0.1444 - val_loss: 0.0452
-Epoch 11/200
-[1m1/2[0m [32m━━━━━━━━━━[0m[37m━━━━━━━━━━[0m [1m0s[0m 46ms/step - loss: 0.1429
-Epoch 11: val_loss did not improve from 0.04500
-[1m2/2[0m [32m━━━━━━━━━━━━━━━━━━━━[0m[37m[0m [1m0s[0m 379ms/step - loss: 0.1432 - val_loss: 0.0457
-Epoch 12/200
-[1m1/2[0m [32m━━━━━━━━━━[0m[37m━━━━━━━━━━[0m [1m0s[0m 34ms/step - loss: 0.1381
-Epoch 12: val_loss did not improve from 0.04500
-[1m2/2[0m [32m━━━━━━━━━━━━━━━━━━━━[0m[37m[0m [1m0s[0m 316ms/step - loss: 0.1403 - val_loss: 0.0463
-Epoch 13/200
-[1m1/2[0m [32m━━━━━━━━━━[0m[37m━━━━━━━━━━[0m [1m0s[0m 57ms/step - loss: 0.1356
-Epoch 13: val_loss did not improve from 0.04500
-[1m2/2[0m [32m━━━━━━━━━━━━━━━━━━━━[0m[37m[0m [1m0s[0m 440ms/step - loss: 0.1378 - val_loss: 0.0471
-Epoch 14/200
-[1m1/2[0m [32m━━━━━━━━━━[0m[37m━━━━━━━━━━[0m [1m0s[0m 172ms/step - loss: 0.1269
-Epoch 14: val_loss did not improve from 0.04500
-[1m2/2[0m [32m━━━━━━━━━━━━━━━━━━━━[0m[37m[0m [1m1s[0m 382ms/step - loss: 0.1303 - val_loss: 0.0478
-Epoch 15/200
-[1m1/2[0m [32m━━━━━━━━━━[0m[37m━━━━━━━━━━[0m [1m0s[0m 34ms/step - loss: 0.1285
-Epoch 15: val_loss did not improve from 0.04500
-[1m2/2[0m [32m━━━━━━━━━━━━━━━━━━━━[0m[37m[0m [1m0s[0m 377ms/step - loss: 0.1263 - val_loss: 0.0484
-Epoch 16/200
-[1m1/2[0m [32m━━━━━━━━━━[0m[37m━━━━━━━━━━[0m [1m0s[0m 68ms/step - loss: 0.1243
-Epoch 16: val_loss did not improve from 0.04500
-[1m2/2[0m [32m━━━━━━━━━━━━━━━━━━━━[0m[37m[0m [1m0s[0m 417ms/step - loss: 0.1239 - val_loss: 0.0491
-Epoch 17/200
-[1m1/2[0m [32m━━━━━━━━━━[0m[37m━━━━━━━━━━[0m [1m0s[0m 46ms/step - loss: 0.1265
-Epoch 17: val_loss did not improve from 0.04500
-[1m2/2[0m [32m━━━━━━━━━━━━━━━━━━━━[0m[37m[0m [1m0s[0m 270ms/step - loss: 0.1253 - val_loss: 0.0496
-Epoch 18/200
-[1m1/2[0m [32m━━━━━━━━━━[0m[37m━━━━━━━━━━[0m [1m0s[0m 27ms/step - loss: 0.1179
-Epoch 18: val_loss did not improve from 0.04500
-[1m2/2[0m [32m━━━━━━━━━━━━━━━━━━━━[0m[37m[0m [1m0s[0m 230ms/step - loss: 0.1190 - val_loss: 0.0502
-
-[+] Model saved → /home/ounnha/Documents/Capstone/models/dns_trafficformer.h5
-
-── Calibrating Anomaly Threshold (benign val) ────────────────
-   Error stats → mean=0.0450  std=0.0050
-   Anomaly threshold: 0.0589  (percentile_99)
-[+] Threshold saved → /home/ounnha/Documents/Capstone/models/dns_trafficformer_threshold.json
-
-── Final Evaluation (held-out test set) ──────────────────────
-[!] Test set has a single class (or is empty) — classification metrics skipped. Need mixed benign+attack data for meaningful Path B metrics.
-
-✅ Training complete.
-   Detects anomalies via RECONSTRUCTION ERROR on multi-feature, per-client windows.

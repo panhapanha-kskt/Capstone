@@ -139,6 +139,7 @@ Training:
 
 Output:
   --verbose, -v       Also stream the full training output (always written to logs/)
+  --allow-heuristic-labels  EXPERIMENTAL: train even if some labels are heuristic / weak_behavioral
   --help, -h          Show this help
 
 Labels come from data/attack_manifest.csv when it exists, otherwise from heuristics.
@@ -160,6 +161,7 @@ while [[ $# -gt 0 ]]; do
     --pcap-label)     PCAP_LABEL="${2:?--pcap-label needs 0 or 1}";     shift 2 ;;
     --verbose|-v)     VERBOSE=true;           shift ;;
     --eda-only)       EDA_ONLY=true;          shift ;;
+    --allow-heuristic-labels) ALLOW_HEURISTIC_LABELS=true; shift ;;
     --files)
       shift
       while [[ $# -gt 0 && "$1" != --* ]]; do
@@ -616,6 +618,22 @@ if [[ "$ATTACK_COUNT" == "0" || "$BENIGN_COUNT" == "0" ]]; then
   fail "Only one class (attack=$ATTACK_COUNT, benign=$BENIGN_COUNT). Add data for the missing class — existing models were not changed."
 fi
 say "Labeled $ATTACK_COUNT attack / $BENIGN_COUNT benign · $LABEL_SRC (families: $ATTACK_TYPES)"
+
+# Label provenance guard (ingest/labeling.validate_training_labels): refuse heuristic /
+# weak_behavioral labels unless --allow-heuristic-labels was given. Path A/B code is unchanged.
+GUARD_ARGS=()
+[[ "${ALLOW_HEURISTIC_LABELS:-false}" == true ]] && GUARD_ARGS=(--allow)
+python3 - "$MERGED_LABELED" "${GUARD_ARGS[@]+"${GUARD_ARGS[@]}"}" <<'PYGUARD' || fail "Label provenance check failed — training stopped, existing models were not changed"
+import json, sys
+sys.path.insert(0, "src")
+from dns_detect.ingest.labeling import validate_training_labels, UntrustedLabelError
+try:
+    out = validate_training_labels(json.load(open(sys.argv[1])), allow_untrusted="--allow" in sys.argv[2:],
+                                   context="train_models.sh")
+except UntrustedLabelError as e:
+    print(f"ERROR: {e}", file=sys.stderr); sys.exit(1)
+print(f"Label provenance: {out['by_source']}")
+PYGUARD
 
 # ══════════════════════════════════════════════════════════════
 #  9. TRAIN PATH A  (supervised: RF + GBT, Transformer kept as a baseline)

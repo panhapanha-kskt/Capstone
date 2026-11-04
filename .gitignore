@@ -52,3 +52,4 @@ data/processed/*
 
 # Experiment model folders (DNS_DETECT_MODELS_DIR)
 models_*/
+.venv/

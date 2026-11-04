@@ -48,10 +48,17 @@ ensemble:
   # The Transformer is trained + reported as a baseline but excluded from the decision.
   path_a_models: [random_forest, hist_gradient_boosting]
   transformer_in_decision: false
-  # "or": alarm if Path A or Path B fires. "lr": learned logistic-regression fusion
-  # (scripts/train_fusion.py → models/fusion_lr.pkl); falls back to "or" if not trained.
+  # Primary decision in fusion/bridge.py:
+  #   "lr"    learned logistic-regression fusion V1 (scripts/train_fusion.py → models/fusion_lr.pkl)
+  #   "lr_v2" fusion V2 (scripts/train_fusion.py --version 2 → models/fusion_lr_v2.pkl) — experimental,
+  #           see docs/research/STACKER_V2_IMPLEMENTATION_REPORT.md (promotion gate not passed)
+  #   "or"    legacy OR of the per-path labels (comparison / explicit choice)
+  # A missing learned model stops the bridge in production; in development it falls back to "or".
   fusion: lr
-  # Path A / Path B fusion weights used by fusion/bridge.py (ml_combined_score)
+  # production: missing Path A or fusion model is an error (fail closed).
+  # development: OR fallback / degraded records are allowed and clearly marked (bridge --dev).
+  bridge_mode: production
+  # Path A / Path B weights of the legacy blend (bridge: ml_combined_score_legacy only — comparison)
   rf_weight: 0.6
   tf_weight: 0.4
   combined_threshold: 0.5

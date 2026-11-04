@@ -40,10 +40,18 @@ pip install -r requirements.txt
 
 # Train models (run once)
 ./scripts/train_models.sh
+python scripts/train_fusion.py --labeled data/processed/merged_features_labeled.json \
+    --split-manifest data/processed/splits/time_seed42.json      # learned fusion (models/fusion_lr.pkl)
 
 # Run detection pipeline
 ./scripts/run_pipeline.sh
 ```
+
+The ML bridge runs in **production mode** by default (`ensemble.bridge_mode` in `config/settings.yaml`):
+it stops with an error when the Path A model or the learned fusion model (`ensemble.fusion: lr`) is missing,
+instead of emitting unscored records. For demos without trained fusion, run the bridge with `--dev`
+(or set `bridge_mode: development`); records that fall back are marked `fusion_method = or_fallback` /
+`degraded`. See `docs/research/BRIDGE_V2_IMPLEMENTATION_REPORT.md`.
 
 ## Project Structure
 

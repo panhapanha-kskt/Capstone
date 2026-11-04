@@ -121,6 +121,19 @@ def fingerprint(a):
         + "|" + str(a.get("description", ""))[:90]
 
 
+def _finite(obj):
+    """NaN / ±inf → None so the browser can JSON.parse the state (Python's json writes bare NaN).
+    The bridge leaves Path B scores empty for records without a window, and the detection
+    engine copies them into alert details as float('nan')."""
+    if isinstance(obj, float):
+        return obj if obj == obj and obj not in (float("inf"), float("-inf")) else None
+    if isinstance(obj, dict):
+        return {k: _finite(v) for k, v in obj.items()}
+    if isinstance(obj, (list, tuple)):
+        return [_finite(v) for v in obj]
+    return obj
+
+
 def load_alerts(force=False):
     """Reload the alert file when it changed. Marks alerts never seen before."""
     try:
@@ -402,7 +415,8 @@ class Handler(BaseHTTPRequestHandler):
             except OSError:
                 self.send(500, b"dashboard/index.html not found", "text/plain")
         elif path == "/api/state":
-            self.send(200, json.dumps(build_state(), default=str).encode(), "application/json")
+            self.send(200, json.dumps(_finite(build_state()), default=str, allow_nan=False).encode(),
+                      "application/json")
         elif path == "/api/run":
             self.send(405, b"POST to /api/run", "text/plain")
         else:

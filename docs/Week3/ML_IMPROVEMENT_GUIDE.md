@@ -159,6 +159,27 @@ Today an alarm fires if **either** path fires (an OR rule), so the false alarms 
 
 **Done when:** at the same false-alarm rate, fusion has higher recall than Path A alone and Path B alone.
 
+### Step 7 — V2 (fusion V2 + bridge V2, branch `feat/fusion-v2`)
+
+Reports: [STACKER_V2_IMPLEMENTATION_REPORT.md](../research/STACKER_V2_IMPLEMENTATION_REPORT.md),
+[BRIDGE_V2_IMPLEMENTATION_REPORT.md](../research/BRIDGE_V2_IMPLEMENTATION_REPORT.md).
+
+- **Inputs** (`stacker.FUSION_INPUTS_V2`): `logit_A`, standardised `logit(ml_score_B)` (Path B is sigmoid of a z-score),
+  `has_score_B` from the raw NaN mask (Path B coverage is carried through as NaN, not 0), and R3 / R4 as separate inputs.
+  Rule thresholds and Path B scaling are frozen in `models/fusion_lr_v2.json`.
+- **Training** (`python scripts/train_fusion.py --version 2 ...`): `class_weight=None`; fitted on a grouped "fit" part
+  of the validation rows; threshold and confidence-tier cut points set on a disjoint, benign-only calibration part;
+  grouped (parent domain) out-of-fold scores for calibration diagnostics. Neyman-Pearson threshold
+  (`thresholds.np_threshold`) when the calibration part has enough benign rows (2,995 for α=0.001, δ=0.05),
+  otherwise the empirical budget rule, recorded as `threshold_method`.
+- **Evaluation** (`scripts/eval_fusion.py`, `scripts/eval_bridge.py`): read-only, on rows Path A/B never saw.
+- **Result:** V2 matches V1 on the held-out test (31 false alarms of 1,169 benign, recall 1.0) with a better Brier score,
+  but fails the promotion gate (FPR budget met in 9/10 runs; every method is ~26× over budget on the later test period).
+  `ensemble.fusion` stays `lr` (V1); V2 is selectable as `lr_v2`.
+- **Bridge:** fail-closed in production (`ensemble.bridge_mode`), NaN Path B where there is no window, `row_id` joins,
+  one decision (the stacker), `ml_threat_score = ml_combined_score`, confidence tiers from benign alarm volume,
+  label provenance enforced before training (`ingest/labeling.validate_training_labels`).
+
 ---
 
 ## Step 8 — Test against evasion
@@ -218,7 +239,7 @@ Generate tunnel variants the model has not seen, based on the attack captures fr
 - [ ] Step 4 — Path B bottleneck, Isolation Forest baseline, comparison written up
 - [ ] Step 5 — shared split manifest used by Path A, Path B and fusion
 - [ ] Step 6 — new benign and attack captures, record-type rule F1 < 0.95, > 300,000 benign test queries
-- [ ] Step 7 — logistic-regression fusion beats each path at the same FPR
+- [ ] Step 7 — logistic-regression fusion beats each path at the same FPR (V2 built and evaluated: not promoted — see STACKER_V2_IMPLEMENTATION_REPORT.md §14)
 - [ ] Step 8 — evasion test set built and reported
 - [ ] Step 9 — CIC-Bell-DNS-EXF-2021 results reported
 - [ ] Step 10 — review loop and dataset hash in place

@@ -31,6 +31,21 @@ Verifiable bibliography for `RESEARCH_AND_IMPROVEMENT_PLAN.md`, `IMPLEMENTATION_
 - Amirov et al. *Detecting DNS Tunneling-Based Data Exfiltration Using ML*, July 2025. https://web3.arxiv.org/abs/2507.10267 — classical-ML comparison; limited split-protocol detail.
 - *Towards a Near-real-time Protocol Tunneling Detector based on ML* (arXiv 2309.12720).
 
+## Fusion and bridge (Stacker V2 / Bridge V2)
+
+Used by `STACKER_V2_IMPLEMENTATION_REPORT.md` and `BRIDGE_V2_IMPLEMENTATION_REPORT.md`. (Snorkel and confident learning /
+cleanlab, also cited there, are listed above under *Pitfalls and evaluation methodology*.) The bridge audit's
+"references 13–15" were not available in the repository; the sources below are the ones the implementation relies on.
+
+- Tong, X., Feng, Y., Li, J. J. *Neyman-Pearson classification algorithms and NP receiver operating characteristics*. Science Advances 4(2), eaao1659, 2018. https://doi.org/10.1126/sciadv.aao1659 — umbrella algorithm behind `thresholds.np_threshold`.
+- Wolpert, D. H. *Stacked generalization*. Neural Networks 5(2), 241–259, 1992. https://doi.org/10.1016/S0893-6080(05)80023-1 — fitting a combiner on predictions the base models did not train on.
+- Niculescu-Mizil, A., Caruana, R. *Predicting good probabilities with supervised learning*. ICML 2005. https://doi.org/10.1145/1102351.1102430 — reliability diagrams, isotonic / Platt calibration.
+- Guo, C., Pleiss, G., Sun, Y., Weinberger, K. Q. *On calibration of modern neural networks*. ICML 2017. https://arxiv.org/abs/1706.04599 — expected calibration error (ECE).
+- Brier, G. W. *Verification of forecasts expressed in terms of probability*. Monthly Weather Review 78(1), 1–3, 1950. https://doi.org/10.1175/1520-0493(1950)078%3C0001:VOFEIT%3E2.0.CO;2 — Brier score.
+- Wilson, E. B. *Probable inference, the law of succession, and statistical inference*. JASA 22(158), 209–212, 1927. https://doi.org/10.1080/01621459.1927.10502953 — score interval used for FPR / recall CIs.
+- King, G., Zeng, L. *Logistic regression in rare events data*. Political Analysis 9(2), 137–163, 2001. https://doi.org/10.1093/oxfordjournals.pan.a004868 — prior correction for class-weighted logistic regression (considered, not applied: no measured deployment prevalence).
+- scikit-learn. `StratifiedGroupKFold`. https://scikit-learn.org/stable/modules/generated/sklearn.model_selection.StratifiedGroupKFold.html · `LogisticRegression`. https://scikit-learn.org/stable/modules/generated/sklearn.linear_model.LogisticRegression.html
+
 ## Protocols and standards
 
 - RFC 1034 — *Domain names — concepts and facilities*. https://www.rfc-editor.org/rfc/rfc1034

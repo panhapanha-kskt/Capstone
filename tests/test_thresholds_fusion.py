@@ -4,6 +4,7 @@ import sys
 from pathlib import Path
 
 import numpy as np
+import pytest
 import pandas as pd
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -89,14 +90,18 @@ def test_merge_lr_mode_uses_stacker(monkeypatch, tmp_path):
 
 
 def test_merge_lr_mode_falls_back_to_or_without_model(monkeypatch, tmp_path):
+    # Bridge V2: the OR fallback is development-only and is marked; production raises
+    # (tests/test_bridge.py). The OR decision is now always kept as ml_combined_label_or.
     from dns_detect.fusion import bridge, stacker
     monkeypatch.setattr(stacker, "MODEL_FUSION", str(tmp_path / "missing.pkl"))
     monkeypatch.setattr(stacker, "META_FUSION", str(tmp_path / "missing.json"))
     monkeypatch.setattr(bridge, "_fusion_mode", lambda: "lr")
-    out = bridge.merge_ml_scores(_bridge_frame(), pd.Series([0.0, 0.0, 0.9]),
-                                 pd.Series([0, 0, 1]), decision_threshold=0.5)
-    assert "ml_combined_label_or" not in out.columns
+    with pytest.warns(UserWarning):
+        out = bridge.merge_ml_scores(_bridge_frame(), pd.Series([0.0, 0.0, 0.9]),
+                                     pd.Series([0, 0, 1]), decision_threshold=0.5, mode="development")
+    assert out["ml_combined_label_or"].tolist() == [1, 0, 1]
     assert out["ml_combined_label"].tolist() == [1, 0, 1]
+    assert set(out["fusion_method"]) == {"or_fallback"}
 
 
 def test_allowlist_suppresses_alarm_but_keeps_score(monkeypatch):
@@ -107,9 +112,13 @@ def test_allowlist_suppresses_alarm_but_keeps_score(monkeypatch):
     df["ml_label_A"] = [1, 0, 1]
     out = bridge.merge_ml_scores(df, pd.Series([0.0, 0.0, 0.0]), pd.Series([0, 0, 0]),
                                  decision_threshold=0.5, allowlist={"vsassets.io"})
+    unsuppressed = bridge.merge_ml_scores(df, pd.Series([0.0, 0.0, 0.0]), pd.Series([0, 0, 0]),
+                                          decision_threshold=0.5, allowlist=set())
     assert out["ml_combined_label"].tolist() == [0, 0, 1]          # label boundary respected
     assert out["suppressed_by_allowlist"].tolist() == [True, False, False]
-    assert out.loc[0, "ml_combined_score"] == 0.95                 # score kept for audit
+    # score kept for audit (Bridge V2: in OR mode the score is a benign-quantile score, not raw A)
+    np.testing.assert_equal(out.loc[0, "ml_combined_score"], unsuppressed.loc[0, "ml_combined_score"])
+    assert out.loc[0, "ml_combined_score_legacy"] == 0.95
 
 
 def test_detection_allowlist_file_has_no_dynamic_dns():

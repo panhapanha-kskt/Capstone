@@ -1,0 +1,135 @@
+{
+  "description": "SHA-256 of protected model artefacts and source files before (commit 1105fd4) and after the Fusion V2 / Bridge V2 work (branch feat/fusion-v2).",
+  "models": {
+    "bigram_table.json": {
+      "before": "a04029fcb2d9309a40f7020ce8a9017b80295bd602240fc82b224e972410066a",
+      "after": "a04029fcb2d9309a40f7020ce8a9017b80295bd602240fc82b224e972410066a",
+      "identical": true
+    },
+    "dns_scaler.pkl": {
+      "before": "bbe38b64ab712c1dddb1bcda6d7681b87700722ea5ffb72c8694b1036bf527a4",
+      "after": "bbe38b64ab712c1dddb1bcda6d7681b87700722ea5ffb72c8694b1036bf527a4",
+      "identical": true
+    },
+    "dns_threshold.json": {
+      "before": "41eb977d1d0bc4e4b89fe369dae52109f3b7044f5d085cd7f56f1ac18f734749",
+      "after": "41eb977d1d0bc4e4b89fe369dae52109f3b7044f5d085cd7f56f1ac18f734749",
+      "identical": true
+    },
+    "dns_trafficformer.h5": {
+      "before": "3b49736276bfb90d7fc55da59b6d55b8da5520df4245d29b962119edd7c0077c",
+      "after": "3b49736276bfb90d7fc55da59b6d55b8da5520df4245d29b962119edd7c0077c",
+      "identical": true
+    },
+    "dns_trafficformer_norm.json": {
+      "before": "074ee0dcd9deffcd85e00827cdcfb75f0fec0b397bfc7676715391b345d3a6b7",
+      "after": "074ee0dcd9deffcd85e00827cdcfb75f0fec0b397bfc7676715391b345d3a6b7",
+      "identical": true
+    },
+    "dns_trafficformer_threshold.json": {
+      "before": "fd83f599c4c4ef7ca538d662b30182d3e73a5ba478f0e27bae3c5a5e295896c5",
+      "after": "fd83f599c4c4ef7ca538d662b30182d3e73a5ba478f0e27bae3c5a5e295896c5",
+      "identical": true
+    },
+    "dns_tunnel_gbt.pkl": {
+      "before": "c8be3150dc21318f1e95cfcd0af299fe2bba48985782354e3a28536fef145589",
+      "after": "c8be3150dc21318f1e95cfcd0af299fe2bba48985782354e3a28536fef145589",
+      "identical": true
+    },
+    "dns_tunnel_rf.pkl": {
+      "before": "87e3d746a5554f0365f8d8f7de495338000f276c0e8aac173f3527a8714bbcd6",
+      "after": "87e3d746a5554f0365f8d8f7de495338000f276c0e8aac173f3527a8714bbcd6",
+      "identical": true
+    },
+    "dns_tunnel_transformer.keras": {
+      "before": "4c78596c50a0505c51885a74ef82949fbea0ef809cc2782d48ced4b4445dfa80",
+      "after": "4c78596c50a0505c51885a74ef82949fbea0ef809cc2782d48ced4b4445dfa80",
+      "identical": true
+    },
+    "fusion_lr.json": {
+      "before": "ce0d03e6d1ac48de8a8543c01e79009935bedcd6203ddf09b13ea5720b26a552",
+      "after": "ce0d03e6d1ac48de8a8543c01e79009935bedcd6203ddf09b13ea5720b26a552",
+      "identical": true
+    },
+    "fusion_lr.pkl": {
+      "before": "a5e30c119d543aecf6fa8164c58117115385f5fbe68f0e16aa1c87848e4bc4c4",
+      "after": "a5e30c119d543aecf6fa8164c58117115385f5fbe68f0e16aa1c87848e4bc4c4",
+      "identical": true
+    }
+  },
+  "protected_sources": {
+    "src/dns_detect/models/path_a.py": {
+      "before": "92506c6d83c5fc33b2acd0d6ed8663152d6e7e943e3fe6be10c77433221acced",
+      "after": "92506c6d83c5fc33b2acd0d6ed8663152d6e7e943e3fe6be10c77433221acced",
+      "identical": true
+    },
+    "src/dns_detect/models/path_b_predict.py": {
+      "before": "c49131a0e1b320a30ae8c812b246a9844b73e1e0916ecd7c241e20c007e0b6f6",
+      "after": "c49131a0e1b320a30ae8c812b246a9844b73e1e0916ecd7c241e20c007e0b6f6",
+      "identical": true
+    },
+    "src/dns_detect/models/path_b_train.py": {
+      "before": "36f574096df3b35b0f505584b8546cf474021a24f7c928db0e454294dabfd7e6",
+      "after": "36f574096df3b35b0f505584b8546cf474021a24f7c928db0e454294dabfd7e6",
+      "identical": true
+    },
+    "src/dns_detect/parsing/dns_parser.py": {
+      "before": "a1f107ce1b848ed998c99a474f42b4643e3c60923a04a9cda51b3b4f4c396da4",
+      "after": "a1f107ce1b848ed998c99a474f42b4643e3c60923a04a9cda51b3b4f4c396da4",
+      "identical": true
+    },
+    "src/dns_detect/detection/engine.py": {
+      "before": "1984b6a8883930f3a0d86047642e0a9405afbe837a017610ad53796dde1905a0",
+      "after": "1984b6a8883930f3a0d86047642e0a9405afbe837a017610ad53796dde1905a0",
+      "identical": true
+    },
+    "src/dns_detect/models/splits.py": {
+      "before": "f4a12622d77ec0c081cb99ccb6a09f4313a87ac262d21249ecfe03092ed4ee2f",
+      "after": "f4a12622d77ec0c081cb99ccb6a09f4313a87ac262d21249ecfe03092ed4ee2f",
+      "identical": true
+    },
+    "src/dns_detect/features/__init__.py": {
+      "before": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "after": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "identical": true
+    },
+    "src/dns_detect/features/aggregates.py": {
+      "before": "284eb1a37deb4169e91cebcb51226dcf788904bf68f2ad797537bcf5537fa58d",
+      "after": "284eb1a37deb4169e91cebcb51226dcf788904bf68f2ad797537bcf5537fa58d",
+      "identical": true
+    },
+    "src/dns_detect/features/eda.py": {
+      "before": "8b6b2d915e3390d47364f58e8380a552501a780f8d1e357ebcdad0cc00004da3",
+      "after": "8b6b2d915e3390d47364f58e8380a552501a780f8d1e357ebcdad0cc00004da3",
+      "identical": true
+    },
+    "src/dns_detect/features/eda_data.py": {
+      "before": "b1c8ef49b6d6f87ed8f5926ca84ca6ca770629e1c5202ff6acffda8a78f52b45",
+      "after": "b1c8ef49b6d6f87ed8f5926ca84ca6ca770629e1c5202ff6acffda8a78f52b45",
+      "identical": true
+    },
+    "src/dns_detect/features/extractor.py": {
+      "before": "855bef7f941fb35298b31916e36b23488e0198b56f29d63551f944089489b4a2",
+      "after": "855bef7f941fb35298b31916e36b23488e0198b56f29d63551f944089489b4a2",
+      "identical": true
+    }
+  },
+  "new_model_files": [
+    "fusion_fallback_quantiles.json",
+    "fusion_lr_tiers.json",
+    "fusion_lr_v2.json",
+    "fusion_lr_v2.pkl"
+  ],
+  "tests": {
+    "before": "112 passed",
+    "after": "196 passed"
+  },
+  "settings_before": {
+    "ensemble.fusion": "lr",
+    "ensemble.bridge_mode": "(absent)"
+  },
+  "settings_after": {
+    "ensemble.fusion": "lr",
+    "ensemble.bridge_mode": "production"
+  }
+}

@@ -59,6 +59,46 @@ except ImportError:  # pragma: no cover - python-dateutil is in requirements.txt
         return _dt.fromisoformat(str(v).replace("Z", "+00:00"))
 
 TRUSTED_SOURCES = {"file", "provenance", "manifest"}
+# Labels that are NOT independent ground truth. "heuristic" = the bridge's attack_count >= 1
+# fallback (fusion/bridge.py --label-only --allow-heuristic-labels). Kept as-is when a labeled
+# file is relabeled, so they are never laundered into a trusted source.
+UNTRUSTED_SOURCES = {"weak_behavioral", "heuristic"}
+
+
+class UntrustedLabelError(ValueError):
+    """Training data contains labels that are not independent ground truth."""
+
+
+def validate_training_labels(records, allow_untrusted: bool = False, context: str = "training") -> dict:
+    """
+    Check label provenance before training. `records` is a list of dicts or a DataFrame.
+    Returns {"by_source": {...}, "untrusted": n, "unlabeled_source": n}. Rows without a
+    label_source count as "file" (the convention used by label_records). Raises
+    UntrustedLabelError when any labeled row is heuristic / weak_behavioral / unknown, unless
+    allow_untrusted=True (then logs a warning and returns the counts for the training metadata).
+    """
+    import logging
+    if hasattr(records, "to_dict"):
+        records = records.to_dict(orient="records")
+    counts = Counter()
+    for r in records:
+        if not _is_label(r.get("label")):
+            continue
+        src = r.get("label_source")
+        counts[src if isinstance(src, str) and src else "file"] += 1
+    untrusted = {k: v for k, v in counts.items() if k not in TRUSTED_SOURCES}
+    out = {"by_source": dict(counts), "untrusted": int(sum(untrusted.values())),
+           "untrusted_by_source": untrusted}
+    if untrusted:
+        total = sum(counts.values())
+        msg = (f"{context}: {out['untrusted']} of {total} labeled rows "
+               f"({100 * out['untrusted'] / max(total, 1):.2f}%) have untrusted label_source {untrusted}; "
+               f"trusted sources are {sorted(TRUSTED_SOURCES)}.")
+        if not allow_untrusted:
+            raise UntrustedLabelError(msg + " Re-label with scripts/label_from_manifest.py, or pass "
+                                            "--allow-heuristic-labels for an explicitly experimental run.")
+        logging.getLogger(__name__).warning("%s Continuing because untrusted labels were explicitly allowed.", msg)
+    return out
 TUNNEL_RECORD_TYPES = {"TXT", "NULL", "KEY", "CNAME", "MX", "SRV", "PRIVATE", "65399", "10"}
 
 DEFAULTS = {
@@ -384,7 +424,8 @@ def label_records(records: list, manifest: str = None, allowlist: set = None, cf
         # 1. label already in the file
         if _is_label(r.get("label")):
             r["label"] = int(float(r["label"]))
-            src = r.get("label_source") if r.get("label_source") in TRUSTED_SOURCES else "file"
+            src = (r.get("label_source") if r.get("label_source") in TRUSTED_SOURCES | UNTRUSTED_SOURCES
+                   else "file")
             r["label_source"] = src
             r.setdefault("attack_family", "benign" if r["label"] == 0 else "attack")
             by_source[src] += 1

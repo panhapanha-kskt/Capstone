@@ -39,6 +39,14 @@ def _run(cmd, env, log):
         sys.exit(f"[error] failed (exit {r.returncode}): {' '.join(cmd)} — see {log}")
 
 
+def check_labels(args):
+    """Refuse heuristic / weak_behavioral labels before any seed trains (see ingest/labeling.py)."""
+    sys.path.insert(0, str(ROOT / "src"))
+    from dns_detect.ingest.labeling import validate_training_labels
+    return validate_training_labels(json.loads(Path(args.data).read_text()),
+                                    allow_untrusted=args.allow_heuristic_labels, context="run_multiseed")
+
+
 def train_seed(seed, args):
     out = Path(args.out_root) / f"seed{seed}"
     out.mkdir(parents=True, exist_ok=True)
@@ -54,7 +62,10 @@ def train_seed(seed, args):
         _run([py, "-m", "dns_detect.models.path_b_train", "--filename", data.name,
               "--data_dir", str(data.parent), "--n_days", "20", "--save_name", "dns_trafficformer",
               "--split-manifest", manifest, "--seed", str(seed)], env, log)
-        _run([py, "scripts/train_fusion.py", "--labeled", args.data, "--split-manifest", manifest], env, log)
+        fusion = [py, "scripts/train_fusion.py", "--labeled", args.data, "--split-manifest", manifest]
+        if args.allow_heuristic_labels:
+            fusion.append("--allow-heuristic-labels")
+        _run(fusion, env, log)
     return json.loads((out / "evaluation_metrics.json").read_text())
 
 
@@ -79,7 +90,10 @@ def main():
     ap.add_argument("--out-root", default="models_multiseed")
     ap.add_argument("--skip-path-b", action="store_true", help="Path A only (no Path B, no fusion)")
     ap.add_argument("--out", default=None, help="summary JSON (default: <out-root>/summary.json)")
+    ap.add_argument("--allow-heuristic-labels", action="store_true",
+                    help="EXPERIMENTAL: train even if some labels are heuristic / weak_behavioral")
     args = ap.parse_args()
+    print(f"[*] label provenance: {check_labels(args)['by_source']}")
 
     per_seed = {s: collect(train_seed(s, args)) for s in args.seeds}
     keys = sorted({k for r in per_seed.values() for k in r})

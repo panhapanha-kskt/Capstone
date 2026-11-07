@@ -208,7 +208,10 @@ MEM_RF="$MODELS_DIR/dns_tunnel_rf.pkl"
 MEM_TF="$MODELS_DIR/dns_tunnel_transformer.keras"
 MEM_SCALER="$MODELS_DIR/dns_scaler.pkl"
 MEM_THRESHOLD="$MODELS_DIR/dns_threshold.json"
-MEM_PATH_B="$MODELS_DIR/${PATH_B_MODEL}.h5"
+# Path B saves <name>.keras (Keras 3 cannot store MultiHeadAttention in .h5); runs from before
+# Week 3 saved <name>.h5. Same order as path_b_predict: .keras first, then .h5.
+MEM_PATH_B="$MODELS_DIR/${PATH_B_MODEL}.keras"
+[[ -f "$MEM_PATH_B" || ! -f "$MODELS_DIR/${PATH_B_MODEL}.h5" ]] || MEM_PATH_B="$MODELS_DIR/${PATH_B_MODEL}.h5"
 MEM_PATH_B_THRESHOLD="$MODELS_DIR/${PATH_B_MODEL}_threshold.json"
 MEM_PATH_B_NORM="$MODELS_DIR/${PATH_B_MODEL}_norm.json"
 MEM_METADATA="$MODELS_DIR/training_metadata.json"
@@ -672,7 +675,8 @@ PYGUARD
 SPLIT_ARGS=(--labeled "$MERGED_LABELED" --seed "$SEED" --out "$MEM_SPLIT.tmp")
 if [[ "$NEW_SPLIT" == false && -f "$BASE_MANIFEST" ]]; then SPLIT_ARGS+=(--base "$BASE_MANIFEST"); fi
 SPLIT_LINE=$(python3 "$SCRIPT_DIR/prepare_split.py" "${SPLIT_ARGS[@]}" 2>>"$TRAIN_LOG")   || fail "Could not build the split (see log) — existing models were not changed"
-SPLIT_LINE="${SPLIT_LINE%$''}"
+SPLIT_LINE="${SPLIT_LINE%$'
+'}"
 read -r SPLIT_MODE SPLIT_TR SPLIT_VAL SPLIT_TE SPLIT_NEW SPLIT_SHA <<< "$SPLIT_LINE"
 mv -f "$MEM_SPLIT.tmp" "$MEM_SPLIT"
 case "$SPLIT_MODE" in
@@ -702,7 +706,8 @@ fi
 if [[ "$TRAIN_PATH_B" == true ]]; then
   run_or_fail "Path B training failed" python3 -m dns_detect.models.path_b_train \
     --filename "$MERGED_LABELED" --n_days "$N_DAYS" --save_name "$PATH_B_MODEL" --data_dir "/"     --split-manifest "$MEM_SPLIT" --seed "$SEED"
-  [[ -f "$MEM_PATH_B" ]] || fail "Path B did not save ${PATH_B_MODEL}.h5"
+  MEM_PATH_B="$MODELS_DIR/${PATH_B_MODEL}.keras"   # what path_b_train writes
+  [[ -f "$MEM_PATH_B" ]] || fail "Path B did not save ${PATH_B_MODEL}.keras"
   say "Path B trained (window $N_DAYS, anomaly threshold $(json_num "$MEM_PATH_B_THRESHOLD" threshold))"
 else
   say "Path B skipped (existing model kept)"

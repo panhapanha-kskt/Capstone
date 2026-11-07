@@ -497,6 +497,7 @@ Then add `data/processed/labeled_benign_kali.json` to `--files`.
 | `Models already trained — nothing to do` | Models exist | Add `--force-retrain` |
 | `Label provenance check failed` | Training data has heuristic labels (e.g. only `.log` files, no manifest) | Use labeled files with `--files`, or record attacks in `data/attack_manifest.csv` |
 | `Path A did not save ...` | Old `train_models.sh` with `DNS_DETECT_MODELS_DIR` set | Pull the updated script, or `unset DNS_DETECT_MODELS_DIR` |
+| `Path B did not save dns_trafficformer.h5` (after Path A trained) | Old `train_models.sh` looked for `.h5`, but Path B saves `.keras` since Week 3. The model *was* saved. | Pull the fixed script (it accepts `.keras`, then `.h5`) and re-run |
 | `Fusion skipped — Path A and Path B were not trained on the same split` | One path retrained alone on a different split | Retrain both paths (`--force-retrain` without `--path-*-only`) |
 | Bridge stops: fusion or Path A model missing | Production mode (`ensemble.bridge_mode`) | Train with `train_models.sh`, or pass `--dev` for demos |
 | Variables gone after opening a new terminal | Shell variables last one session | Re-run the setup lines in [section 2](#2-setup) |

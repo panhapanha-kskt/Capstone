@@ -102,7 +102,10 @@ MEM_RF="$MODELS_DIR/dns_tunnel_rf.pkl"
 MEM_TF="$MODELS_DIR/dns_tunnel_transformer.keras"
 MEM_SCALER="$MODELS_DIR/dns_scaler.pkl"
 MEM_THRESHOLD="$MODELS_DIR/dns_threshold.json"
-MEM_PATH_B="$MODELS_DIR/${PATH_B_MODEL}.h5"
+# Path B saves <name>.keras (Keras 3 cannot store MultiHeadAttention in .h5); runs from before
+# Week 3 saved <name>.h5. Same order as path_b_predict: .keras first, then .h5.
+MEM_PATH_B="$MODELS_DIR/${PATH_B_MODEL}.keras"
+[[ -f "$MEM_PATH_B" || ! -f "$MODELS_DIR/${PATH_B_MODEL}.h5" ]] || MEM_PATH_B="$MODELS_DIR/${PATH_B_MODEL}.h5"
 MEM_PATH_B_THRESHOLD="$MODELS_DIR/${PATH_B_MODEL}_threshold.json"
 MEM_PATH_B_NORM="$MODELS_DIR/${PATH_B_MODEL}_norm.json"
 MEM_METADATA="$MODELS_DIR/training_metadata.json"

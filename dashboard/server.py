@@ -58,9 +58,10 @@ FEED_LIMIT = 150
 # ──────────────────────────────────────────────────────────────
 def pipeline_steps(zscore):
     py = sys.executable
-    path_b_ready = all(
-        (MODELS / n).exists()
-        for n in (f"{PATH_B_MODEL}.h5", f"{PATH_B_MODEL}_threshold.json", f"{PATH_B_MODEL}_norm.json")
+    # Path B saves <name>.keras; runs from before Week 3 saved <name>.h5 (path_b_predict loads either).
+    path_b_ready = (
+        any((MODELS / f"{PATH_B_MODEL}{ext}").exists() for ext in (".keras", ".h5"))
+        and all((MODELS / n).exists() for n in (f"{PATH_B_MODEL}_threshold.json", f"{PATH_B_MODEL}_norm.json"))
     )
     bridge = [py, "-m", "dns_detect.fusion.bridge",
               "--week3", str(WEEK3), "--output", str(WEEK3_ML),

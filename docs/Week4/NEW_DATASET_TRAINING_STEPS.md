@@ -99,7 +99,7 @@ The converter was rewritten to be faster, with the same output:
 
 It prints one progress line per capture (e.g. `[ 12/57] iodine_base128/iodine128_txt_up.pcapng: 8412 queries (95s)`; the 6 new tools have 57 captures) and the total time at the end. `--legacy` runs the original code path, for comparison.
 
-You no longer need to start one converter per tool by hand: a single command uses the cores itself.
+You no longer need to start one converter per tool by hand: a single command uses the cores itself. Full explanation, tests and an old-vs-new comparison: [CONVERTER_SPEEDUP.md](CONVERTER_SPEEDUP.md).
 
 ### Why `--families` lists only 6 tools
 

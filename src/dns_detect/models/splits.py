@@ -266,6 +266,60 @@ def stable_row_ids(df: pd.DataFrame) -> list:
     return out
 
 
+def prepare_training_split(df: pd.DataFrame, y: np.ndarray, base: dict | None = None,
+                           strategy: str = "time", seed: int = 42, train_share: float = 0.85):
+    """
+    One split for a whole training run (Path A, Path B and fusion all use it).
+
+    - base covers every row          → mode "reused": the base split unchanged.
+    - base covers some rows          → mode "extended": known rows keep their split (the test
+      set stays frozen, so runs stay comparable); new rows are cut per source file in time
+      order, the earliest `train_share` → train and the rest → val. New rows never go to test.
+    - no base, or base covers no row → mode "new": a fresh `strategy` split of these rows.
+
+    Returns (row_ids, {"train", "val", "test"} index arrays, info dict).
+    """
+    ids = stable_row_ids(df)
+    known = base["row_ids"] if base else {}
+    n_known = sum(1 for rid in ids if rid in known)
+
+    if n_known == 0:
+        tr, val, te, method = build_indices(df, y, strategy, seed=seed)
+        idx = {"train": np.asarray(tr, dtype=int), "val": np.asarray(val, dtype=int),
+               "test": np.asarray(te, dtype=int)}
+        info = {"mode": "new", "strategy": strategy, "seed": int(seed), "method": method,
+                "n_new": len(ids)}
+    else:
+        assign = {rid: known[rid] for rid in ids if rid in known}
+        new = [i for i, rid in enumerate(ids) if rid not in known]
+        if new:
+            ts = (pd.to_datetime(df["timestamp"], errors="coerce", format="mixed")
+                  if "timestamp" in df.columns else pd.Series([pd.NaT] * len(df)))
+            src = (df["source_file"].astype(str).to_numpy() if "source_file" in df.columns
+                   else np.zeros(len(df), dtype=str))
+            order_ts = ts.fillna(pd.Timestamp.min).to_numpy()
+            for f in sorted(set(src[new])):
+                rows = sorted((i for i in new if src[i] == f), key=lambda i: (order_ts[i], i))
+                cut = int(round(train_share * len(rows)))
+                for k, i in enumerate(rows):
+                    assign[ids[i]] = "train" if k < cut else "val"
+        idx = {s: np.array([i for i, rid in enumerate(ids) if assign.get(rid) == s], dtype=int)
+               for s in ("train", "val", "test")}
+        info = {"mode": "extended" if new else "reused", "strategy": base.get("strategy"),
+                "seed": base.get("seed"), "method": "base manifest", "n_new": len(new)}
+
+    # Fail closed: every row in exactly one split, and train/val hold both classes.
+    y = np.asarray(y).astype(int)
+    total = sum(len(v) for v in idx.values())
+    if total != len(ids) or len(set(np.concatenate(list(idx.values())).tolist())) != total:
+        raise ValueError(f"split does not place every row exactly once ({total} of {len(ids)})")
+    for s in ("train", "val"):
+        if len(np.unique(y[idx[s]])) < 2:
+            raise ValueError(f"the {s} split has only one class — Path A cannot be trained/calibrated")
+    info.update({f"n_{s}": int(len(v)) for s, v in idx.items()})
+    return ids, idx, info
+
+
 def load_manifest_indices(path: str, df: pd.DataFrame):
     """Read a manifest and return (train, val, test, missing, manifest) index arrays for `df`."""
     manifest = read_manifest(path)

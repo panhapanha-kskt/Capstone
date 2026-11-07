@@ -1,7 +1,8 @@
 #!/bin/bash
 # ============================================================
 #  DNS Traffic Anomaly Detection — ML Model Trainer
-#  Trains Path A (RF + GBT) and Path B (Trafficformer) and saves them to models/.
+#  Trains Path A (RF + GBT), Path B (Trafficformer) and the learned fusion on ONE shared,
+#  time-ordered split, and saves them to models/ (or $DNS_DETECT_MODELS_DIR).
 #  Prints one short line per stage; the full output goes to logs/training_<time>.log.
 #
 #  Usage:
@@ -12,6 +13,8 @@
 #    ./scripts/train_models.sh --force-retrain              # retrain on all given data
 #    ./scripts/train_models.sh --path-a-only | --path-b-only
 #    ./scripts/train_models.sh --eda-only                   # stop after both EDA reports
+#    ./scripts/train_models.sh --split-manifest FILE        # base split to reuse / extend
+#    DNS_DETECT_MODELS_DIR=runs/v2 ./scripts/train_models.sh --force-retrain ...   # separate run folder
 #    ./scripts/train_models.sh --verbose                    # also stream the full output
 #    ./scripts/train_models.sh --help
 # ============================================================
@@ -22,7 +25,7 @@ RED='\033[0;31m'; GREEN='\033[0;32m'; YELLOW='\033[1;33m'; BOLD='\033[1m'; NC='\
 [[ -t 1 ]] || { RED=''; GREEN=''; YELLOW=''; BOLD=''; NC=''; }   # no colour codes when piped
 
 STEP_N=0
-STEP_TOTAL=10
+STEP_TOTAL=12
 TRAIN_LOG=""
 VERBOSE=false
 EDA_ONLY=false
@@ -87,7 +90,9 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(dirname "$SCRIPT_DIR")"
 DATA_DIR="$PROJECT_ROOT/data/processed"
 LOG_DIR="$PROJECT_ROOT/logs"
-MODELS_DIR="$PROJECT_ROOT/models"
+# Same rule as src/dns_detect/utils/paths.py: DNS_DETECT_MODELS_DIR, relative to the project root.
+MODELS_DIR="${DNS_DETECT_MODELS_DIR:-models}"
+[[ "$MODELS_DIR" == /* ]] || MODELS_DIR="$PROJECT_ROOT/$MODELS_DIR"
 DNS_LOG_DIR="$PROJECT_ROOT/data/raw"
 export PYTHONPATH="$PROJECT_ROOT/src${PYTHONPATH:+:$PYTHONPATH}"
 export TF_CPP_MIN_LOG_LEVEL=2   # hide TensorFlow's C++ info/warning lines
@@ -103,6 +108,10 @@ PATH_B_MODEL="dns_trafficformer"
 N_DAYS=20
 CUSTOM_DATA_DIR=""
 PCAP_LABEL=""          # provenance label applied to every query in input pcaps (0/1)
+SEED=42
+BASE_MANIFEST="$PROJECT_ROOT/data/processed/splits/time_seed42.json"   # base split (reused / extended)
+NEW_SPLIT=false
+BASE_EXPLICIT=false
 declare -a EXTRA_FILES=()
 
 # ── ARG PARSING ────────────────────────────────────────────
@@ -136,6 +145,18 @@ Training:
   --path-b-only       Train only Path B (Trafficformer)
   --n-days N          Path B window size in queries (default: 20)
   --model-name NAME   Path B model save name (default: dns_trafficformer)
+  --seed N            Seed for Path A, Path B and a fresh split (default: 42)
+
+Split (one split for Path A, Path B and fusion — saved as <models>/split_manifest.json):
+  --split-manifest F  Base split to reuse (default: data/processed/splits/time_seed42.json).
+                      Rows already in it keep their split, so the test set stays the same
+                      across runs; new rows go to train/val only, never test.
+  --new-split         Ignore the base and make a fresh time-ordered split of this data
+
+Fusion:
+  Trained after both paths on the same split's validation rows (never on rows Path A/B
+  trained on), then compared once on the test rows. When only one path is retrained, the
+  fusion is retrained only if the other path was trained on the same split.
 
 Output:
   --verbose, -v       Also stream the full training output (always written to logs/)
@@ -157,6 +178,9 @@ while [[ $# -gt 0 ]]; do
     --path-b-only)    PATH_B_ONLY=true;       shift ;;
     --n-days)         N_DAYS="${2:?--n-days needs a number}";           shift 2 ;;
     --model-name)     PATH_B_MODEL="${2:?--model-name needs a name}";   shift 2 ;;
+    --seed)           SEED="${2:?--seed needs a number}";               shift 2 ;;
+    --split-manifest) BASE_MANIFEST="${2:?--split-manifest needs a file}"; BASE_EXPLICIT=true; shift 2 ;;
+    --new-split)      NEW_SPLIT=true;         shift ;;
     --data-dir)       CUSTOM_DATA_DIR="${2:?--data-dir needs a path}";  shift 2 ;;
     --pcap-label)     PCAP_LABEL="${2:?--pcap-label needs 0 or 1}";     shift 2 ;;
     --verbose|-v)     VERBOSE=true;           shift ;;
@@ -189,11 +213,16 @@ MEM_PATH_B_THRESHOLD="$MODELS_DIR/${PATH_B_MODEL}_threshold.json"
 MEM_PATH_B_NORM="$MODELS_DIR/${PATH_B_MODEL}_norm.json"
 MEM_METADATA="$MODELS_DIR/training_metadata.json"
 MEM_PROVENANCE="$MODELS_DIR/training_provenance.json"
+MEM_SPLIT="$MODELS_DIR/split_manifest.json"
+MEM_FUSION="$MODELS_DIR/fusion_lr.pkl"
 
 # ── SETUP ──────────────────────────────────────────────────
 mkdir -p "$DATA_DIR" "$LOG_DIR" "$MODELS_DIR"
 cd "$PROJECT_ROOT"
 TRAIN_LOG="$LOG_DIR/training_$(date +%Y%m%d_%H%M%S).log"
+if [[ "$BASE_EXPLICIT" == true && ! -f "$BASE_MANIFEST" ]]; then
+  echo "✗ --split-manifest not found: $BASE_MANIFEST" >&2; exit 1
+fi
 START_TIME=$(date +%s)
 
 printf "${BOLD}Training DNS models${NC} · log: %s\n" "${TRAIN_LOG#"$PROJECT_ROOT"/}"
@@ -636,10 +665,28 @@ print(f"Label provenance: {out['by_source']}")
 PYGUARD
 
 # ══════════════════════════════════════════════════════════════
-#  9. TRAIN PATH A  (supervised: RF + GBT, Transformer kept as a baseline)
+#  9. SPLIT — one shared, time-ordered train/val/test split for Path A, Path B and fusion
+# ══════════════════════════════════════════════════════════════
+# The fusion is fitted on validation rows, so those rows must be unseen by BOTH paths
+# (stacked generalization). Old test rows stay frozen so runs remain comparable.
+SPLIT_ARGS=(--labeled "$MERGED_LABELED" --seed "$SEED" --out "$MEM_SPLIT.tmp")
+if [[ "$NEW_SPLIT" == false && -f "$BASE_MANIFEST" ]]; then SPLIT_ARGS+=(--base "$BASE_MANIFEST"); fi
+SPLIT_LINE=$(python3 "$SCRIPT_DIR/prepare_split.py" "${SPLIT_ARGS[@]}" 2>>"$TRAIN_LOG")   || fail "Could not build the split (see log) — existing models were not changed"
+SPLIT_LINE="${SPLIT_LINE%$''}"
+read -r SPLIT_MODE SPLIT_TR SPLIT_VAL SPLIT_TE SPLIT_NEW SPLIT_SHA <<< "$SPLIT_LINE"
+mv -f "$MEM_SPLIT.tmp" "$MEM_SPLIT"
+case "$SPLIT_MODE" in
+  reused)   SPLIT_DESC="reused $(basename "$BASE_MANIFEST")" ;;
+  extended) SPLIT_DESC="extended $(basename "$BASE_MANIFEST") with $SPLIT_NEW new rows (train/val only, test frozen)" ;;
+  *)        SPLIT_DESC="new time-ordered split (seed $SEED)" ;;
+esac
+say "Split: $SPLIT_DESC · train $SPLIT_TR / val $SPLIT_VAL / test $SPLIT_TE → ${MEM_SPLIT#"$PROJECT_ROOT"/}"
+
+# ══════════════════════════════════════════════════════════════
+#  10. TRAIN PATH A  (supervised: RF + GBT, Transformer kept as a baseline)
 # ══════════════════════════════════════════════════════════════
 if [[ "$TRAIN_PATH_A" == true ]]; then
-  run_or_fail "Path A training failed" python3 -m dns_detect.models.path_a --train "$MERGED_LABELED"
+  run_or_fail "Path A training failed" python3 -m dns_detect.models.path_a --train "$MERGED_LABELED"     --split-manifest "$MEM_SPLIT" --seed "$SEED"
   for f in "$MEM_RF" "$MEM_TF" "$MEM_SCALER" "$MEM_THRESHOLD"; do
     [[ -f "$f" ]] || fail "Path A did not save $(basename "$f")"
   done
@@ -650,15 +697,49 @@ else
 fi
 
 # ══════════════════════════════════════════════════════════════
-#  10. TRAIN PATH B  (unsupervised: Trafficformer on benign windows)
+#  11. TRAIN PATH B  (unsupervised: Trafficformer on benign windows)
 # ══════════════════════════════════════════════════════════════
 if [[ "$TRAIN_PATH_B" == true ]]; then
   run_or_fail "Path B training failed" python3 -m dns_detect.models.path_b_train \
-    --filename "$MERGED_LABELED" --n_days "$N_DAYS" --save_name "$PATH_B_MODEL" --data_dir "/"
+    --filename "$MERGED_LABELED" --n_days "$N_DAYS" --save_name "$PATH_B_MODEL" --data_dir "/"     --split-manifest "$MEM_SPLIT" --seed "$SEED"
   [[ -f "$MEM_PATH_B" ]] || fail "Path B did not save ${PATH_B_MODEL}.h5"
   say "Path B trained (window $N_DAYS, anomaly threshold $(json_num "$MEM_PATH_B_THRESHOLD" threshold))"
 else
   say "Path B skipped (existing model kept)"
+fi
+
+# ══════════════════════════════════════════════════════════════
+#  12. TRAIN FUSION  (learned LR over Path A + Path B + rules, on the split's validation rows)
+# ══════════════════════════════════════════════════════════════
+# Valid only when both paths were trained on this same split. A path kept from an earlier run
+# counts when training_metadata.json records the same split fingerprint for it.
+prev_split_of() {
+  python3 -c "
+import json
+try: print(json.load(open('$MEM_METADATA')).get('path_$1_split_sha256', ''))
+except Exception: print('')" 2>/dev/null || true
+}
+FUSION_OK=true
+if [[ "$TRAIN_PATH_A" == false && "$(prev_split_of a)" != "$SPLIT_SHA" ]]; then FUSION_OK=false; fi
+if [[ "$TRAIN_PATH_B" == false && "$(prev_split_of b)" != "$SPLIT_SHA" ]]; then FUSION_OK=false; fi
+if [[ ! -f "$MEM_RF" || ! -f "$MEM_PATH_B" ]]; then FUSION_OK=false; fi
+
+FUSION_TRAINED=false
+if [[ "$FUSION_OK" == true ]]; then
+  FUSION_ARGS=(--labeled "$MERGED_LABELED" --split-manifest "$MEM_SPLIT" --path-b-model "$PATH_B_MODEL")
+  [[ "${ALLOW_HEURISTIC_LABELS:-false}" == true ]] && FUSION_ARGS+=(--allow-heuristic-labels)
+  run_or_fail "Fusion training failed — Path A/B were saved, but the fusion model is stale; fix and re-run"     python3 "$SCRIPT_DIR/train_fusion.py" "${FUSION_ARGS[@]}"
+  run python3 "$SCRIPT_DIR/train_fusion.py" --tiers-for-v1 "${FUSION_ARGS[@]}"     || later "Fusion confidence tiers not written (see log) — the bridge falls back to fixed tiers"
+  FUSION_MODE=$(python3 -c "from dns_detect.config import settings; print(settings.ensemble.fusion)" 2>/dev/null || echo lr)
+  if [[ "$FUSION_MODE" == "lr_v2" ]]; then
+    run_or_fail "Fusion V2 training failed" python3 "$SCRIPT_DIR/train_fusion.py" --version 2 "${FUSION_ARGS[@]}"
+  fi
+  FUSION_TRAINED=true
+  METRICS="$MODELS_DIR/evaluation_metrics.json"
+  say "Fusion trained (test: recall $(json_num "$METRICS" fusion.test.learned_lr.recall), false alarms $(json_num "$METRICS" fusion.test.learned_lr.false_alarms) vs OR rule $(json_num "$METRICS" fusion.test.or_rule.false_alarms))"
+else
+  [[ -f "$MEM_FUSION" ]] && later "The existing fusion model no longer matches the paths — retrain both paths (or both with --force-retrain) before running the pipeline"
+  say "Fusion skipped — Path A and Path B were not trained on the same split"
 fi
 
 # ══════════════════════════════════════════════════════════════
@@ -690,6 +771,11 @@ update = {
     "label_source":           "$LABEL_SRC",
     "path_b_model_name":      "$PATH_B_MODEL",
     "path_b_window_size":     $N_DAYS,
+    "seed":                   $SEED,
+    "split_manifest":         "$MEM_SPLIT",
+    "split_mode":             "$SPLIT_MODE",
+    "split_sha256":           "$SPLIT_SHA",
+    "fusion_trained":         "$FUSION_TRAINED" == "true",
     "retrain_mode":           mode,
     "new_files_this_run":     $NEW_FILES_FOUND,
     "skipped_files_this_run": $SKIPPED_ALREADY_TRAINED,
@@ -710,6 +796,8 @@ update = {
         "tf_threshold":  "$MEM_PATH_B_THRESHOLD",
         "tf_norm":       "$MEM_PATH_B_NORM",
         "provenance":    "$MEM_PROVENANCE",
+        "split":         "$MEM_SPLIT",
+        "fusion":        "$MEM_FUSION",
     },
 }
 
@@ -736,6 +824,7 @@ for path, trained in (("a", "$TRAIN_PATH_A"), ("b", "$TRAIN_PATH_B")):
     if trained == "true":
         update[f"path_{path}_trained"] = "$NOW"
         update[f"path_{path}_prev"]    = meta.get(f"path_{path}_trained", "first time")
+        update[f"path_{path}_split_sha256"] = "$SPLIT_SHA"
     else:
         update[f"path_{path}_trained"] = meta.get(f"path_{path}_trained", "$NOW")
 
@@ -751,6 +840,8 @@ history.append({
     "retrain_mode":  mode,
     "path_a":        "$TRAIN_PATH_A",
     "path_b":        "$TRAIN_PATH_B",
+    "fusion":        "$FUSION_TRAINED",
+    "split_sha256":  "$SPLIT_SHA",
 })
 update["training_history"] = history[-10:]
 
@@ -762,6 +853,6 @@ PYEOF
 flush_notes
 
 ELAPSED=$(( $(date +%s) - START_TIME ))
-printf "${GREEN}${BOLD}✓ Training complete${NC} in %dm %ds · models saved to models/ · next: ./scripts/run_pipeline.sh\n" \
-  $((ELAPSED / 60)) $((ELAPSED % 60))
+printf "${GREEN}${BOLD}✓ Training complete${NC} in %dm %ds · models saved to %s · next: ./scripts/run_pipeline.sh\n" \
+  $((ELAPSED / 60)) $((ELAPSED % 60)) "${MODELS_DIR#"$PROJECT_ROOT"/}/"
 log "Training complete in ${ELAPSED}s"

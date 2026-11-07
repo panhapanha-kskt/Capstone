@@ -40,7 +40,9 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(dirname "$SCRIPT_DIR")"
 DATA_DIR="$PROJECT_ROOT/data/processed"
 LOG_DIR="$PROJECT_ROOT/logs"
-MODELS_DIR="$PROJECT_ROOT/models"
+# Same rule as src/dns_detect/utils/paths.py: DNS_DETECT_MODELS_DIR, relative to the project root.
+MODELS_DIR="${DNS_DETECT_MODELS_DIR:-models}"
+[[ "$MODELS_DIR" == /* ]] || MODELS_DIR="$PROJECT_ROOT/$MODELS_DIR"
 DNS_LOG_DIR="$PROJECT_ROOT/data/raw"
 export PYTHONPATH="$PROJECT_ROOT/src${PYTHONPATH:+:$PYTHONPATH}"
 

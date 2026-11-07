@@ -38,10 +38,12 @@ Technitium DNS Server --> Filebeat --> Logstash --> Elasticsearch
 # Install dependencies
 pip install -r requirements.txt
 
-# Train models (run once)
-./scripts/train_models.sh
-python scripts/train_fusion.py --labeled data/processed/merged_features_labeled.json \
-    --split-manifest data/processed/splits/time_seed42.json      # learned fusion (models/fusion_lr.pkl)
+# Train Path A + Path B + learned fusion on one shared time-ordered split
+./scripts/train_models.sh --force-retrain \
+    --files data/processed/labeled_tunnels.json data/processed/labeled_benign.json
+#   split: reuses data/processed/splits/time_seed42.json (test rows frozen; new rows → train/val)
+#          and saves it as models/split_manifest.json
+#   keep a run separate for comparison:  DNS_DETECT_MODELS_DIR=runs/v2 ./scripts/train_models.sh ...
 
 # Run detection pipeline
 ./scripts/run_pipeline.sh

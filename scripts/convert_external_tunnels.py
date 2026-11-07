@@ -241,8 +241,19 @@ def main():
     ex = DNSFeatureExtractor()
     os.makedirs(args.out_dir, exist_ok=True)
     summary = {}
-    fam_dirs = [p for p in sorted(p for p in Path(args.root).iterdir() if p.is_dir())
-                if not args.families or p.name.lower() in args.families]
+    root = Path(args.root)
+    if not root.is_dir():
+        sys.exit(f"[error] --root not found: {root}")
+    tool_dirs = sorted(p for p in root.iterdir() if p.is_dir())
+    fam_dirs = [p for p in tool_dirs if not args.families or p.name.lower() in args.families]
+    if not fam_dirs:
+        if not tool_dirs and family_pcaps(root):
+            sys.exit(f"[error] --root {root} holds capture files, not tool folders. --root must be the "
+                     f"folder that CONTAINS the tool folders (one level up: {root.parent}); "
+                     f"pick tools with --families {root.name}")
+        found = ", ".join(p.name for p in tool_dirs) or "none"
+        sys.exit(f"[error] no tool folder under {root} matches --families {' '.join(args.families or [])} "
+                 f"(tool folders found: {found})")
 
     scanned = {}
     if not args.legacy:

@@ -370,10 +370,12 @@ The repository holds pcaps from cobaltstrike, det, dns2tcp, dns_shell, dnscat2, 
 git clone --depth 1 https://github.com/Utah1A/DNS-tunnelling-detection-by-fusing-encoding-feature-and-behavioral-feature \
     data/external/tu2023/repo
 
-# 2. Convert to labeled records (label = attack, by provenance)
+# 2. Convert to labeled records (label = attack, by provenance).
+#    Only the 6 tools not already in labeled_tunnels.json (see the warning below).
 python3 scripts/convert_external_tunnels.py \
     --root data/external/tu2023/repo/datasets/base_malicious_dataset \
-    --out-dir data/external/tu2023
+    --out-dir data/external/tu2023 \
+    --families cobaltstrike det dns_shell dnscat2 iodine ozymandns
 
 # 3. Train
 DNS_DETECT_MODELS_DIR=runs/v3 ./scripts/train_models.sh --force-retrain \
@@ -391,13 +393,15 @@ What the converter does:
 
 **Check its summary.** It guesses each tool's tunnel domain as the parent domain with the most queries. If a guess looks wrong (for example `google.com`), re-run with `--domain TOOL=REAL.DOMAIN`.
 
-After training, the `[8/12] Labeled ... (families: ...)` line should list all the new tools.
+> **Warning: do not convert dns2tcp and dnsexfiltrator again.** `labeled_tunnels.json` was most likely built from the same Tu captures: same file names, and 2019 timestamps. It holds 2,000 queries per capture, while the converter keeps up to 5,000 per tool. Exact duplicates are dropped during the merge, but the extra queries come from the same tunnel sessions as the frozen test rows. They would land in training next to those test rows in time, which is leakage and makes the test scores look better than they are. Hence `--families` with only the 6 new tools.
 
-Because new rows never go to test, the new tools are not in the test set. To measure how well the model catches a tool it never saw, run the leave-one-tool-out test:
+After training, the `[8/12] Labeled ... (families: ...)` line should list all 8 tools: the 2 from `labeled_tunnels.json` plus the 6 new ones.
+
+Because new rows never go to test, the new tools are not in the test set. To measure how well the model catches a tool it never saw, run the leave-one-tool-out test. `--splits-dir` keeps it from writing into the committed `data/processed/splits/` folder:
 
 ```bash
 python3 scripts/run_cv.py --labeled data/processed/merged_features_labeled.json --strategies lofo \
-    --out models/cv_lofo.json
+    --splits-dir runs/v3/cv_splits --out runs/v3/cv_lofo.json
 ```
 
 ### 10.2 Record your own attacks
@@ -435,10 +439,11 @@ Path A uses benign and attack rows. Path B automatically takes only the benign r
 cd /home/ounnha/Documents/Capstone
 export PYTHONPATH=src
 
-# Step 3 of section 10.1: convert the Tu pcaps → labeled JSON
+# Step 2 of section 10.1: convert the 6 new Tu tools → labeled JSON
 python3 scripts/convert_external_tunnels.py \
     --root data/external/tu2023/repo/datasets/base_malicious_dataset \
-    --out-dir data/external/tu2023
+    --out-dir data/external/tu2023 \
+    --families cobaltstrike det dns_shell dnscat2 iodine ozymandns
 
 # Train Path A + Path B + fusion
 DNS_DETECT_MODELS_DIR=runs/v3 ./scripts/train_models.sh --force-retrain \

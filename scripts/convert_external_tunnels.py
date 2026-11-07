@@ -38,6 +38,7 @@ Usage:
 
 import argparse
 import json
+import multiprocessing
 import os
 import sys
 import time
@@ -193,7 +194,9 @@ def scan_all(jobs_list: list, jobs: int) -> dict:
         for k, p in enumerate(paths, 1):
             done(p, scan_pcap(p), k)
         return out
-    with ProcessPoolExecutor(max_workers=jobs) as pool:
+    # "spawn" starts each worker as a fresh interpreter. The Linux default ("fork") copies the
+    # parent process, which can deadlock when the parent has threads (Python warns about it).
+    with ProcessPoolExecutor(max_workers=jobs, mp_context=multiprocessing.get_context("spawn")) as pool:
         futs = {pool.submit(scan_pcap, p): p for p in paths}
         for k, fut in enumerate(as_completed(futs), 1):
             done(futs[fut], fut.result(), k)

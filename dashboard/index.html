@@ -45,6 +45,9 @@ button { font: 500 13px var(--font-ui); color: var(--ink); background: var(--sur
 button:hover { background: var(--wash); }
 button:focus-visible { outline: 2px solid var(--blue); outline-offset: 2px; }
 button:disabled { opacity: .5; cursor: default; }
+a.btn { font: 500 13px var(--font-ui); color: var(--ink); background: var(--surface); border: 0; box-shadow: 0 0 0 1px var(--axis);
+  border-radius: 7px; padding: 6px 13px; text-decoration: none; display: inline-block; }
+a.btn:hover { background: var(--wash); }
 
 .card { background: var(--surface); border-radius: 10px; box-shadow: 0 0 0 1px var(--ring); }
 .status { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 22px; padding: 12px 16px; }
@@ -114,6 +117,7 @@ footer { color: var(--ink-3); font-size: 12px; }
     <div class="top-right">
       <span class="badge" id="mode">LIVE</span>
       <span class="conn"><span class="dot" id="dot"></span><span id="connText">Connecting</span></span>
+      <a class="btn" href="/soc" title="Open the SOC monitoring view">SOC view</a>
       <button id="runBtn" type="button">Run now</button>
     </div>
   </div>

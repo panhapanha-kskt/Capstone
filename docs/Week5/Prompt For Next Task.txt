@@ -1,0 +1,1533 @@
+# Week 6 — Advanced SOC Monitoring Suite Implementation
+## Project: DNS Traffic Anomaly Detection System
+
+### ROLE AND EXPERTISE
+
+You are a Senior SOC Architect, Full-Stack Engineer, Cybersecurity Engineer, Python Backend Developer, SIEM/SOAR Engineer, and Enterprise UI/UX Designer.
+
+You have deep experience with:
+
+- Fortinet Security Ecosystem (FortiCloud, FortiSIEM, FortiAnalyzer, FortiSOAR, FortiGate).
+- Security Operations Center (SOC) monitoring.
+- SIEM alert management and incident response.
+- SOAR playbooks and automation.
+- DNS security monitoring and threat intelligence.
+- MITRE ATT&CK framework.
+- Python backend engineering.
+- JavaScript, React 18, HTML5, CSS3, and SVG.
+- REST API design.
+- Event-driven monitoring systems.
+- Database and persistent state management.
+- Enterprise dashboards and security visualization.
+
+Your mission is to continue developing my existing SOC Dashboard Suite.
+
+**This is an extension of an existing implementation, NOT a new dashboard project.**
+
+You must inspect the existing codebase, understand the current implementation, identify missing functionality, design the improvements, and implement them without breaking existing features.
+
+---
+
+# PHASE 1 — UNDERSTAND THE EXISTING PROJECT
+
+Before modifying anything, thoroughly inspect the existing project.
+
+## 1.1 Project Context
+
+Project name:
+
+DNS Traffic Anomaly Detection System for Detecting DNS Tunneling and Malware Behavior.
+
+The dashboard is part of a larger DNS security detection project.
+
+The dashboard visualizes results from the existing pipeline, including:
+- DNS traffic information.
+- DNS queries.
+- Detection events.
+- Threat intelligence.
+- Detection rules.
+- ML detection results.
+- Statistical anomalies.
+- Severity classifications.
+- Monitoring metrics.
+
+The dashboard is intended to become a SOC-style monitoring environment.
+
+## 1.2 Strict Development Scope
+
+**Only modify files inside `dashboard/`.**
+
+Do not modify:
+- DNS detection source code.
+- ML models.
+- Model training.
+- Feature extraction.
+- Detection algorithms.
+- Threat detection rules outside the dashboard.
+- Existing pipeline processing logic.
+- Existing data-generation logic outside the dashboard.
+
+Do not introduce unnecessary changes to the existing project architecture.
+
+If an existing pipeline limitation prevents a requested dashboard feature, document the limitation and implement the best possible dashboard-side solution without modifying the detection pipeline.
+
+## 1.3 Existing Architecture
+
+The current architecture is:
+
+```text
+Existing DNS Detection Pipeline
+             |
+             v
+       Pipeline Results
+             |
+             v
+     dashboard/server.py
+             |
+             v
+       GET /api/state
+             |
+             v
+      Shared Dashboard State
+             |
+       +-----+-----+-----+
+       |     |     |     |
+       v     v     v     v
+      /    /soc /usecases /alerts
+       |     |     |     |
+       +-----+-----+-----+
+             |
+             v
+       SOC Monitoring UI
+```
+
+Technical characteristics:
+
+- Backend: Python standard library only.
+- Main server: `dashboard/server.py`.
+- Frontend: HTML, CSS, JavaScript.
+- Alerts application: React 18 + htm from CDN.
+- No frontend build step.
+- Charts: Hand-drawn SVG.
+- Shared state endpoint: `GET /api/state`.
+- Polling interval: Every 3 seconds.
+- Demo mode and real mode use the same state structure.
+- Dashboard pages do not contain demo-specific logic.
+
+Preserve this architecture wherever practical.
+
+---
+
+# PHASE 2 — UNDERSTAND THE EXISTING WEEK 5 IMPLEMENTATION
+
+The following functionality has already been implemented.
+
+Do not recreate it or remove it.
+
+## 2.1 Existing Pages
+
+| Route | File | Existing Functionality |
+|---|---|---|
+| `/` | `index.html` | Classic dashboard |
+| `/soc` | `soc.html` | Monitoring Overview |
+| `/usecases` | `usecases.html` | Monitoring Use Cases |
+| `/alerts` | `alerts.html` | Alerts Management Interface |
+
+### A. Classic Dashboard — `/`
+
+File: `dashboard/index.html`
+
+Existing functionality:
+- Original dashboard.
+- Existing visualizations.
+- Existing pipeline monitoring information.
+- Added SOC view navigation button.
+
+Requirement:
+
+Preserve the existing dashboard.
+
+Only make changes if necessary for navigation consistency or fixing an identified bug.
+
+### B. Monitoring Overview — `/soc`
+
+File: `dashboard/soc.html`
+
+Existing functionality:
+
+**Navigation**
+- Sidebar navigation.
+- Monitoring Overview.
+- Monitoring Use Cases.
+- Classic Dashboard.
+- Alerts.
+
+**Seven KPI Tiles**
+- Devices.
+- Domains.
+- Pipeline Runs.
+- Queries.
+- Events.
+- High Severity.
+- Escalated.
+
+**Donut Charts**
+- Alerts by Severity.
+- Alerts by Status.
+- Alerts by SLA.
+
+**Category Visualization**
+- Open Alerts by Category.
+
+**Historical Charts**
+- Average Log Rate.
+- Log Collection Breakdown (stacked).
+- Threat Detection Trend.
+
+Technical implementation:
+- Hand-drawn SVG.
+- No chart libraries.
+
+Requirement:
+
+Extend the overview with useful SOC operational metrics without duplicating existing visualizations.
+
+### C. Monitoring Use Cases — `/usecases`
+
+File: `dashboard/usecases.html`
+
+Existing functionality:
+
+**Cyber Kill Chain**
+- Reconnaissance.
+- Other existing stages through Action.
+- Live detection-event counts.
+- Clicking a stage filters the detection table.
+
+**Detection Use Case Management**
+- One use case per detection rule.
+- MITRE techniques.
+- Dominant severity.
+- Detection source.
+- Monitoring on/off toggle.
+- Exclusion flag.
+- Search.
+- Pagination.
+
+Existing limitations:
+- IT / OT tabs exist.
+- OT is intentionally empty because there are no OT sensors in this lab.
+- Monitoring toggles are persisted in browser localStorage.
+- Monitoring toggles do not actually change pipeline detection behavior.
+
+Requirement:
+
+Preserve the existing use-case structure and improve its management capabilities without pretending that browser-side toggles control the underlying detection engine.
+
+### D. Alerts — `/alerts`
+
+File: `dashboard/alerts.html`
+
+Existing implementation:
+- React 18.
+- htm.
+- CDN loading.
+- No build step.
+
+Existing visualizations:
+- Open Alerts by Severity pie chart with percentages.
+- Alerts by Type horizontal bars.
+- Open / Investigating breakdown.
+
+Existing 13-column alert grid:
+
+1. ID.
+2. Priority Weight.
+3. Severity.
+4. Assigned To.
+5. Name.
+6. Source.
+7. Type.
+8. Status.
+9. Escalated.
+10. Assigned Date.
+11. Ack SLA.
+12. Response SLA.
+13. Created On.
+
+Existing functionality:
+- Per-column search filters.
+- Click-to-sort headers.
+- Row selection.
+- Select-all.
+- Execute button enabled when rows are selected.
+- Pagination.
+- Slide-in alert detail drawer.
+
+Alert detail fields:
+- Client IP.
+- Domain.
+- MITRE tactics.
+- MITRE techniques.
+- Description.
+- Full alert record.
+
+Requirement:
+
+Do not replace the existing alerts application.
+
+Extend it into a functional alert investigation and management interface.
+
+## 2.2 Existing Backend — `dashboard/server.py`
+
+Existing changes:
+- Routes for `/soc`, `/usecases`, and `/alerts`.
+- HTML is read per request.
+- HTML changes do not require a server restart.
+- Python server route changes require restarting the server.
+- `/api/state` includes each alert's `rule_source`.
+
+Preserve the existing endpoint and server behavior.
+
+## 2.3 Existing Data Mapping
+
+The following fields are derived client-side from real pipeline data.
+
+| SOC Field | Existing Derivation |
+|---|---|
+| Status | New alert → Open; older + High → Investigating; otherwise Closed |
+| Escalated | New AND High → Yes |
+| Priority Weight | High 8 / Medium 5 / Low 2, +1 if new |
+| Ack SLA | Open → Awaiting Action; otherwise Met |
+| Response SLA | Open → In Progress for Medium; otherwise derived SLA state |
+| Alert Type | Derived from rule name |
+| Kill-chain stage | Derived from MITRE tactics |
+
+Alert types:
+- DNS Tunneling.
+- NXDOMAIN Flood.
+- Deep Subdomain.
+- ML Detection.
+- Statistical Anomaly.
+- Other.
+
+Kill-chain mappings:
+- Discovery → Reconnaissance.
+- CommandAndControl → Command and Control.
+- Exfiltration / Impact → Action.
+- Execution → Exploitation.
+- Persistence → Installation.
+
+Existing feed behavior:
+- The newest 150 alerts are returned.
+- Alerts older than the feed cap are counted as Closed/Met for consistent totals.
+- All dashboard pages should maintain consistent alert totals.
+
+IMPORTANT:
+
+The existing status and SLA mappings are derived, not persisted.
+
+This is one of the most important areas to improve.
+
+---
+
+# PHASE 3 — DESIGN THE NEXT-GENERATION SOC MONITORING ARCHITECTURE
+
+The goal is to transform the existing dashboard into a functional SOC monitoring suite.
+
+Use the following architecture as the target:
+
+```text
+             DNS DETECTION PIPELINE
+                      |
+                      v
+              Existing State Data
+                      |
+                      v
+              dashboard/server.py
+                      |
+           +----------+----------+
+           |                     |
+           v                     v
+     GET /api/state       Management APIs
+           |                     |
+           v                     v
+     Shared State          Persistent Store
+           |                     |
+           +----------+----------+
+                      |
+                      v
+              SOC Dashboard Suite
+                      |
+       +--------------+--------------+
+       |              |              |
+       v              v              v
+    Overview       Use Cases       Alerts
+       |              |              |
+       +--------------+--------------+
+                      |
+       +--------------+--------------+
+       |              |              |
+       v              v              v
+  Event Explorer  Device Health  Pipeline Health
+                      |
+                      v
+              Incident Investigation
+                      |
+                      v
+                SOAR Readiness
+```
+
+Maintain one shared state source for every dashboard page.
+
+The read endpoint must remain:
+
+`GET /api/state`
+
+Additional management endpoints are permitted when necessary.
+
+Do not create multiple competing sources of truth.
+
+---
+
+# PHASE 4 — IMPLEMENT ADVANCED ALERT MANAGEMENT
+
+This is the highest-priority development task.
+
+The current Alerts page is primarily a visualization and derived-status interface.
+
+Turn it into a functional alert management module.
+
+## 4.1 Persistent Alert Status
+
+Implement persistent alert statuses:
+
+- Open.
+- Acknowledged.
+- Investigating.
+- Escalated.
+- Resolved.
+- Closed.
+
+Requirements:
+
+1. Status changes must be saved on the server.
+2. Refreshing the browser must not reset alert status.
+3. Restarting the Python server must not reset alert status.
+4. Demo and real mode must use the same management implementation.
+5. Existing pipeline alerts must retain their original detection information.
+6. If an alert disappears from the newest 150 pipeline alerts, its management record must not disappear.
+
+Separate original detection data from analyst-managed metadata.
+
+Suggested model:
+
+```json
+{
+  "alert_id": "unique-alert-id",
+  "management": {
+    "status": "Investigating",
+    "assigned_to": "SOC Analyst 1",
+    "escalated": false,
+    "acknowledged_at": null,
+    "assigned_at": null,
+    "resolved_at": null,
+    "notes": [],
+    "updated_at": "ISO-8601"
+  }
+}
+```
+
+Use a stable alert identifier.
+
+Do not rely exclusively on array positions or temporary browser indexes.
+
+## 4.2 Analyst Assignment
+
+Implement:
+- Assign alert to analyst.
+- Change assignment.
+- Unassign alert.
+- Display assigned analyst.
+- Track assignment time.
+
+For the initial implementation, use a configurable local analyst list.
+
+Do not invent real authenticated users.
+
+## 4.3 Alert Investigation Workflow
+
+Implement the following workflow:
+
+```text
+New Alert
+    |
+    v
+Open
+    |
+    v
+Acknowledge
+    |
+    v
+Investigating
+    |
+    +-------> Escalated
+    |             |
+    |             v
+    |        Investigation
+    |             |
+    +-------------+
+                  |
+                  v
+               Resolved
+                  |
+                  v
+                Closed
+```
+
+Support:
+- Acknowledge.
+- Start investigation.
+- Add investigation notes.
+- Escalate.
+- Resolve.
+- Close.
+- Reopen when appropriate.
+
+Implement state-transition validation.
+
+For example:
+- A closed alert cannot be silently modified as though it were still open.
+- Resolving an alert must preserve its investigation history.
+- Escalation must create an audit event.
+
+## 4.4 Investigation Notes
+
+Allow analysts to add:
+- Investigation observations.
+- Evidence references.
+- False-positive reasoning.
+- Threat intelligence findings.
+- Response decisions.
+
+Persist notes on the server.
+
+Include timestamps.
+
+## 4.5 Audit Trail
+
+Every management operation should generate an audit entry.
+
+Example:
+
+```json
+{
+  "event_id": "audit-001",
+  "alert_id": "alert-001",
+  "action": "STATUS_CHANGED",
+  "old_value": "Open",
+  "new_value": "Investigating",
+  "actor": "SOC Analyst 1",
+  "timestamp": "ISO-8601"
+}
+```
+
+Support:
+- Assignment history.
+- Status history.
+- Escalation history.
+- Analyst notes.
+- Resolution history.
+
+Do not claim the audit actor is authenticated unless actual authentication exists.
+
+## 4.6 Bulk Operations
+
+The existing Execute button currently enables when rows are selected.
+
+Implement actual bulk management actions:
+
+- Assign selected alerts.
+- Acknowledge selected alerts.
+- Change status.
+- Escalate selected alerts.
+- Close selected alerts where valid.
+
+Requirements:
+- Validate every selected alert.
+- Report successful and failed operations.
+- Prevent accidental destructive operations.
+- Confirm bulk actions before execution.
+- Refresh the UI after successful operations.
+
+---
+
+# PHASE 5 — IMPLEMENT SOC EVENT EXPLORER
+
+Create a new page:
+
+Route: `/events`
+
+File: `dashboard/events.html`
+
+Purpose:
+
+Provide a centralized interface for exploring DNS detection events.
+
+The Event Explorer should help analysts understand what happened, where it happened, and why an event was detected.
+
+## 5.1 Event Table
+
+Display available event fields such as:
+
+- Timestamp.
+- Source IP.
+- Domain.
+- DNS query type.
+- Detection rule.
+- Detection source.
+- Severity.
+- MITRE tactic.
+- MITRE technique.
+- Anomaly score.
+- ML score, when available.
+- Detection reason.
+
+Only display fields that actually exist in the underlying state.
+
+If information is unavailable, show N/A rather than inventing a value.
+
+## 5.2 Search and Filtering
+
+Implement:
+- Global search.
+- Domain filtering.
+- Source IP filtering.
+- Severity filtering.
+- Detection type filtering.
+- Detection source filtering.
+- MITRE technique filtering.
+- Time-range filtering.
+
+Include:
+- Pagination.
+- Sorting.
+- Clear filters.
+- Result counts.
+
+## 5.3 Event Detail Investigation
+
+Clicking an event should open a detail panel.
+
+Display:
+- Original event.
+- Related alert.
+- Domain information.
+- Source IP.
+- Detection rule.
+- Detection reason.
+- Available statistical features.
+- Available ML outputs.
+- MITRE mapping.
+- Event timestamp.
+
+Do not calculate new detection results in the dashboard.
+
+Use existing pipeline results only.
+
+## 5.4 Event-to-Alert Relationships
+
+Where sufficient identifiers or matching fields exist, connect events to alerts.
+
+If the relationship is inferred rather than directly supplied by the pipeline, label it clearly as inferred.
+
+---
+
+# PHASE 6 — IMPLEMENT DEVICE AND ASSET MONITORING
+
+Create:
+
+Route: `/devices`
+
+File: `dashboard/devices.html`
+
+Purpose:
+
+Provide a SOC-style view of monitored infrastructure.
+
+Display available device and source information.
+
+Potential asset categories:
+- DNS servers.
+- Windows endpoints.
+- Linux endpoints.
+- Network devices.
+- Security sensors.
+- Monitoring agents.
+
+## 6.1 Device Inventory
+
+Columns:
+
+- Device Name.
+- IP Address.
+- Device Type.
+- Operating System.
+- Collection Source.
+- Last Seen.
+- Event Count.
+- Health Status.
+
+Use real information from existing state data.
+
+Do not generate fake device inventories in real mode.
+
+## 6.2 Device Health
+
+Possible states:
+- Online.
+- Offline.
+- Degraded.
+- Unknown.
+
+Health rules must be transparent and based on actual telemetry timestamps.
+
+For example:
+
+- Online: recent successful telemetry.
+- Offline: telemetry has not been received within a configurable threshold.
+- Degraded: partial collection or reported errors.
+- Unknown: insufficient information.
+
+Do not label a device Offline simply because its IP address is missing.
+
+## 6.3 Device Detail View
+
+Display:
+- Device information.
+- Last communication.
+- Event history.
+- Related alerts.
+- Collection source.
+- Available health metrics.
+
+If the current pipeline does not provide a field, indicate that additional telemetry integration is required.
+
+---
+
+# PHASE 7 — IMPLEMENT PIPELINE HEALTH MONITORING
+
+Create:
+
+Route: `/health`
+
+File: `dashboard/health.html`
+
+Purpose:
+
+Allow SOC analysts to understand whether the monitoring and detection pipeline is operating correctly.
+
+This page must focus on system health, not only threat detections.
+
+## 7.1 Pipeline Monitoring
+
+Display available information about:
+
+- DNS log collection.
+- Log processing.
+- Feature extraction.
+- Detection execution.
+- ML inference.
+- Threat intelligence processing.
+- Dashboard data refresh.
+
+Possible metrics:
+- Total queries processed.
+- Events generated.
+- Processing rate.
+- Last successful run.
+- Last event timestamp.
+- Processing errors.
+- Data freshness.
+- Pipeline status.
+
+Only show metrics that can be grounded in actual server or pipeline information.
+
+## 7.2 Health Indicators
+
+Use:
+
+- Healthy.
+- Warning.
+- Critical.
+- Unknown.
+
+Provide clear explanations for each status.
+
+For example:
+
+- Healthy: recent successful processing.
+- Warning: delayed processing or elevated errors.
+- Critical: confirmed processing failure.
+- Unknown: insufficient health information.
+
+Do not infer that the entire pipeline is healthy simply because the HTTP server is running.
+
+## 7.3 Data Freshness
+
+Implement:
+- Last data received.
+- Last successful pipeline update.
+- Last dashboard state update.
+- Current polling status.
+- Data freshness indicator.
+
+Clearly distinguish:
+- Dashboard refresh time.
+- Last actual pipeline event time.
+
+These are not necessarily the same.
+
+---
+
+# PHASE 8 — IMPROVE THE SOC MONITORING OVERVIEW
+
+Extend `/soc`.
+
+Do not remove the existing seven KPI tiles or historical charts.
+
+Add useful operational information.
+
+## 8.1 New Operational Metrics
+
+Where supported, introduce:
+
+- Active Alerts.
+- Unacknowledged Alerts.
+- Alerts Under Investigation.
+- Escalated Alerts.
+- Resolved Alerts.
+- Critical Detection Events.
+- Online Devices.
+- Offline Devices.
+- Pipeline Health.
+
+Do not duplicate existing KPI information unnecessarily.
+
+## 8.2 SOC Operational Charts
+
+Consider:
+- Alert Volume Over Time.
+- Alert Resolution Trend.
+- Severity Distribution.
+- Detection Source Distribution.
+- Top Detected Domains.
+- Top Source IPs.
+- Detection Rule Distribution.
+
+Use SVG charts or existing frontend capabilities.
+
+Avoid unnecessary charting dependencies.
+
+## 8.3 Time Filters
+
+Implement:
+- Last 15 minutes.
+- Last hour.
+- Last 24 hours.
+- Last 7 days.
+- Custom time range, if the underlying timestamps support it.
+
+All charts and KPI calculations must use consistent filtering logic.
+
+---
+
+# PHASE 9 — IMPROVE MONITORING USE CASE MANAGEMENT
+
+Extend `/usecases`.
+
+Preserve the existing Cyber Kill Chain and detection-rule table.
+
+## 9.1 Server-Side Persistence
+
+Move use-case management preferences from browser-only localStorage to server-side persistent storage.
+
+Persist:
+- Monitoring visibility preference.
+- Exclusion status.
+- Analyst notes, if implemented.
+- Updated timestamp.
+
+Maintain browser compatibility where practical.
+
+## 9.2 Honest Monitoring Controls
+
+The existing monitoring toggle does not modify the detection pipeline.
+
+Keep this limitation explicit.
+
+Distinguish between:
+
+**Dashboard Visibility / Monitoring Preference**
+- Controls whether a use case is shown as active in the dashboard.
+- Can filter dashboard views.
+- Does not disable detection rules.
+
+**Detection Engine Enforcement**
+- Requires changes to the actual detection engine.
+- Is outside this development scope.
+
+Never represent a dashboard-only toggle as disabling a real detection rule.
+
+## 9.3 Use Case Detail
+
+Clicking a use case should display:
+- Rule name.
+- Description.
+- Severity.
+- Detection source.
+- MITRE tactics.
+- MITRE techniques.
+- Associated alert count.
+- Associated event count.
+- Latest detection.
+- Monitoring preference.
+
+---
+
+# PHASE 10 — BUILD SOAR-READY INCIDENT RESPONSE
+
+Prepare the dashboard for integration with enterprise SOAR tools.
+
+Use FortiSOAR as an architectural reference, not as a claim that the project already has a Fortinet integration.
+
+## 10.1 Incident Response Workflow
+
+Implement a structured workflow:
+
+```text
+Detection
+    |
+    v
+Alert Generation
+    |
+    v
+Alert Enrichment
+    |
+    v
+SOC Investigation
+    |
+    v
+Analyst Decision
+    |
+    +----------------------+
+    |                      |
+    v                      v
+False Positive        Confirmed Incident
+                           |
+                           v
+                     Response Plan
+                           |
+                           v
+                     Human Approval
+                           |
+                           v
+                     Response Execution
+                           |
+                           v
+                     Verification
+                           |
+                           v
+                     Incident Closure
+```
+
+## 10.2 Response Actions
+
+Design a response-action interface with possible actions:
+
+- Add source IP to investigation watchlist.
+- Mark domain for further investigation.
+- Create an incident.
+- Generate an investigation report.
+- Export evidence.
+- Prepare a firewall block request.
+- Prepare endpoint isolation request.
+
+Important:
+
+Do not actually block IP addresses, isolate endpoints, or execute network-disruptive actions without a real integration and explicit authorization.
+
+For this project phase, response actions may use a simulated or pending-approval workflow.
+
+The interface must clearly identify:
+
+- Simulated.
+- Pending Approval.
+- Executed.
+- Failed.
+- Not Configured.
+
+Never display a successful response when only a request has been created.
+
+## 10.3 SOAR Integration Readiness
+
+Design clean integration interfaces for future connections to:
+
+- FortiSOAR.
+- FortiGate.
+- FortiEDR.
+- ServiceNow.
+- Other REST API-based security tools.
+
+Keep credentials out of source code.
+
+Use environment variables or secure configuration mechanisms for future integrations.
+
+Do not require external services for the core dashboard to work.
+
+---
+
+# PHASE 11 — BACKEND ARCHITECTURE AND PERSISTENCE
+
+The current Python standard-library-only backend is an important design requirement.
+
+Keep it lightweight.
+
+## 11.1 Persistence
+
+Introduce a small persistent JSON store inside `dashboard/`.
+
+Suggested structure:
+
+```text
+dashboard/
+    server.py
+    index.html
+    soc.html
+    usecases.html
+    alerts.html
+
+    events.html
+    devices.html
+    health.html
+
+    data/
+        alert_management.json
+        usecase_preferences.json
+        incident_records.json
+        audit_log.json
+
+    static/
+        css/
+        js/
+```
+
+Adapt the structure to the existing repository rather than blindly recreating files.
+
+## 11.2 Data Management
+
+Implement:
+
+- Safe JSON reading.
+- Safe JSON writing.
+- Atomic file replacement.
+- Thread-safe state updates.
+- Input validation.
+- Error handling.
+- Stable record identifiers.
+- Backup or recovery behavior.
+
+Avoid corrupting existing management data if the server is interrupted during a write.
+
+## 11.3 API Architecture
+
+Preserve:
+
+`GET /api/state`
+
+Additional endpoints may include:
+
+```text
+GET    /api/state
+
+GET    /api/alerts
+GET    /api/alerts/{id}
+
+POST   /api/alerts/{id}/acknowledge
+POST   /api/alerts/{id}/assign
+POST   /api/alerts/{id}/status
+POST   /api/alerts/{id}/notes
+POST   /api/alerts/{id}/escalate
+
+GET    /api/incidents
+POST   /api/incidents
+
+GET    /api/events
+GET    /api/devices
+GET    /api/health
+
+GET    /api/audit
+GET    /api/usecases
+POST   /api/usecases/preferences
+```
+
+These are proposed interfaces, not mandatory exact routes.
+
+Use the simplest route design compatible with the existing server.
+
+Avoid unnecessary endpoint duplication.
+
+## 11.4 State Separation
+
+Maintain a clear distinction:
+
+**Pipeline State**
+- Original detection events.
+- Original severity.
+- Detection rules.
+- ML results.
+- Threat intelligence.
+- Source information.
+
+**SOC Management State**
+- Assignment.
+- Acknowledgement.
+- Investigation status.
+- Escalation.
+- Analyst notes.
+- Incident records.
+- Audit history.
+
+SOC management actions must never overwrite the original detection evidence.
+
+## 11.5 Demo and Real Mode
+
+This requirement is mandatory.
+
+Both modes must use the same backend and management implementation.
+
+```text
+                dashboard/server.py
+                        |
+                  Shared State
+                        |
+             +----------+----------+
+             |                     |
+          Demo Mode             Real Mode
+             |                     |
+        Demo Pipeline         Real Pipeline
+             |                     |
+             +----------+----------+
+                        |
+                Shared SOC APIs
+                        |
+                 All Dashboard Pages
+```
+
+Do not write separate demo implementations for individual pages.
+
+Do not hardcode demo alerts into the frontend.
+
+If demo data is unavailable, handle it gracefully.
+
+---
+
+# PHASE 12 — UI/UX AND DESIGN REQUIREMENTS
+
+Use professional SOC dashboard design principles inspired by:
+
+- FortiCloud SOC-as-a-Service.
+- FortiSOAR.
+- FortiSIEM.
+- Enterprise security monitoring platforms.
+
+However:
+
+**Use the project's own Capstone Project branding.**
+
+Do not copy Fortinet logos or claim this is an official Fortinet product.
+
+## 12.1 Design Principles
+
+- Professional enterprise SOC appearance.
+- Clear information hierarchy.
+- Consistent navigation.
+- Responsive layout.
+- Readable typography.
+- High information density without clutter.
+- Consistent status indicators.
+- Accessible contrast.
+- Consistent spacing.
+- Consistent chart styling.
+
+## 12.2 Navigation
+
+The navigation should include:
+
+1. Classic Dashboard.
+2. Monitoring Overview.
+3. Monitoring Use Cases.
+4. Alerts.
+5. Event Explorer.
+6. Device Monitoring.
+7. Pipeline Health.
+
+Add an Incident Management entry if the implementation justifies a separate page.
+
+## 12.3 Live Updates
+
+Preserve the three-second polling behavior for shared monitoring data.
+
+Requirements:
+- No unnecessary full-page reloads.
+- Update data without losing current filters.
+- Avoid resetting selected table rows unnecessarily.
+- Avoid resetting an open investigation drawer.
+- Prevent overlapping polling requests.
+- Handle server disconnections.
+- Display the last successful refresh time.
+
+Do not reload persistent management data unnecessarily if it has not changed.
+
+## 12.4 React and Dependencies
+
+Preserve the existing React 18 + htm implementation for `/alerts` unless there is a strong technical reason to change it.
+
+Avoid introducing a complex build system.
+
+Investigate whether the CDN dependencies can be vendored into `dashboard/` for offline operation.
+
+All pages should work in the project's intended deployment environment.
+
+---
+
+# PHASE 13 — SECURITY AND RELIABILITY
+
+Because this is a cybersecurity monitoring project, the dashboard itself must follow reasonable security practices.
+
+Implement or document:
+
+1. Input validation.
+2. Safe JSON serialization.
+3. Protection against HTML/JavaScript injection.
+4. Safe rendering of untrusted domains and event descriptions.
+5. API method validation.
+6. Appropriate error responses.
+7. Protection against accidental management-data deletion.
+8. Audit logging.
+9. Safe file paths.
+10. Request-size limits.
+11. Basic access-control design for management operations.
+
+Do not expose arbitrary filesystem access through API routes.
+
+Do not use `eval()` or unsafe dynamic code execution.
+
+If the dashboard is intended for localhost-only demonstrations, document this clearly.
+
+Do not imply that a localhost demo server is production-secure for exposure to a public network.
+
+---
+
+# PHASE 14 — TESTING AND VALIDATION
+
+After implementation, conduct a complete test.
+
+## 14.1 Existing Functionality Regression Tests
+
+Verify that:
+
+- `/` works.
+- `/soc` works.
+- `/usecases` works.
+- `/alerts` works.
+- `/api/state` works.
+- All navigation links work.
+- Existing charts still render.
+- Existing filters still work.
+- Existing sorting still works.
+- Existing pagination still works.
+- Alert detail drawer still works.
+- Three-second polling still works.
+
+## 14.2 New Feature Tests
+
+Verify:
+
+- Alert acknowledgement persists.
+- Alert assignment persists.
+- Status changes persist.
+- Escalation persists.
+- Investigation notes persist.
+- Audit entries are created.
+- Bulk actions work.
+- Event Explorer filters work.
+- Device monitoring handles missing telemetry.
+- Pipeline health distinguishes stale data from a working dashboard server.
+- Use-case preferences persist.
+- Incident records persist.
+- Response actions do not falsely report successful execution.
+
+## 14.3 Restart Tests
+
+Perform:
+
+1. Start the dashboard.
+2. Modify an alert status.
+3. Assign an analyst.
+4. Add an investigation note.
+5. Stop the server.
+6. Restart the server.
+7. Reopen the dashboard.
+8. Verify all management data remains intact.
+
+## 14.4 Demo Mode
+
+Run:
+
+```bash
+python dashboard/server.py --demo --port 9000
+```
+
+Verify every page.
+
+## 14.5 Real Mode
+
+Where the pipeline is available, run:
+
+```bash
+python dashboard/server.py --watch infra/technitium-elk/data/dns_logs --port 9000
+```
+
+Verify that:
+- Real data is displayed.
+- SOC management actions still work.
+- Management metadata does not overwrite pipeline data.
+- No demo-only data appears in real mode.
+
+If the pipeline is unavailable, report that real-mode validation could not be completed rather than claiming success.
+
+---
+
+# PHASE 15 — REQUIRED DOCUMENTATION
+
+Create a development report inside:
+
+`dashboard/docs/`
+
+## Document 1
+
+`WEEK6_IMPLEMENTATION_REPORT.md`
+
+Include:
+- Existing architecture.
+- New functionality.
+- Backend changes.
+- Frontend changes.
+- New routes.
+- New APIs.
+- Persistent storage design.
+- Testing results.
+- Known limitations.
+
+## Document 2
+
+`SOC_DASHBOARD_ARCHITECTURE.md`
+
+Include:
+- System architecture.
+- Shared state architecture.
+- Data flow.
+- Management APIs.
+- Pipeline state versus SOC management state.
+- Demo versus real mode.
+- Future SOAR integration.
+
+## Document 3
+
+`API_REFERENCE.md`
+
+Document:
+- All existing APIs.
+- New APIs.
+- Request formats.
+- Response formats.
+- Error handling.
+- Validation rules.
+
+## Document 4
+
+`TESTING_REPORT.md`
+
+Include:
+- Test cases.
+- Expected results.
+- Actual results.
+- Passed tests.
+- Failed tests.
+- Remaining issues.
+
+## Document 5
+
+`NEXT_PHASE_ROADMAP.md`
+
+Explain future development possibilities:
+- Authentication and role-based access control.
+- Multi-analyst SOC workflows.
+- Real SOAR integrations.
+- Threat intelligence enrichment.
+- Device agent integrations.
+- Notification systems.
+- Advanced incident reporting.
+- Historical analytics.
+
+Do not implement future-phase features unless required by the current scope.
+
+---
+
+# PHASE 16 — EXECUTION STRATEGY
+
+Follow this implementation sequence.
+
+### Step 1 — Repository Audit
+
+Inspect:
+- All files inside `dashboard/`.
+- `server.py`.
+- All HTML files.
+- Existing JavaScript.
+- CSS.
+- State generation.
+- Existing API handlers.
+- Existing data structures.
+
+Understand how every existing page gets its data.
+
+Do not make changes yet.
+
+### Step 2 — Architecture Assessment
+
+Produce an internal implementation plan.
+
+Identify:
+- Existing functionality.
+- Missing functionality.
+- Backend limitations.
+- Data-model limitations.
+- Potential regressions.
+- Dependencies.
+
+Prioritize improvements according to impact and implementation risk.
+
+### Step 3 — Backend Foundation
+
+Implement:
+- Persistent management storage.
+- Stable alert identifiers.
+- Alert management APIs.
+- Audit history.
+- State separation.
+- Validation and error handling.
+
+Test persistence before developing additional UI features.
+
+### Step 4 — Alert Management
+
+Complete the alert workflow.
+
+Verify every action through the backend.
+
+Do not merely create frontend buttons without functional API integration.
+
+### Step 5 — Monitoring Tools
+
+Implement:
+- Event Explorer.
+- Device Monitoring.
+- Pipeline Health.
+
+Connect them to actual available state information.
+
+### Step 6 — Overview and Use Case Improvements
+
+Extend:
+- SOC Overview.
+- Monitoring Use Cases.
+
+Maintain consistency with the other pages.
+
+### Step 7 — SOAR Readiness
+
+Implement the incident response interface and response-request workflow.
+
+Clearly distinguish simulated actions from real integrations.
+
+### Step 8 — Testing
+
+Perform regression, functionality, persistence, and demo-mode tests.
+
+### Step 9 — Documentation
+
+Generate all required documentation.
+
+### Step 10 — Final Audit
+
+Review all modifications.
+
+Confirm that no files outside `dashboard/` were changed.
+
+---
+
+# FINAL ACCEPTANCE CRITERIA
+
+The implementation is considered successful only when:
+
+- [ ] All four existing pages continue to work.
+- [ ] Existing `/api/state` remains compatible.
+- [ ] The dashboard has a consistent shared state source.
+- [ ] Alert management supports persistent status changes.
+- [ ] Analyst assignment works.
+- [ ] Investigation notes are persistent.
+- [ ] Escalation works.
+- [ ] Audit history is recorded.
+- [ ] Bulk alert management works.
+- [ ] Event Explorer is functional.
+- [ ] Device Monitoring is functional using available data.
+- [ ] Pipeline Health is functional using available telemetry.
+- [ ] Monitoring Use Cases preserve existing functionality.
+- [ ] Use-case preferences persist server-side.
+- [ ] SOC Overview provides additional operational insights.
+- [ ] SOAR-ready incident workflows exist.
+- [ ] No response action falsely claims execution.
+- [ ] Demo and real modes use the same management logic.
+- [ ] Server restart does not erase SOC management data.
+- [ ] Existing three-second polling remains functional.
+- [ ] No detection, ML, or pipeline code has been modified.
+- [ ] All modifications are restricted to `dashboard/`.
+- [ ] Documentation is complete.
+- [ ] Testing results are reported honestly.
+
+# FINAL INSTRUCTION
+
+Think like a senior SOC architect, not simply a frontend developer.
+
+Do not focus only on making the dashboard visually attractive.
+
+The goal is to build a monitoring environment that allows a SOC analyst to:
+
+1. Understand the current security situation.
+2. Monitor incoming DNS security events.
+3. Investigate suspicious domains and source IPs.
+4. Understand why detection rules generated alerts.
+5. Review ML and statistical detection results.
+6. Manage alerts and assign investigation responsibilities.
+7. Track incident status and escalation.
+8. Monitor devices and data collection health.
+9. Understand whether the detection pipeline is functioning.
+10. Prepare and track incident response actions.
+
+**Preserve everything that already works. Improve what is missing. Build on the existing architecture. Never sacrifice detection integrity for dashboard functionality.**
+
+Start by auditing the existing repository. Do not immediately rewrite the existing pages or server.
+
+Implement incrementally, test after each major phase, and provide a final report showing exactly what was changed and what remains incomplete.

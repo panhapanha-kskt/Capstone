@@ -359,6 +359,7 @@ def build_state():
             fs = a.get("_first_seen", 0)
             feed.append({
                 "id": a.get("alert_id"), "time": a.get("timestamp"), "rule": a.get("rule_name"),
+                "source": a.get("rule_source"),
                 "severity": a.get("severity"), "client": a.get("client_ip"), "domain": a.get("domain"),
                 "description": a.get("description"), "tactics": a.get("mitre_tactics", []),
                 "techniques": a.get("mitre_techniques", []),
@@ -410,11 +411,15 @@ class Handler(BaseHTTPRequestHandler):
 
     def do_GET(self):
         path = self.path.split("?")[0]
-        if path in ("/", "/index.html"):
+        if path in ("/", "/index.html", "/soc", "/soc.html", "/usecases", "/usecases.html",
+                    "/alerts", "/alerts.html"):
+            page = ("usecases.html" if path.startswith("/usecases")
+                    else "alerts.html" if path.startswith("/alerts")
+                    else "soc.html" if path.startswith("/soc") else "index.html")
             try:
-                self.send(200, (HERE / "index.html").read_bytes(), "text/html; charset=utf-8")
+                self.send(200, (HERE / page).read_bytes(), "text/html; charset=utf-8")
             except OSError:
-                self.send(500, b"dashboard/index.html not found", "text/plain")
+                self.send(500, f"dashboard/{page} not found".encode(), "text/plain")
         elif path == "/api/state":
             self.send(200, json.dumps(_finite(build_state()), default=str, allow_nan=False).encode(),
                       "application/json")

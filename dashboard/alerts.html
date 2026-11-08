@@ -1,0 +1,498 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Alerts</title>
+<!-- React 18 + htm: component-based SPA, no build step needed -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.3.1/umd/react.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.3.1/umd/react-dom.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/htm/3.1.1/htm.min.js"></script>
+<style>
+  :root{
+    --bg:#101320; --panel:#1b1f2e; --panel2:#171a27; --sidebar:#161926; --topbar:#1e2231;
+    --border:#2a2f42; --text:#d6dae6; --muted:#8a90a5; --dim:#5d6377;
+    --green:#8bc34a; --green2:#4caf50; --orange:#f09f33; --yellow:#e8d44d;
+    --blue:#4a90d9; --red:#e0564a; --purple:#9575cd; --cyan:#4dd0e1;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html,body{height:100%}
+  body{background:var(--bg);color:var(--text);font:13px/1.45 "Segoe UI",system-ui,Arial,sans-serif;overflow:hidden}
+
+  /* ── chrome (same as the rest of the suite) ── */
+  .topbar{height:46px;background:var(--topbar);border-bottom:1px solid var(--border);
+    display:flex;align-items:center;gap:18px;padding:0 14px;position:relative;z-index:5}
+  .logo{display:flex;align-items:center;gap:8px;font-size:15px;font-weight:600;color:#fff}
+  .logo .mark{width:24px;height:24px;border-radius:50%;background:radial-gradient(circle at 35% 35%,#b3d96b,#6f9f33);
+    display:flex;align-items:center;justify-content:center;font-size:12px;color:#10240a;font-weight:800}
+  .topnav{display:flex;gap:16px;color:var(--muted);font-size:12.5px}
+  .topnav span{cursor:pointer;display:flex;align-items:center;gap:4px}
+  .topnav span:hover{color:#fff}
+  .caret{font-size:9px;opacity:.7}
+  .topbar .right{margin-left:auto;display:flex;align-items:center;gap:12px;font-size:12px;color:var(--muted)}
+  .pill{border:1px solid var(--green);color:var(--green);border-radius:4px;padding:2px 10px;display:flex;gap:5px;align-items:center;font-size:11.5px}
+  .select{background:var(--panel);border:1px solid var(--border);border-radius:4px;padding:3px 24px 3px 10px;color:var(--text);position:relative;cursor:default}
+  .select:after{content:"▾";position:absolute;right:8px;color:var(--dim);font-size:9px;top:5px}
+  .bell{font-size:15px;cursor:pointer}
+  .user{display:flex;align-items:center;gap:6px}
+  .user:after{content:"▾";color:var(--dim);font-size:9px}
+  .statusdot{width:8px;height:8px;border-radius:50%;background:var(--green);display:inline-block}
+  .statusdot.running{background:var(--orange);animation:pulse 1s infinite}
+  .statusdot.error{background:var(--red)}
+  @keyframes pulse{50%{opacity:.35}}
+
+  .wrap{display:flex;height:calc(100vh - 46px)}
+  .sidebar{width:196px;min-width:196px;background:var(--sidebar);border-right:1px solid var(--border);
+    display:flex;flex-direction:column;padding-top:10px}
+  .sb-title{font-size:12px;font-weight:700;letter-spacing:.6px;color:#fff;padding:8px 16px 12px}
+  .nav{flex:1;overflow-y:auto}
+  .nav a{display:flex;align-items:center;gap:10px;padding:9px 16px;color:var(--muted);text-decoration:none;font-size:12.5px;border-left:3px solid transparent}
+  .nav a .ic{width:16px;text-align:center;opacity:.85}
+  .nav a:hover{color:#fff;background:#1c2032}
+  .nav a.open{color:#fff}
+  .nav a.active{color:#fff;background:#222842;border-left-color:var(--green)}
+  .nav a.active .ic{color:var(--green)}
+  .nav .sub{padding-left:42px;font-size:12px}
+  .nav .grp-caret{margin-left:auto;font-size:9px;color:var(--dim)}
+  .sb-ver{padding:10px 16px;color:var(--dim);font-size:11px}
+  .main{flex:1;overflow-y:auto;display:flex;flex-direction:column}
+
+  /* ── alerts app ────────────────────────────── */
+  .page-head{display:flex;align-items:center;padding:14px 18px 10px}
+  .page-head h1{font-size:24px;font-weight:400;color:#fff}
+  .page-head .edit{margin-left:auto;color:var(--dim);cursor:pointer}
+  .page-head .edit:hover{color:#fff}
+
+  .widgets{display:grid;grid-template-columns:1fr 1fr;border-top:1px solid var(--border);border-bottom:1px solid var(--border)}
+  .widget{background:var(--panel2);padding:12px 18px 16px;min-width:0}
+  .widget:first-child{border-right:1px solid var(--border)}
+  .w-head{display:flex;align-items:center;font-size:15px;color:#e7eaf2;padding-bottom:4px}
+  .w-head .tools{margin-left:auto;display:flex;gap:14px;color:var(--dim);font-size:12px}
+  .w-head .tools span{cursor:pointer}
+  .w-head .tools span:hover{color:#fff}
+  .assigned{font-size:12.5px;color:var(--muted);padding:2px 0 10px}
+  .assigned b{color:#e7eaf2;font-weight:600}
+  .assigned a{color:var(--cyan);text-decoration:none;cursor:pointer}
+  .assigned a.on{color:var(--green);font-weight:600}
+  .w-body{height:300px;display:flex;align-items:center;justify-content:center}
+  .w-legend{display:flex;justify-content:center;gap:18px;font-size:12px;color:var(--text);padding-top:6px}
+  .w-legend .li{display:flex;align-items:center;gap:6px}
+  .w-legend .sw{width:11px;height:11px}
+  svg text{font-family:inherit}
+  .axis{fill:var(--muted);font-size:10.5px}
+  .gridline{stroke:#262b3d;stroke-width:1}
+
+  .gridbar{display:flex;align-items:center;gap:10px;padding:12px 18px;background:var(--bg)}
+  .gridbar .items{font-size:14px;color:#e7eaf2}
+  .btn{display:inline-flex;align-items:center;gap:6px;font-size:12.5px;border-radius:3px;padding:6px 14px;cursor:pointer;border:0;color:#fff;font-family:inherit}
+  .btn.add{background:var(--green2)}
+  .btn.exec{background:#2f6fb2}
+  .btn:hover{filter:brightness(1.12)}
+  .btn:disabled{opacity:.45;cursor:default;filter:none}
+  .iconbtn{width:30px;height:30px;border-radius:3px;background:var(--panel);border:1px solid var(--border);
+    color:var(--muted);display:inline-flex;align-items:center;justify-content:center;cursor:pointer;font-size:13px}
+  .iconbtn:hover{color:#fff}
+  .gridbar .rtools{margin-left:auto;display:flex;gap:8px}
+  .selinfo{font-size:12px;color:var(--cyan)}
+
+  .tbl-wrap{flex:1;overflow:auto;background:var(--panel2);border-top:1px solid var(--border)}
+  table{width:100%;border-collapse:collapse;font-size:12.5px;min-width:1500px}
+  thead th{position:sticky;top:0;background:#20253a;color:#cfd4e2;font-weight:600;text-align:left;
+    padding:9px 12px;border-bottom:1px solid var(--border);white-space:nowrap;font-size:12px;z-index:2;cursor:pointer;user-select:none}
+  thead th .srt{color:var(--dim);font-size:9px;margin-left:4px}
+  thead th.sorted .srt{color:var(--green)}
+  thead tr.filters th{top:36px;background:#1b2033;padding:5px 8px;cursor:default}
+  .colq{width:100%;min-width:70px;background:var(--panel);border:1px solid var(--border);border-radius:3px;
+    color:var(--text);font:inherit;font-size:11.5px;padding:4px 8px;outline:0}
+  .colq:focus{border-color:var(--blue)}
+  tbody td{padding:10px 12px;border-bottom:1px solid #232841;white-space:nowrap;vertical-align:middle}
+  tbody tr:hover{background:#1f2436}
+  tbody tr.checked{background:#20294a}
+  .cb{width:14px;height:14px;accent-color:var(--green2);cursor:pointer}
+  .name-cell{max-width:230px;overflow:hidden;text-overflow:ellipsis;color:#e8ebf4}
+  .assg{color:var(--cyan);cursor:pointer}
+  .chip{display:inline-block;border-radius:3px;padding:3px 12px;font-size:11.5px;font-weight:600;color:#fff;text-align:center}
+  .chip.sev-Low{background:var(--green2)}
+  .chip.sev-Medium{background:#c9a227}
+  .chip.sev-High{background:#d9822b}
+  .chip.sev-Critical{background:var(--red)}
+  .chip.no{background:#4a5066;color:#d6dae6;font-weight:500}
+  .chip.yes{background:var(--red)}
+  .chip.sla-wait{background:#4a5066;color:#e3e6ef;font-weight:500}
+  .chip.sla-met{background:var(--green2)}
+  .chip.sla-prog{background:#2f6fb2}
+  .st-Open{color:#e8ebf4} .st-Investigating{color:var(--orange)} .st-Closed{color:var(--muted)}
+  .num{font-variant-numeric:tabular-nums}
+  .empty{padding:40px;text-align:center;color:var(--dim)}
+
+  .pager{display:flex;align-items:center;justify-content:flex-end;gap:14px;padding:10px 16px;color:var(--muted);font-size:12px;
+    background:var(--panel2);border-top:1px solid var(--border)}
+  .pager button{background:none;border:0;color:var(--muted);font-size:13px;cursor:pointer;padding:2px 6px;font-family:inherit}
+  .pager button:hover:not(:disabled){color:#fff}
+  .pager button:disabled{opacity:.3;cursor:default}
+
+  /* alert detail drawer */
+  .drawer{position:fixed;top:46px;right:0;bottom:0;width:380px;background:var(--panel);border-left:1px solid var(--border);
+    box-shadow:-8px 0 24px #0008;z-index:20;display:flex;flex-direction:column;animation:slide .15s ease-out}
+  @keyframes slide{from{transform:translateX(30px);opacity:0}}
+  .drawer .d-head{display:flex;align-items:center;gap:10px;padding:14px 16px;border-bottom:1px solid var(--border);font-weight:600;color:#fff}
+  .drawer .d-head .x{margin-left:auto;cursor:pointer;color:var(--muted);font-size:16px}
+  .drawer .d-head .x:hover{color:#fff}
+  .drawer .d-body{flex:1;overflow-y:auto;padding:14px 16px;display:flex;flex-direction:column;gap:10px}
+  .kv{display:flex;gap:10px;font-size:12.5px}
+  .kv .k{width:120px;color:var(--muted);flex:none}
+  .kv .v{color:#e8ebf4;word-break:break-all;white-space:normal}
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <div class="logo"><span class="mark">◎</span> Capstone Project</div>
+  <div class="topnav">
+    <span>⠿ Services <span class="caret">▾</span></span>
+    <span>☉ Support <span class="caret">▾</span></span>
+  </div>
+  <div class="right">
+    <span class="pill"><span class="statusdot" id="statusDot"></span><span id="modeLabel">Live</span></span>
+    <span class="select">English</span>
+    <span class="select">Theme: Dark</span>
+    <span class="bell">🔔</span>
+    <span class="user">👤 <span>soc-analyst@lab.local</span></span>
+  </div>
+</div>
+
+<div class="wrap">
+  <aside class="sidebar">
+    <div class="sb-title">SOC AS-A-SERVICE</div>
+    <nav class="nav">
+      <a class="open" href="#"><span class="ic">▦</span> Dashboards <span class="grp-caret">▾</span></a>
+      <a class="sub" href="/soc">Monitoring Overview</a>
+      <a class="sub" href="/usecases">Monitoring Use Cases</a>
+      <a class="sub" href="/">Classic Dashboard</a>
+      <a class="active" href="/alerts"><span class="ic">⚠</span> Alerts</a>
+      <a href="#"><span class="ic">✓</span> Service Requests</a>
+      <a href="#"><span class="ic">🖳</span> My Assets</a>
+      <a href="#"><span class="ic">▤</span> Reports</a>
+      <a href="#"><span class="ic">🔍</span> Forensic Analysis</a>
+      <a href="#"><span class="ic">≣</span> Audit Logs</a>
+      <a href="#"><span class="ic">⚙</span> Settings <span class="grp-caret">▸</span></a>
+    </nav>
+    <div class="sb-ver">v1.0 — Capstone</div>
+  </aside>
+
+  <main class="main"><div id="root" style="flex:1;display:flex;flex-direction:column"></div></main>
+</div>
+
+<script>
+"use strict";
+/* ════════════════════════════════════════════════════════════
+   Alerts — React 18 single-page app (FortiSOAR-style module)
+   Data source: the same GET /api/state used by every page.
+   ════════════════════════════════════════════════════════════ */
+const { useState, useEffect, useMemo, useCallback } = React;
+const html = htm.bind(React.createElement);
+
+const COLORS = { green:"#4caf50", yellow:"#c9a227", orange:"#d9822b", blue:"#4a90d9", red:"#e0564a" };
+const SEV_ORDER = ["Low","Medium","High","Critical"];
+const SEV_COLOR = { Low:COLORS.green, Medium:COLORS.yellow, High:COLORS.orange, Critical:COLORS.red };
+const COLUMNS = [
+  ["id","ID"],["weight","Priority Weight"],["severity","Severity"],["assigned","Assigned To"],
+  ["name","Name"],["source","Source"],["type","Type"],["status","Status"],["escalated","Escalated"],
+  ["adate","Assigned Date"],["ack","Ack SLA"],["resp","Response SLA"],["cdate","Created On"],
+];
+
+/* ── domain logic: map a pipeline alert to a FortiSOAR-style record ── */
+function alertType(rule){
+  rule = rule || "";
+  if (/tunnel/i.test(rule)) return "DNS Tunneling";
+  if (/nxdomain/i.test(rule)) return "NXDOMAIN Flood";
+  if (/subdomain/i.test(rule)) return "Deep Subdomain";
+  if (/^ml|ml /i.test(rule)) return "ML Detection";
+  if (/z-score|statistical/i.test(rule)) return "Statistical Anomaly";
+  return "Other / Unknown";
+}
+function fmtDate(iso){
+  const d = iso ? new Date(iso) : new Date();
+  const p = n => String(n).padStart(2,"0");
+  return `${p(d.getMonth()+1)}/${p(d.getDate())}/${d.getFullYear()} ${p(d.getHours())}:${p(d.getMinutes())}`;
+}
+function enrich(f, idNum){
+  const sev = f.severity || "Medium";
+  const status = f.is_new ? "Open" : sev === "High" ? "Investigating" : "Closed";
+  const ds = fmtDate(f.time);
+  return {
+    id: idNum,
+    weight: (sev === "High" ? 8 : sev === "Medium" ? 5 : 2) + (f.is_new ? 1 : 0),
+    severity: sev, assigned: "SOC Admin",
+    name: f.rule || "—", source: f.source || "DNS Detection Pipeline",
+    type: alertType(f.rule), status,
+    escalated: f.is_new && sev === "High" ? "Yes" : "No",
+    adate: ds, cdate: ds,
+    ack: status === "Open" ? "Awaiting Action" : "Met",
+    resp: status === "Open" && sev === "High" ? "Awaiting Action" : status === "Open" ? "In Progress" : "Met",
+    client: f.client, domain: f.domain, description: f.description,
+    tactics: f.tactics || [], techniques: f.techniques || [],
+  };
+}
+
+/* ── data hook: poll /api/state every 3 s ───── */
+function useApiState(){
+  const [state, setState] = useState(null);
+  useEffect(()=>{
+    let version = -1, alive = true;
+    async function tick(force){
+      try {
+        const r = await fetch("/api/state", {cache:"no-store"});
+        if (!r.ok || !alive) return;
+        const s = await r.json();
+        if (!force && s.version === version) return;
+        version = s.version;
+        setState(s);
+      } catch(e){ /* server restarting; keep polling */ }
+    }
+    tick(true);
+    const t = setInterval(()=>tick(false), 3000);
+    return ()=>{ alive = false; clearInterval(t); };
+  }, []);
+  return state;
+}
+
+/* ── widgets ────────────────────────────────── */
+function AssignedTo({scope, setScope}){
+  return html`<div class="assigned"><b>Assigned To:</b>${" "}
+    <a class=${scope==="me"?"on":""} onClick=${()=>setScope("me")}>Me</a> | ${" "}
+    <a class=${scope==="all"?"on":""} onClick=${()=>setScope("all")}>All</a></div>`;
+}
+
+function SeverityPie({bySeverity}){
+  const [scope, setScope] = useState("all");
+  const parts = SEV_ORDER.map(k=>({k, c:SEV_COLOR[k], v:bySeverity[k]||0})).filter(p=>p.v);
+  const total = parts.reduce((s,p)=>s+p.v,0);
+  const cx=160, cy=160, r=125;
+  let a0 = -Math.PI/2;
+  const slices = [], labels = [];
+  for (const p of parts){
+    const frac = p.v/total, a1 = a0 + frac*2*Math.PI;
+    if (frac >= 0.999) slices.push(html`<circle key=${p.k} cx=${cx} cy=${cy} r=${r} fill=${p.c}/>`);
+    else {
+      const x0=cx+r*Math.cos(a0), y0=cy+r*Math.sin(a0), x1=cx+r*Math.cos(a1), y1=cy+r*Math.sin(a1);
+      slices.push(html`<path key=${p.k} fill=${p.c}
+        d=${`M${cx},${cy} L${x0.toFixed(1)},${y0.toFixed(1)} A${r},${r} 0 ${frac>0.5?1:0} 1 ${x1.toFixed(1)},${y1.toFixed(1)} Z`}/>`);
+    }
+    const mid=(a0+a1)/2, lr = frac>0.25 ? r*0.55 : r*0.8;
+    if (frac >= 0.04) labels.push(html`<text key=${p.k+"t"} x=${(cx+lr*Math.cos(mid)).toFixed(1)} y=${(cy+lr*Math.sin(mid)).toFixed(1)}
+      textAnchor="middle" fill="#fff" fontSize="14">${(frac*100).toFixed(1)}%</text>`);
+    a0 = a1;
+  }
+  return html`<div class="widget">
+    <div class="w-head">Open Alerts By Severity<span class="tools"><span>⟳</span><span>▴</span></span></div>
+    <${AssignedTo} scope=${scope} setScope=${setScope}/>
+    <div class="w-body">
+      <svg viewBox="0 0 320 320" width="300" height="300">
+        ${total ? [...slices, ...labels] : html`<circle cx="160" cy="160" r="125" fill="#262b3d"/>`}
+      </svg>
+    </div>
+    <div class="w-legend">
+      ${parts.map(p=>html`<span key=${p.k} class="li"><span class="sw" style=${{background:p.c}}/>${p.k}</span>`)}
+    </div>
+  </div>`;
+}
+
+function TypeBars({alerts}){
+  const [scope, setScope] = useState("all");
+  const entries = useMemo(()=>{
+    const types = {};
+    for (const a of alerts){
+      const t = types[a.type] ??= {open:0, inv:0};
+      if (a.status === "Open") t.open++;
+      else if (a.status === "Investigating") t.inv++;
+    }
+    return Object.entries(types).sort((x,y)=>(y[1].open+y[1].inv)-(x[1].open+x[1].inv));
+  }, [alerts]);
+  const w = 640, h = 300, padL = 170, padB = 28, padT = 10, bw = 13, gap = 3;
+  const max = Math.max(...entries.flatMap(([,v])=>[v.open,v.inv]), 1);
+  const xmax = Math.max(Math.ceil(max*1.15), 4);
+  const X = v => padL + v/xmax*(w-padL-24);
+  const ticks = Math.min(xmax, 11);
+  const rowH = Math.min((h-padT-padB)/Math.max(entries.length,1), 56);
+  return html`<div class="widget">
+    <div class="w-head">Alerts by Type<span class="tools"><span>⟳</span><span>▴</span></span></div>
+    <${AssignedTo} scope=${scope} setScope=${setScope}/>
+    <div class="w-body">
+      <svg viewBox=${`0 0 ${w} ${h}`} width="100%" height="100%" preserveAspectRatio="xMidYMid meet">
+        ${Array.from({length:ticks+1}, (_,i)=>{
+          const v = Math.round(i*xmax/ticks), gx = X(v);
+          return html`<g key=${i}><line x1=${gx} x2=${gx} y1=${padT} y2=${h-padB} class="gridline"/>
+            <text x=${gx} y=${h-10} textAnchor="middle" class="axis">${v}</text></g>`;
+        })}
+        ${entries.map(([name,v],i)=>{
+          const cy = padT + rowH*i + rowH/2;
+          return html`<g key=${name}>
+            <text x=${padL-10} y=${cy+4} textAnchor="end" fill="#e7eaf2" fontSize="12" fontWeight="600">${name}</text>
+            ${v.open ? html`<rect x=${padL} y=${cy-bw-gap/2} width=${Math.max(X(v.open)-padL,2)} height=${bw} fill=${COLORS.blue}/>` : null}
+            ${v.inv  ? html`<rect x=${padL} y=${cy+gap/2} width=${Math.max(X(v.inv)-padL,2)} height=${bw} fill=${COLORS.orange}/>` : null}
+          </g>`;
+        })}
+      </svg>
+    </div>
+    <div class="w-legend">
+      <span class="li"><span class="sw" style=${{background:COLORS.blue}}/>Open</span>
+      <span class="li"><span class="sw" style=${{background:COLORS.orange}}/>Investigating</span>
+    </div>
+  </div>`;
+}
+
+/* ── grid pieces ────────────────────────────── */
+function Chip({val, cls}){ return html`<span class=${"chip "+cls}>${val}</span>`; }
+function SlaChip({v}){
+  return html`<${Chip} val=${v} cls=${v==="Met" ? "sla-met" : v==="In Progress" ? "sla-prog" : "sla-wait"}/>`;
+}
+
+function Drawer({alert, onClose}){
+  if (!alert) return null;
+  const rows = [
+    ["Alert ID", alert.id], ["Name", alert.name], ["Type", alert.type],
+    ["Severity", alert.severity], ["Status", alert.status], ["Escalated", alert.escalated],
+    ["Priority Weight", alert.weight], ["Source", alert.source], ["Assigned To", alert.assigned],
+    ["Client IP", alert.client || "—"], ["Domain", alert.domain || "—"],
+    ["MITRE Tactics", alert.tactics.join(", ") || "—"], ["MITRE Techniques", alert.techniques.join(", ") || "—"],
+    ["Ack SLA", alert.ack], ["Response SLA", alert.resp],
+    ["Created On", alert.cdate], ["Description", alert.description || "—"],
+  ];
+  return html`<div class="drawer">
+    <div class="d-head">⚠ Alert #${alert.id}<span class="x" onClick=${onClose}>✕</span></div>
+    <div class="d-body">
+      ${rows.map(([k,v])=>html`<div key=${k} class="kv"><span class="k">${k}</span><span class="v">${v}</span></div>`)}
+    </div>
+  </div>`;
+}
+
+const PAGE_SIZE = 10;
+function AlertsGrid({alerts}){
+  const [filters, setFilters] = useState({});
+  const [sort, setSort] = useState({key:"id", dir:-1});
+  const [page, setPage] = useState(1);
+  const [checked, setChecked] = useState(()=>new Set());
+  const [detail, setDetail] = useState(null);
+
+  const list = useMemo(()=>{
+    let l = alerts.filter(a => Object.entries(filters).every(([k,q]) =>
+      !q || String(a[k]).toLowerCase().includes(q)));
+    l.sort((a,b)=>{
+      const x = a[sort.key], y = b[sort.key];
+      return (typeof x === "number" ? x - y : String(x).localeCompare(String(y))) * sort.dir;
+    });
+    return l;
+  }, [alerts, filters, sort]);
+
+  const pages = Math.max(Math.ceil(list.length/PAGE_SIZE), 1);
+  const cur = Math.min(page, pages);
+  const rows = list.slice((cur-1)*PAGE_SIZE, cur*PAGE_SIZE);
+
+  const setFilter = useCallback((k,v)=>{ setFilters(f=>({...f,[k]:v.trim().toLowerCase()})); setPage(1); }, []);
+  const toggleSort = k => setSort(s => ({key:k, dir: s.key === k ? -s.dir : 1}));
+  const toggleRow = id => setChecked(c => { const n = new Set(c); n.has(id) ? n.delete(id) : n.add(id); return n; });
+  const toggleAll = e => setChecked(c => {
+    const n = new Set(c);
+    rows.forEach(a => e.target.checked ? n.add(a.id) : n.delete(a.id));
+    return n;
+  });
+
+  return html`<${React.Fragment}>
+    <div class="gridbar">
+      <span class="items">${list.length} Item${list.length === 1 ? "" : "s"}</span>
+      <span class="iconbtn" title="Refresh">⟳</span>
+      <button class="btn add" type="button">＋ Add</button>
+      <button class="btn exec" type="button" disabled=${!checked.size}>⚙ Execute ▾</button>
+      ${checked.size ? html`<span class="selinfo">${checked.size} selected</span>` : null}
+      <div class="rtools">
+        <span class="iconbtn" title="Filters">⛛</span>
+        <span class="iconbtn" title="Search">🔍</span>
+        <span class="iconbtn" title="More options">☰</span>
+      </div>
+    </div>
+
+    <div class="tbl-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th style=${{width:34, cursor:"default"}}><input type="checkbox" class="cb"
+              checked=${rows.length > 0 && rows.every(a=>checked.has(a.id))} onChange=${toggleAll}/></th>
+            ${COLUMNS.map(([k,label])=>html`<th key=${k} class=${sort.key===k?"sorted":""} onClick=${()=>toggleSort(k)}>
+              ${label}<span class="srt">${sort.key===k ? (sort.dir>0?"▲":"▼") : "⇅"}</span></th>`)}
+          </tr>
+          <tr class="filters">
+            <th></th>
+            ${COLUMNS.map(([k])=>html`<th key=${k}><input class="colq" placeholder="Search"
+              value=${filters[k]||""} onInput=${e=>setFilter(k, e.target.value)}/></th>`)}
+          </tr>
+        </thead>
+        <tbody>
+          ${rows.map(a=>html`<tr key=${a.id} class=${checked.has(a.id)?"checked":""} onClick=${()=>setDetail(a)}>
+            <td onClick=${e=>e.stopPropagation()}><input type="checkbox" class="cb"
+              checked=${checked.has(a.id)} onChange=${()=>toggleRow(a.id)}/></td>
+            <td class="num">${a.id}</td>
+            <td class="num">${a.weight}</td>
+            <td><${Chip} val=${a.severity} cls=${"sev-"+a.severity}/></td>
+            <td><span class="assg">${a.assigned}</span></td>
+            <td class="name-cell" title=${a.name}>${a.name}</td>
+            <td>${a.source}</td>
+            <td>${a.type}</td>
+            <td class=${"st-"+a.status}>${a.status}</td>
+            <td><${Chip} val=${a.escalated} cls=${a.escalated==="Yes"?"yes":"no"}/></td>
+            <td class="num">${a.adate}</td>
+            <td><${SlaChip} v=${a.ack}/></td>
+            <td><${SlaChip} v=${a.resp}/></td>
+            <td class="num">${a.cdate}</td>
+          </tr>`)}
+        </tbody>
+      </table>
+      ${rows.length ? null : html`<div class="empty">No alerts match the current filters.</div>`}
+    </div>
+
+    <div class="pager">
+      <button disabled=${cur<=1} onClick=${()=>setPage(1)}>|‹</button>
+      <button disabled=${cur<=1} onClick=${()=>setPage(cur-1)}>‹</button>
+      <span>Page ${cur} of ${pages}</span>
+      <button disabled=${cur>=pages} onClick=${()=>setPage(cur+1)}>›</button>
+      <button disabled=${cur>=pages} onClick=${()=>setPage(pages)}>›|</button>
+    </div>
+
+    <${Drawer} alert=${detail} onClose=${()=>setDetail(null)}/>
+  <//>`;
+}
+
+/* ── app root ───────────────────────────────── */
+function App(){
+  const state = useApiState();
+
+  // keep the static top-bar chrome in sync
+  useEffect(()=>{
+    if (!state) return;
+    document.getElementById("modeLabel").textContent = state.mode === "demo" ? "Demo" : "Live";
+    document.getElementById("statusDot").className = "statusdot" +
+      (state.pipeline?.status === "running" ? " running" : state.pipeline?.status === "error" ? " error" : "");
+  }, [state]);
+
+  const alerts = useMemo(()=>{
+    const feed = state?.feed || [];
+    // feed is newest-first; number oldest = 1 like an auto-increment ID
+    return feed.map((f,i)=>enrich(f, feed.length - i));
+  }, [state]);
+
+  if (!state) return html`<div class="empty" style=${{paddingTop:80}}>Connecting to /api/state…</div>`;
+
+  return html`<${React.Fragment}>
+    <div class="page-head"><h1>Alerts</h1><span class="edit">✎</span></div>
+    <div class="widgets">
+      <${SeverityPie} bySeverity=${(state.totals||{}).by_severity || {}}/>
+      <${TypeBars} alerts=${alerts}/>
+    </div>
+    <${AlertsGrid} alerts=${alerts}/>
+  <//>`;
+}
+
+ReactDOM.createRoot(document.getElementById("root")).render(html`<${App}/>`);
+</script>
+</body>
+</html>

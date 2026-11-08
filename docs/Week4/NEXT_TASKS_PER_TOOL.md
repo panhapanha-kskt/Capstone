@@ -35,7 +35,13 @@ Background and the reason for every option: [NEW_DATASET_TRAINING_STEPS.md](NEW_
 | `runs/v_dnsshell` (baseline data + dns_shell) | **done**, 25 min: fusion false alarms 23 → 7 ([section 2.1](#21-result-baseline--dns_shell-runsv_dnsshell)) |
 | Task A: unseen benign (CIC capture 3) | **done**: baseline 1 / 25,222 · v_dnsshell 0 / 25,222 |
 | det: convert · unseen test · `runs/v_det` | **done**: 5000 / 5000 caught unseen; fusion false alarms 23 → **38** (worse) ([section 2.2](#22-result-baseline--det-runsv_det)) |
-| 4 remaining tools: ozymandns, cobaltstrike, dnscat2, iodine | to do |
+| v_det on unseen benign (CIC capture 3) | **done**: 1 / 25,222 (0.004%) — det's harm is specific to the frozen test period |
+| ozymandns: convert · unseen test | **done**: domain `ozymandns-txt.com`, 5000 kept; unseen test 5000 / 5000 |
+| cobaltstrike: convert · unseen test | **done**: `cobaltstrike-txt.com`, 5000 kept; unseen test 5000 / 5000 |
+| dnscat2: convert · unseen test | **done**: `dnscat-aaaa.com`, 5000 kept (all AAAA); unseen test 5000 / 5000 |
+| iodine: convert · unseen test | **done**: `iodine-private.com`, 5000 kept (type 65399); unseen test **4996 / 5000 (99.92%)** — first tool below 100% |
+| Per-tool training runs for ozymandns/cobaltstrike/dnscat2/iodine | **skipped** (going straight to the single combined model v3) |
+| Training with all new data together (`runs/v3`) | to do — next step |
 | Training with all new data together | to do |
 
 Each run (`runs/baseline`, `runs/v_<tool>`) holds a complete model set: Path A, Path B and fusion. The detection pipeline still uses `models/` (the old models) unless `DNS_DETECT_MODELS_DIR=runs/<name>` is set.
@@ -220,7 +226,9 @@ Domain `det-a.com` is correct, with no background queries; all 5,000 kept querie
   - compare the feature ranges of det, dns_shell and benign;
   - look at which test domains v_det flags;
   - repeat with other seeds.
-- **Still needed:** v_det's false alarms on CIC capture 3 (unseen benign). If they stay near 0, det's effect is specific to the frozen test period.
+- **Checked (2026-11-08): v_det on CIC capture 3 (unseen benign) = 1 / 25,222 (0.004%).** det's effect is specific to the frozen test period; on fresh benign traffic v_det stays far inside the 0.1% budget, so det remains usable for the combined model.
+
+**Per-method false alarms of v_det on the frozen test set:** Path A 36 (FPR 3.08%), Path B 105 (8.99%), OR rule 119, fusion 38. Note the fusion (38) is slightly above Path A (36) here — the first run where the fusion does not exactly equal Path A.
 
 See [RESULTS_COMPARISON.md](RESULTS_COMPARISON.md) §6.3.
 
@@ -579,7 +587,7 @@ Fill in [table 10.6](#106-multi-seed-check-path-a-5-seeds):
 |---|---|---|---|
 | baseline | 1 | 0.004% | ✅ |
 | v_dnsshell | 0 | 0.000% | ✅ |
-| v_det | | | |
+| v_det | 1 | 0.004% | ✅ |
 | v3 | | | |
 
 ### 10.2 Unseen-tool test (baseline, before training on the tool)
@@ -588,10 +596,10 @@ Fill in [table 10.6](#106-multi-seed-check-path-a-5-seeds):
 |---|---|---|---|---|
 | dns_shell | dnsshell-txt.com | 5,000 | **5,000** | **100%** |
 | det | det-a.com | 5,000 | **5,000** | **100%** |
-| ozymandns | | | | |
-| cobaltstrike | | | | |
-| dnscat2 | | | | |
-| iodine | | | | |
+| ozymandns | ozymandns-txt.com | 5,000 | **5,000** | **100%** |
+| cobaltstrike | cobaltstrike-txt.com | 5,000 | **5,000** | **100%** |
+| dnscat2 | dnscat-aaaa.com | 5,000 | **5,000** | **100%** |
+| iodine | iodine-private.com | 5,000 | **4,996** | **99.92%** |
 
 ### 10.3 Frozen test set: every run vs baseline
 
@@ -599,7 +607,7 @@ Fill in [table 10.6](#106-multi-seed-check-path-a-5-seeds):
 |---|---|---|---|---|---|---|---|
 | baseline | 1.0 | 1.97% (23) | 0.9957 | 1.0 | 9.59% (112) | 1.0 | 23 |
 | v_dnsshell | 1.0 | 0.60% (7) | 1.0 | 1.0 | 9.67% (113) | 1.0 | 7 |
-| v_det | 1.0 | | 1.0 | | | 1.0 | 38 |
+| v_det | 1.0 | 3.08% (36) | 1.0 | 1.0 | 8.99% (105) | 1.0 | 38 |
 | v_ozymandns | | | | | | | |
 | v_cobaltstrike | | | | | | | |
 | v_dnscat2 | | | | | | | |
@@ -648,11 +656,11 @@ Verdict (E4): dns_shell helps — … · det hurts — …
 - [x] Task A: baseline false alarms on CIC capture 3: 1 / 25,222 (v_dnsshell: 0)
 - [x] dns_shell step 3 (`runs/v_dnsshell`): fusion false alarms 23 → 7
 - [x] det: convert · unseen test (5000 / 5000) · train (fusion false alarms 38)
-- [ ] det: per-method false alarms + CIC capture 3 check for `runs/v_det`
-- [ ] ozymandns: convert · unseen test · train
-- [ ] cobaltstrike: convert · unseen test · train
-- [ ] dnscat2: convert · unseen test · train
-- [ ] iodine: convert · unseen test · train
+- [x] det: per-method false alarms (Path A 36 · Path B 105 · fusion 38) + CIC capture 3 check for `runs/v_det`: 1 / 25,222
+- [x] ozymandns: convert (`ozymandns-txt.com`) · unseen test (5000 / 5000) · per-tool train skipped
+- [x] cobaltstrike: convert (`cobaltstrike-txt.com`) · unseen test (5000 / 5000) · per-tool train skipped
+- [x] dnscat2: convert (`dnscat-aaaa.com`) · unseen test (5000 / 5000) · per-tool train skipped
+- [x] iodine: convert (`iodine-private.com`) · unseen test (**4996 / 5000, 99.92%**) · per-tool train skipped
 - [ ] Task C: benign Tu captures (optional) and v3
 - [ ] Task D: comparison table, v3 on CIC capture 3, leave-one-tool-out
 - [ ] Task E1: rebuild training files for baseline, v_dnsshell, v_det

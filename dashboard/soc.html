@@ -1,0 +1,966 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>SOC Monitoring</title>
+  <style>
+    :root {
+      --bg: #101320;
+      --panel: #1b1f2e;
+      --panel2: #171a27;
+      --sidebar: #161926;
+      --topbar: #1e2231;
+      --border: #2a2f42;
+      --text: #d6dae6;
+      --muted: #8a90a5;
+      --dim: #5d6377;
+      --green: #8bc34a;
+      --green2: #4caf50;
+      --orange: #f09f33;
+      --yellow: #e8d44d;
+      --blue: #4a90d9;
+      --red: #e0564a;
+      --purple: #9575cd;
+      --cyan: #4dd0e1;
+      --accent: #8bc34a;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0
+    }
+
+    html,
+    body {
+      height: 100%
+    }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font: 13px/1.45 "Segoe UI", system-ui, Arial, sans-serif;
+      overflow: hidden
+    }
+
+    /* ── top bar ───────────────────────────────── */
+    .topbar {
+      height: 46px;
+      background: var(--topbar);
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      gap: 18px;
+      padding: 0 14px;
+      position: relative;
+      z-index: 5
+    }
+
+    .logo {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 15px;
+      font-weight: 600;
+      color: #fff
+    }
+
+    .logo .mark {
+      width: 24px;
+      height: 24px;
+      border-radius: 50%;
+      background: radial-gradient(circle at 35% 35%, #b3d96b, #6f9f33);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 12px;
+      color: #10240a;
+      font-weight: 800
+    }
+
+    .topnav {
+      display: flex;
+      gap: 16px;
+      color: var(--muted);
+      font-size: 12.5px
+    }
+
+    .topnav span {
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 4px
+    }
+
+    .topnav span:hover {
+      color: #fff
+    }
+
+    .caret {
+      font-size: 9px;
+      opacity: .7
+    }
+
+    .topbar .right {
+      margin-left: auto;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      font-size: 12px;
+      color: var(--muted)
+    }
+
+    .pill {
+      border: 1px solid var(--green);
+      color: var(--green);
+      border-radius: 4px;
+      padding: 2px 10px;
+      display: flex;
+      gap: 5px;
+      align-items: center;
+      font-size: 11.5px
+    }
+
+    .select {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      padding: 3px 24px 3px 10px;
+      color: var(--text);
+      position: relative;
+      cursor: default
+    }
+
+    .select:after {
+      content: "▾";
+      position: absolute;
+      right: 8px;
+      color: var(--dim);
+      font-size: 9px;
+      top: 5px
+    }
+
+    .bell {
+      font-size: 15px;
+      cursor: pointer
+    }
+
+    .user {
+      display: flex;
+      align-items: center;
+      gap: 6px
+    }
+
+    .user:after {
+      content: "▾";
+      color: var(--dim);
+      font-size: 9px
+    }
+
+    /* ── layout ────────────────────────────────── */
+    .wrap {
+      display: flex;
+      height: calc(100vh - 46px)
+    }
+
+    .sidebar {
+      width: 196px;
+      min-width: 196px;
+      background: var(--sidebar);
+      border-right: 1px solid var(--border);
+      display: flex;
+      flex-direction: column;
+      padding-top: 10px
+    }
+
+    .sb-title {
+      font-size: 12px;
+      font-weight: 700;
+      letter-spacing: .6px;
+      color: #fff;
+      padding: 8px 16px 12px
+    }
+
+    .nav {
+      flex: 1;
+      overflow-y: auto
+    }
+
+    .nav a {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 9px 16px;
+      color: var(--muted);
+      text-decoration: none;
+      font-size: 12.5px;
+      border-left: 3px solid transparent
+    }
+
+    .nav a .ic {
+      width: 16px;
+      text-align: center;
+      opacity: .85
+    }
+
+    .nav a:hover {
+      color: #fff;
+      background: #1c2032
+    }
+
+    .nav a.open {
+      color: #fff
+    }
+
+    .nav a.active {
+      color: #fff;
+      background: #222842;
+      border-left-color: var(--green)
+    }
+
+    .nav a.active .ic {
+      color: var(--green)
+    }
+
+    .nav .sub {
+      padding-left: 42px;
+      font-size: 12px
+    }
+
+    .nav .grp-caret {
+      margin-left: auto;
+      font-size: 9px;
+      color: var(--dim)
+    }
+
+    .sb-ver {
+      padding: 10px 16px;
+      color: var(--dim);
+      font-size: 11px
+    }
+
+    .main {
+      flex: 1;
+      overflow-y: auto;
+      padding: 12px 14px 0
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(12, 1fr);
+      gap: 12px
+    }
+
+    /* ── panels ────────────────────────────────── */
+    .panel {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      display: flex;
+      flex-direction: column;
+      min-width: 0
+    }
+
+    .p-head {
+      display: flex;
+      align-items: center;
+      padding: 9px 12px 7px;
+      font-size: 11.5px;
+      font-weight: 700;
+      letter-spacing: .5px;
+      color: #cfd4e2
+    }
+
+    .p-head .info {
+      color: var(--dim);
+      font-weight: 400;
+      margin-left: 6px;
+      cursor: help
+    }
+
+    .p-head .close-details {
+      margin-left: auto;
+      font-weight: 400;
+      font-size: 11px;
+      color: var(--muted);
+      cursor: pointer;
+      border: 1px solid var(--border);
+      border-radius: 3px;
+      padding: 2px 8px
+    }
+
+    .p-head .close-details:hover {
+      color: #fff
+    }
+
+    .p-body {
+      padding: 4px 12px 12px;
+      flex: 1;
+      min-height: 0
+    }
+
+    /* summary strip */
+    .summary {
+      grid-column: 1/-1
+    }
+
+    .sum-row {
+      display: flex;
+      align-items: stretch;
+      padding: 6px 4px 14px
+    }
+
+    .sum-item {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 6px;
+      position: relative;
+      padding: 4px 6px;
+      text-align: center
+    }
+
+    .sum-item:not(:last-child):after {
+      content: "";
+      position: absolute;
+      right: 0;
+      top: 12%;
+      height: 76%;
+      width: 1px;
+      background: var(--border)
+    }
+
+    .sum-ic {
+      font-size: 20px;
+      height: 30px;
+      display: flex;
+      align-items: center;
+      color: var(--green)
+    }
+
+    .sum-val {
+      font-size: 21px;
+      font-weight: 600;
+      color: #fff;
+      line-height: 1.1
+    }
+
+    .sum-lab {
+      font-size: 11px;
+      color: var(--muted)
+    }
+
+    .sum-item.warn .sum-ic {
+      color: var(--orange)
+    }
+
+    .sum-item.warn .sum-val {
+      color: var(--orange)
+    }
+
+    .sum-item.bad .sum-ic {
+      color: var(--red)
+    }
+
+    .sum-item.bad .sum-val {
+      color: var(--red)
+    }
+
+    /* donut panels */
+    .donut-wrap {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 8px;
+      height: 100%
+    }
+
+    .donut-box {
+      position: relative;
+      width: 138px;
+      height: 138px;
+      flex: none
+    }
+
+    .donut-box svg {
+      width: 100%;
+      height: 100%;
+      transform: rotate(-90deg)
+    }
+
+    .donut-center {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      pointer-events: none
+    }
+
+    .donut-center .n {
+      font-size: 26px;
+      font-weight: 600;
+      color: #fff;
+      line-height: 1
+    }
+
+    .donut-center .l {
+      font-size: 10.5px;
+      color: var(--muted);
+      margin-top: 3px
+    }
+
+    .legend {
+      width: 100%;
+      display: flex;
+      flex-direction: column;
+      gap: 5px;
+      font-size: 11.5px;
+      color: var(--muted)
+    }
+
+    .legend .li {
+      display: flex;
+      align-items: center;
+      gap: 7px
+    }
+
+    .legend .sw {
+      width: 9px;
+      height: 9px;
+      border-radius: 2px;
+      flex: none
+    }
+
+    .legend .pc {
+      margin-left: auto;
+      color: var(--text)
+    }
+
+    .legend.cols {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      column-gap: 14px
+    }
+
+    /* category bars */
+    .cat-body {
+      display: flex;
+      flex-direction: column;
+      height: 100%
+    }
+
+    .cat-bars {
+      flex: 1;
+      min-height: 110px
+    }
+
+    .cat-legend {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 4px 12px;
+      font-size: 11px;
+      color: var(--muted);
+      padding-top: 8px;
+      border-top: 1px solid var(--border);
+      margin-top: 8px
+    }
+
+    .cat-legend .li {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis
+    }
+
+    .cat-legend .sw {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      flex: none
+    }
+
+    .chart-body {
+      height: 190px
+    }
+
+    .chart-legend {
+      display: flex;
+      gap: 14px;
+      font-size: 11px;
+      color: var(--muted);
+      margin-left: auto;
+      font-weight: 400
+    }
+
+    .chart-legend .li {
+      display: flex;
+      align-items: center;
+      gap: 5px
+    }
+
+    .chart-legend .sw {
+      width: 8px;
+      height: 8px;
+      border-radius: 2px
+    }
+
+    .c4 {
+      grid-column: span 3
+    }
+
+    .c6 {
+      grid-column: span 4
+    }
+
+    @media (max-width:1200px) {
+      .c4 {
+        grid-column: span 6
+      }
+
+      .c6 {
+        grid-column: span 12
+      }
+    }
+
+    svg text {
+      font-family: inherit
+    }
+
+    .axis {
+      fill: var(--dim);
+      font-size: 9.5px
+    }
+
+    .gridline {
+      stroke: #262b3d;
+      stroke-width: 1
+    }
+
+    /* footer */
+    .footer {
+      display: flex;
+      gap: 18px;
+      align-items: center;
+      padding: 14px 4px 12px;
+      font-size: 11px;
+      color: var(--dim)
+    }
+
+    .footer a {
+      color: var(--muted);
+      text-decoration: none
+    }
+
+    .footer a:hover {
+      color: #fff
+    }
+
+    .footer .copy {
+      margin-left: auto
+    }
+
+    .statusdot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--green);
+      display: inline-block
+    }
+
+    .statusdot.running {
+      background: var(--orange);
+      animation: pulse 1s infinite
+    }
+
+    .statusdot.error {
+      background: var(--red)
+    }
+
+    @keyframes pulse {
+      50% {
+        opacity: .35
+      }
+    }
+  </style>
+</head>
+
+<body>
+
+  <div class="topbar">
+    <div class="logo"><span class="mark">◎</span> Capstone Project</div>
+    <div class="topnav">
+      <span>⠿ Services <span class="caret">▾</span></span>
+      <span>☉ Support <span class="caret">▾</span></span>
+    </div>
+    <div class="right">
+      <span class="pill" id="modePill"><span class="statusdot" id="statusDot"></span><span
+          id="modeLabel">Live</span></span>
+      <span class="select">English</span>
+      <span class="select">Theme: Dark</span>
+      <span class="bell">🔔</span>
+      <span class="user">👤 <span id="userLabel">soc-analyst@lab.local</span></span>
+    </div>
+  </div>
+
+  <div class="wrap">
+    <aside class="sidebar">
+      <div class="sb-title">SOC AS-A-SERVICE</div>
+      <nav class="nav">
+        <a class="open" href="#"><span class="ic">▦</span> Dashboards <span class="grp-caret">▾</span></a>
+        <a class="active sub" href="/soc">Monitoring Overview</a>
+        <a class="sub" href="/usecases">Monitoring Use Cases</a>
+        <a class="sub" href="/">Classic Dashboard</a>
+        <a href="/alerts"><span class="ic">⚠</span> Alerts</a>
+        <a href="#"><span class="ic">✓</span> Service Requests</a>
+        <a href="#"><span class="ic">🖳</span> My Assets</a>
+        <a href="#"><span class="ic">▤</span> Reports</a>
+        <a href="#"><span class="ic">🔍</span> Forensic Analysis</a>
+        <a href="#"><span class="ic">≣</span> Audit Logs</a>
+        <a href="#"><span class="ic">⚙</span> Settings <span class="grp-caret">▸</span></a>
+      </nav>
+      <div class="sb-ver">v1.0 — Capstone</div>
+    </aside>
+
+    <main class="main">
+      <div class="grid">
+
+        <!-- summary strip -->
+        <section class="panel summary">
+          <div class="p-head">SOC MONITORING SUMMARY <span class="info">ⓘ</span></div>
+          <div class="sum-row" id="summaryRow"></div>
+        </section>
+
+        <!-- row of donuts + categories -->
+        <section class="panel c4">
+          <div class="p-head">ALERTS BY SEVERITY <span class="close-details">Close details</span></div>
+          <div class="p-body">
+            <div class="donut-wrap">
+              <div class="donut-box"><svg id="sevDonut" viewBox="0 0 120 120"></svg>
+                <div class="donut-center">
+                  <div class="n" id="sevTotal">0</div>
+                  <div class="l">Alerts</div>
+                </div>
+              </div>
+              <div class="legend" id="sevLegend"></div>
+            </div>
+          </div>
+        </section>
+
+        <section class="panel c4">
+          <div class="p-head">ALERTS BY STATUS <span class="close-details">Close details</span></div>
+          <div class="p-body">
+            <div class="donut-wrap">
+              <div class="donut-box"><svg id="stDonut" viewBox="0 0 120 120"></svg>
+                <div class="donut-center">
+                  <div class="n" id="stTotal">0</div>
+                  <div class="l">Alerts</div>
+                </div>
+              </div>
+              <div class="legend cols" id="stLegend"></div>
+            </div>
+          </div>
+        </section>
+
+        <section class="panel c4">
+          <div class="p-head">ALERTS BY SLA <span class="close-details">Close details</span></div>
+          <div class="p-body">
+            <div class="donut-wrap">
+              <div class="donut-box"><svg id="slaDonut" viewBox="0 0 120 120"></svg>
+                <div class="donut-center">
+                  <div class="n" id="slaTotal">0</div>
+                  <div class="l">Alerts</div>
+                </div>
+              </div>
+              <div class="legend" id="slaLegend"></div>
+            </div>
+          </div>
+        </section>
+
+        <section class="panel c4">
+          <div class="p-head">OPEN ALERTS BY CATEGORY <span class="close-details">Close details</span></div>
+          <div class="p-body cat-body">
+            <svg id="catBars" class="cat-bars" preserveAspectRatio="none"></svg>
+            <div class="cat-legend" id="catLegend"></div>
+          </div>
+        </section>
+
+        <!-- bottom charts -->
+        <section class="panel c6">
+          <div class="p-head">AVERAGE LOG RATE (per second)</div>
+          <div class="p-body chart-body"><svg id="rateChart" width="100%" height="100%"></svg></div>
+        </section>
+
+        <section class="panel c6">
+          <div class="p-head">LOG COLLECTION BREAKDOWN
+            <span class="chart-legend" id="stackLegend"></span>
+          </div>
+          <div class="p-body chart-body"><svg id="stackChart" width="100%" height="100%"></svg></div>
+        </section>
+
+        <section class="panel c6">
+          <div class="p-head">THREAT DETECTION TREND
+            <span class="chart-legend" id="trendLegend"></span>
+          </div>
+          <div class="p-body chart-body"><svg id="trendChart" width="100%" height="100%"></svg></div>
+        </section>
+      </div>
+
+      <div class="footer">
+        <a href="/">Classic</a><a href="#">Dashboards</a><a href="#">Reports</a><a href="#">Audit Logs</a>
+        <a href="#">Legal</a><a href="#">Privacy</a><a href="#">FAQ</a>
+        <span class="copy">DNS Traffic Anomaly Detection — Capstone. All data local.</span>
+      </div>
+    </main>
+  </div>
+
+  <script>
+    "use strict";
+    const $ = id => document.getElementById(id);
+    const C = {
+      green: "#8bc34a", green2: "#4caf50", orange: "#f09f33", yellow: "#e8d44d",
+      blue: "#4a90d9", red: "#e0564a", purple: "#9575cd", cyan: "#4dd0e1"
+    };
+    const CAT_COLORS = [C.orange, C.yellow, C.green, C.blue, C.purple, C.cyan, C.red];
+    const fmt = n => n >= 1e6 ? (n / 1e6).toFixed(1) + "M" : n >= 1000 ? (n / 1000).toFixed(1) + "K" : String(n ?? 0);
+    const esc = s => String(s ?? "").replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+    const hhmm = t => { const d = new Date(t * 1000); return String(d.getHours()).padStart(2, "0") + ":" + String(d.getMinutes()).padStart(2, "0"); };
+
+    /* ── donut ─────────────────────────────────── */
+    function donut(svgId, parts) {                       // parts: [{v,color}]
+      const svg = $(svgId), R = 46, CIRC = 2 * Math.PI * R;
+      const total = parts.reduce((s, p) => s + p.v, 0) || 1;
+      let off = 0, out = "";
+      for (const p of parts) {
+        if (!p.v) continue;
+        const len = p.v / total * CIRC, gap = parts.filter(x => x.v).length > 1 ? 2.5 : 0;
+        out += `<circle cx="60" cy="60" r="${R}" fill="none" stroke="${p.color}" stroke-width="13"
+      stroke-dasharray="${Math.max(len - gap, 0.5)} ${CIRC - Math.max(len - gap, 0.5)}" stroke-dashoffset="${-off}" stroke-linecap="butt"/>`;
+        off += len;
+      }
+      if (!out) out = `<circle cx="60" cy="60" r="${R}" fill="none" stroke="#2a2f42" stroke-width="13"/>`;
+      svg.innerHTML = out;
+    }
+    function legendHTML(items, total) {                  // items: [{label,v,color}]
+      const t = total || items.reduce((s, i) => s + i.v, 0) || 1;
+      return items.map(i =>
+        `<div class="li"><span class="sw" style="background:${i.color}"></span>${esc(i.label)}
+     <span class="pc">${Math.round(i.v / t * 100)} %</span></div>`).join("");
+    }
+
+    /* ── horizontal category bars ──────────────── */
+    function catBars(rules) {
+      const entries = Object.entries(rules || {}).sort((a, b) => b[1] - a[1]).slice(0, 6);
+      const svg = $("catBars"), W = 300, max = Math.max(...entries.map(e => e[1]), 1);
+      const rowH = 20, H = Math.max(entries.length * rowH, 20);
+      svg.setAttribute("viewBox", `0 0 ${W} ${H}`);
+      let out = "";
+      entries.forEach(([name, v], i) => {
+        const y = i * rowH + 3, w = Math.max(v / max * (W - 40), 3);
+        out += `<rect x="0" y="${y}" width="${w}" height="12" rx="1.5" fill="${CAT_COLORS[i % CAT_COLORS.length]}"/>
+            <text x="${w + 6}" y="${y + 10}" class="axis" fill="#d6dae6" font-size="10">${v}</text>`;
+      });
+      svg.innerHTML = out || `<text x="10" y="15" class="axis">No alerts</text>`;
+      $("catLegend").innerHTML = entries.map(([name], i) =>
+        `<div class="li" title="${esc(name)}"><span class="sw" style="background:${CAT_COLORS[i % CAT_COLORS.length]}"></span>${esc(shortRule(name))}</div>`).join("");
+    }
+    function shortRule(n) {
+      return n.replace("Detection", "").replace("DNS Queries", "").replace(" - ", "·").trim().slice(0, 26);
+    }
+
+    /* ── generic line/area chart ───────────────── */
+    function sizeOf(svg) { const r = svg.getBoundingClientRect(); return { w: Math.max(r.width, 100), h: Math.max(r.height, 80) }; }
+    function scale(vals, px, pad) { const m = Math.max(...vals, 1); return v => px - pad - (v / m) * (px - 2 * pad); }
+
+    function areaChart(svgId, pts, color) {              // pts: [{t,v}]
+      const svg = $(svgId), { w, h } = sizeOf(svg);
+      svg.setAttribute("viewBox", `0 0 ${w} ${h}`);
+      const padL = 34, padB = 18, padT = 8;
+      const max = Math.max(...pts.map(p => p.v), 1);
+      const x = i => padL + i / (Math.max(pts.length - 1, 1)) * (w - padL - 8);
+      const y = v => padT + (1 - v / max) * (h - padT - padB);
+      let out = "";
+      for (let g = 0; g <= 3; g++) {
+        const gy = padT + g / 3 * (h - padT - padB);
+        out += `<line x1="${padL}" x2="${w - 8}" y1="${gy}" y2="${gy}" class="gridline"/>
+            <text x="${padL - 6}" y="${gy + 3}" text-anchor="end" class="axis">${fmt(Math.round(max * (1 - g / 3)))}</text>`;
+      }
+      if (pts.length) {
+        const line = pts.map((p, i) => `${i ? "L" : "M"}${x(i).toFixed(1)},${y(p.v).toFixed(1)}`).join(" ");
+        out += `<path d="${line} L${x(pts.length - 1)},${h - padB} L${x(0)},${h - padB} Z" fill="${color}22"/>
+            <path d="${line}" fill="none" stroke="${color}" stroke-width="1.6"/>`;
+        pts.forEach((p, i) => { out += `<circle cx="${x(i)}" cy="${y(p.v)}" r="2.2" fill="${color}"/>`; });
+        const step = Math.max(1, Math.ceil(pts.length / 6));
+        pts.forEach((p, i) => { if (i % step === 0) out += `<text x="${x(i)}" y="${h - 5}" text-anchor="middle" class="axis">${hhmm(p.t)}</text>`; });
+      }
+      svg.innerHTML = out;
+    }
+
+    function stackChart(svgId, pts, series) {            // pts: [{t, vals:[..]}], series: [{label,color}]
+      const svg = $(svgId), { w, h } = sizeOf(svg);
+      svg.setAttribute("viewBox", `0 0 ${w} ${h}`);
+      const padL = 34, padB = 18, padT = 8;
+      const totals = pts.map(p => p.vals.reduce((s, v) => s + v, 0));
+      const max = Math.max(...totals, 1);
+      const n = Math.max(pts.length, 1);
+      const slot = (w - padL - 10) / n, bw = Math.min(slot * 0.55, 26);
+      let out = "";
+      for (let g = 0; g <= 3; g++) {
+        const gy = padT + g / 3 * (h - padT - padB);
+        out += `<line x1="${padL}" x2="${w - 8}" y1="${gy}" y2="${gy}" class="gridline"/>
+            <text x="${padL - 6}" y="${gy + 3}" text-anchor="end" class="axis">${fmt(Math.round(max * (1 - g / 3)))}</text>`;
+      }
+      pts.forEach((p, i) => {
+        const cx = padL + slot * i + slot / 2;
+        let yTop = h - padB;
+        p.vals.forEach((v, si) => {
+          const bh = v / max * (h - padT - padB);
+          if (bh > 0.4) out += `<rect x="${(cx - bw / 2).toFixed(1)}" y="${(yTop - bh).toFixed(1)}" width="${bw.toFixed(1)}" height="${bh.toFixed(1)}" fill="${series[si].color}"/>`;
+          yTop -= bh;
+        });
+        const step = Math.max(1, Math.ceil(n / 6));
+        if (i % step === 0) out += `<text x="${cx}" y="${h - 5}" text-anchor="middle" class="axis">${hhmm(p.t)}</text>`;
+      });
+      svg.innerHTML = out;
+    }
+
+    function trendChart(svgId, pts, series) {            // pts: [{t, vals:[..]}]
+      const svg = $(svgId), { w, h } = sizeOf(svg);
+      svg.setAttribute("viewBox", `0 0 ${w} ${h}`);
+      const padL = 34, padB = 18, padT = 8;
+      const max = Math.max(...pts.flatMap(p => p.vals), 1);
+      const x = i => padL + i / (Math.max(pts.length - 1, 1)) * (w - padL - 8);
+      const y = v => padT + (1 - v / max) * (h - padT - padB);
+      let out = "";
+      for (let g = 0; g <= 3; g++) {
+        const gy = padT + g / 3 * (h - padT - padB);
+        out += `<line x1="${padL}" x2="${w - 8}" y1="${gy}" y2="${gy}" class="gridline"/>
+            <text x="${padL - 6}" y="${gy + 3}" text-anchor="end" class="axis">${fmt(Math.round(max * (1 - g / 3)))}</text>`;
+      }
+      series.forEach((s, si) => {
+        if (!pts.length) return;
+        const line = pts.map((p, i) => `${i ? "L" : "M"}${x(i).toFixed(1)},${y(p.vals[si]).toFixed(1)}`).join(" ");
+        out += `<path d="${line}" fill="none" stroke="${s.color}" stroke-width="1.6"/>`;
+        pts.forEach((p, i) => { out += `<circle cx="${x(i)}" cy="${y(p.vals[si])}" r="2" fill="${s.color}"/>`; });
+      });
+      if (pts.length) {
+        const step = Math.max(1, Math.ceil(pts.length / 6));
+        pts.forEach((p, i) => { if (i % step === 0) out += `<text x="${x(i)}" y="${h - 5}" text-anchor="middle" class="axis">${hhmm(p.t)}</text>`; });
+      }
+      svg.innerHTML = out;
+    }
+    function miniLegend(elId, series) {
+      $(elId).innerHTML = series.map(s =>
+        `<span class="li"><span class="sw" style="background:${s.color}"></span>${esc(s.label)}</span>`).join("");
+    }
+
+    /* ── summary strip ─────────────────────────── */
+    function summary(items) {
+      $("summaryRow").innerHTML = items.map(i =>
+        `<div class="sum-item ${i.cls || ""}"><div class="sum-ic">${i.icon}</div>
+     <div class="sum-val">${i.val}</div><div class="sum-lab">${esc(i.label)}</div></div>`).join("");
+    }
+
+    /* ── render from /api/state ────────────────── */
+    let lastVersion = -1;
+    function render(s) {
+      if (s.version === lastVersion) return;
+      lastVersion = s.version;
+
+      const t = s.totals || {}, sev = t.by_severity || {}, feed = s.feed || [];
+      const high = sev.High || 0, med = sev.Medium || 0, low = sev.Low || 0;
+      const total = t.alerts || 0;
+      const uniq = (k) => new Set(feed.map(f => f[k]).filter(Boolean)).size;
+
+      // top-bar status
+      $("modeLabel").textContent = s.mode === "demo" ? "Demo" : "Live";
+      const dot = $("statusDot");
+      dot.className = "statusdot" + (s.pipeline?.status === "running" ? " running" : s.pipeline?.status === "error" ? " error" : "");
+
+      // 1. summary strip
+      summary([
+        { icon: "🖳", val: uniq("client"), label: "Monitored Devices" },
+        { icon: "🌐", val: uniq("domain"), label: "Monitored Domains" },
+        { icon: "⟳", val: s.pipeline?.runs ?? 0, label: "Pipeline Runs" },
+        { icon: "≣", val: fmt(t.queries || 0), label: "Processed Queries" },
+        { icon: "🛡", val: fmt(total), label: "Security Events" },
+        { icon: "⚠", val: high, cls: "warn", label: "High Severity" },
+        { icon: "⮝", val: t.new_alerts || 0, cls: "bad", label: "Escalated Alerts" },
+      ]);
+
+      // 2. severity donut
+      const sevItems = [
+        { label: "High", v: high, color: C.red }, { label: "Medium", v: med, color: C.orange },
+        { label: "Low", v: low, color: C.blue }];
+      donut("sevDonut", sevItems);
+      $("sevTotal").textContent = total;
+      $("sevLegend").innerHTML = legendHTML(sevItems, total);
+
+      // 3. status donut (derived: Escalated=new, Confirmed=high, In Progress=medium, Closed=rest)
+      // feed holds the newest 150 alerts; alerts older than that count as Closed so
+      // the donut total always equals totals.alerts, same as the classic dashboard
+      const older = Math.max(total - feed.length, 0);
+      const nNew = feed.filter(f => f.is_new).length;
+      const nConf = feed.filter(f => !f.is_new && f.severity === "High").length;
+      const nProg = feed.filter(f => !f.is_new && f.severity === "Medium").length;
+      const nClos = Math.max(feed.length - nNew - nConf - nProg, 0) + older;
+      const stItems = [
+        { label: "Escalated", v: nNew, color: C.red }, { label: "Closed (Resolved)", v: nClos, color: C.green },
+        { label: "In Progress", v: nProg, color: C.yellow }, { label: "Confirmed", v: nConf, color: C.orange }];
+      donut("stDonut", stItems);
+      $("stTotal").textContent = total;
+      $("stLegend").innerHTML = legendHTML(stItems, total);
+
+      // 4. SLA donut: Met = alerts already triaged by a rule with MITRE mapping
+      const mapped = feed.filter(f => (f.techniques || []).length).length + older;
+      const slaItems = [
+        { label: "Met", v: mapped, color: C.green2 },
+        { label: "Unmapped", v: Math.max(total - mapped, 0), color: C.orange }];
+      donut("slaDonut", slaItems.filter(i => i.v).length ? slaItems : [{ label: "Met", v: 1, color: C.green2 }]);
+      $("slaTotal").textContent = total;
+      $("slaLegend").innerHTML = legendHTML(slaItems, total || 1);
+
+      // 5. categories
+      catBars(t.by_rule);
+
+      // 6-8. history charts
+      const hist = s.history || [];
+      // avg log rate = delta queries / delta t between runs
+      const rate = [];
+      for (let i = 1; i < hist.length; i++) {
+        const dt = Math.max(hist[i].t - hist[i - 1].t, 1);
+        rate.push({ t: hist[i].t, v: Math.max((hist[i].queries - hist[i - 1].queries) / dt, 0) });
+      }
+      if (!rate.length && hist.length) rate.push({ t: hist[0].t, v: 0 });
+      areaChart("rateChart", rate.slice(-24), C.blue);
+
+      const stackSeries = [{ label: "High", color: C.red }, { label: "Medium", color: C.orange }, { label: "Other", color: C.green }];
+      const stackPts = hist.slice(-14).map(p => ({ t: p.t, vals: [p.high || 0, p.medium || 0, Math.max((p.total || 0) - (p.high || 0) - (p.medium || 0), 0)] }));
+      stackChart("stackChart", stackPts, stackSeries);
+      miniLegend("stackLegend", stackSeries);
+
+      const trendSeries = [{ label: "Security Event", color: C.yellow }, { label: "Triaged Alerts", color: C.orange }, { label: "Escalated Alerts", color: C.red }];
+      const trendPts = hist.slice(-24).map(p => ({ t: p.t, vals: [p.total || 0, p.medium || 0, p.high || 0] }));
+      trendChart("trendChart", trendPts, trendSeries);
+      miniLegend("trendLegend", trendSeries);
+    }
+
+    async function tick() {
+      try {
+        const r = await fetch("/api/state", { cache: "no-store" });
+        if (r.ok) render(await r.json());
+      } catch (e) { /* server restarting; keep polling */ }
+    }
+    tick();
+    setInterval(tick, 3000);
+    window.addEventListener("resize", () => { lastVersion = -1; tick(); });
+  </script>
+</body>
+
+</html>

@@ -1,0 +1,394 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Monitoring Use Cases</title>
+<style>
+  :root{
+    --bg:#101320; --panel:#1b1f2e; --panel2:#171a27; --sidebar:#161926; --topbar:#1e2231;
+    --border:#2a2f42; --text:#d6dae6; --muted:#8a90a5; --dim:#5d6377;
+    --green:#8bc34a; --green2:#4caf50; --orange:#f09f33; --yellow:#e8d44d;
+    --blue:#4a90d9; --red:#e0564a; --purple:#9575cd; --cyan:#4dd0e1;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html,body{height:100%}
+  body{background:var(--bg);color:var(--text);font:13px/1.45 "Segoe UI",system-ui,Arial,sans-serif;overflow:hidden}
+
+  /* ── top bar (same as soc.html) ─────────────── */
+  .topbar{height:46px;background:var(--topbar);border-bottom:1px solid var(--border);
+    display:flex;align-items:center;gap:18px;padding:0 14px;position:relative;z-index:5}
+  .logo{display:flex;align-items:center;gap:8px;font-size:15px;font-weight:600;color:#fff}
+  .logo .mark{width:24px;height:24px;border-radius:50%;background:radial-gradient(circle at 35% 35%,#b3d96b,#6f9f33);
+    display:flex;align-items:center;justify-content:center;font-size:12px;color:#10240a;font-weight:800}
+  .topnav{display:flex;gap:16px;color:var(--muted);font-size:12.5px}
+  .topnav span{cursor:pointer;display:flex;align-items:center;gap:4px}
+  .topnav span:hover{color:#fff}
+  .caret{font-size:9px;opacity:.7}
+  .topbar .right{margin-left:auto;display:flex;align-items:center;gap:12px;font-size:12px;color:var(--muted)}
+  .pill{border:1px solid var(--green);color:var(--green);border-radius:4px;padding:2px 10px;display:flex;gap:5px;align-items:center;font-size:11.5px}
+  .select{background:var(--panel);border:1px solid var(--border);border-radius:4px;padding:3px 24px 3px 10px;color:var(--text);position:relative;cursor:default}
+  .select:after{content:"▾";position:absolute;right:8px;color:var(--dim);font-size:9px;top:5px}
+  .bell{font-size:15px;cursor:pointer}
+  .user{display:flex;align-items:center;gap:6px}
+  .user:after{content:"▾";color:var(--dim);font-size:9px}
+  .statusdot{width:8px;height:8px;border-radius:50%;background:var(--green);display:inline-block}
+  .statusdot.running{background:var(--orange);animation:pulse 1s infinite}
+  .statusdot.error{background:var(--red)}
+  @keyframes pulse{50%{opacity:.35}}
+
+  /* ── layout + sidebar (same as soc.html) ────── */
+  .wrap{display:flex;height:calc(100vh - 46px)}
+  .sidebar{width:196px;min-width:196px;background:var(--sidebar);border-right:1px solid var(--border);
+    display:flex;flex-direction:column;padding-top:10px}
+  .sb-title{font-size:12px;font-weight:700;letter-spacing:.6px;color:#fff;padding:8px 16px 12px}
+  .nav{flex:1;overflow-y:auto}
+  .nav a{display:flex;align-items:center;gap:10px;padding:9px 16px;color:var(--muted);text-decoration:none;font-size:12.5px;border-left:3px solid transparent}
+  .nav a .ic{width:16px;text-align:center;opacity:.85}
+  .nav a:hover{color:#fff;background:#1c2032}
+  .nav a.open{color:#fff}
+  .nav a.active{color:var(--green);background:#222842;border-left-color:var(--green)}
+  .nav .sub{padding-left:42px;font-size:12px}
+  .nav .grp-caret{margin-left:auto;font-size:9px;color:var(--dim)}
+  .sb-ver{padding:10px 16px;color:var(--dim);font-size:11px}
+  .main{flex:1;overflow-y:auto;padding:10px 14px 0;display:flex;flex-direction:column}
+
+  /* ── breadcrumb row ─────────────────────────── */
+  .crumb{display:flex;align-items:center;gap:8px;font-size:12.5px;color:var(--muted);padding:2px 2px 10px}
+  .crumb b{color:#fff;font-weight:600}
+  .crumb .range{margin-left:auto}
+
+  /* ── tabs ───────────────────────────────────── */
+  .tabs{display:flex;gap:2px;padding:0 2px}
+  .tab{background:var(--panel2);border:1px solid var(--border);border-bottom:none;border-radius:5px 5px 0 0;
+    padding:7px 18px;font-size:12px;color:var(--muted);cursor:pointer}
+  .tab.on{background:var(--panel);color:#fff;font-weight:600}
+
+  /* ── kill chain panel ───────────────────────── */
+  .panel{background:var(--panel);border:1px solid var(--border);border-radius:0 6px 6px 6px;display:flex;flex-direction:column}
+  .p-head{display:flex;align-items:center;padding:10px 14px 4px;font-size:11.5px;font-weight:700;letter-spacing:.5px;color:#cfd4e2}
+  .p-head .close-details{margin-left:auto;font-weight:400;font-size:11px;color:var(--muted);cursor:pointer}
+  .p-head .close-details:hover{color:#fff}
+  .chain{display:flex;align-items:flex-start;justify-content:space-between;padding:16px 40px 20px;position:relative}
+  .chain:before{content:"";position:absolute;left:70px;right:70px;top:46px;height:2px;background:#2e3450}
+  .stage{display:flex;flex-direction:column;align-items:center;gap:9px;position:relative;z-index:1;cursor:pointer;width:110px;text-align:center}
+  .stage .ring{width:60px;height:60px;border-radius:50%;background:var(--panel2);border:3px solid #3a62b8;
+    display:flex;align-items:center;justify-content:center;font-size:23px;transition:all .15s;position:relative}
+  .stage:hover .ring{border-color:var(--cyan)}
+  .stage .lab{font-size:11px;color:var(--muted)}
+  .stage .cnt{position:absolute;top:-4px;right:14px;min-width:18px;height:18px;border-radius:9px;background:var(--red);
+    color:#fff;font-size:10px;font-weight:700;display:flex;align-items:center;justify-content:center;padding:0 5px}
+  .stage.zero .cnt{display:none}
+  .stage.zero .ring{opacity:.55}
+  .stage.sel .ring{background:var(--purple);border-color:#b39ddb;box-shadow:0 0 14px #9575cd88}
+  .stage.sel .lab{color:#cbb8f2;font-weight:600}
+
+  /* ── table toolbar ──────────────────────────── */
+  .toolbar{display:flex;align-items:center;gap:10px;padding:12px 14px 10px;border-top:1px solid var(--border);margin-top:2px}
+  .toolbar .title{font-size:12px;font-weight:600;color:#fff}
+  .toolbar .count{background:#2a3150;border-radius:9px;font-size:11px;padding:1px 9px;color:var(--text)}
+  .search{flex:0 1 320px;display:flex;align-items:center;gap:7px;background:var(--panel2);border:1px solid var(--border);
+    border-radius:4px;padding:5px 10px}
+  .search input{flex:1;background:none;border:0;outline:0;color:var(--text);font:inherit;font-size:12px}
+  .toolbar .icons{margin-left:auto;display:flex;gap:12px;color:var(--dim);font-size:14px}
+  .toolbar .icons span{cursor:pointer}
+  .toolbar .icons span:hover{color:#fff}
+
+  /* ── table ──────────────────────────────────── */
+  .tbl-wrap{flex:1;overflow:auto;padding:0 2px}
+  table{width:100%;border-collapse:collapse;font-size:12px}
+  thead th{position:sticky;top:0;background:var(--panel2);color:var(--muted);font-weight:600;text-align:left;
+    padding:8px 12px;border-bottom:1px solid var(--border);white-space:nowrap;font-size:11.5px}
+  thead th .srt{color:var(--dim);font-size:9px;margin-left:4px}
+  thead th .flt{color:var(--dim);font-size:10px;margin-left:2px}
+  tbody td{padding:9px 12px;border-bottom:1px solid #232841;white-space:nowrap;vertical-align:middle}
+  tbody tr:hover{background:#1f2436}
+  tbody tr.off{opacity:.42}
+  .rule-cell{max-width:260px;overflow:hidden;text-overflow:ellipsis;color:#e8ebf4}
+  .tech{color:var(--muted)}
+  .sevcell{display:flex;align-items:center;gap:7px}
+  .sevdot{width:9px;height:9px;border-radius:50%}
+  .sev-High .sevdot{background:var(--orange)} .sev-High{color:var(--orange)}
+  .sev-Medium .sevdot{background:var(--yellow)} .sev-Medium{color:var(--yellow)}
+  .sev-Low .sevdot{background:var(--blue)} .sev-Low{color:var(--blue)}
+  .src{color:var(--green);text-decoration:underline;text-underline-offset:2px;cursor:pointer;display:inline-flex;align-items:center;gap:6px}
+  .src .box{width:14px;height:14px;border:1px solid var(--red);border-radius:2px;color:var(--red);font-size:9px;
+    display:inline-flex;align-items:center;justify-content:center}
+  .num{font-variant-numeric:tabular-nums}
+  .editic{color:var(--dim);font-size:11px;margin-left:6px;cursor:pointer}
+  .editic:hover{color:#fff}
+
+  /* toggle switch */
+  .switch{width:34px;height:18px;border-radius:9px;background:#3a4157;position:relative;cursor:pointer;display:inline-block;
+    transition:background .15s;vertical-align:middle}
+  .switch:after{content:"";position:absolute;top:2px;left:2px;width:14px;height:14px;border-radius:50%;background:#aab;transition:left .15s}
+  .switch.on{background:var(--green2)}
+  .switch.on:after{left:18px;background:#fff}
+
+  /* exclusion icon */
+  .excl{width:18px;height:18px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;
+    font-size:11px;cursor:pointer;background:#3a2026;color:var(--red);border:1px solid var(--red)}
+  .excl.yes{background:#1e3322;color:var(--green);border-color:var(--green)}
+
+  /* pagination */
+  .pager{display:flex;align-items:center;justify-content:flex-end;gap:14px;padding:10px 14px;color:var(--muted);font-size:12px;
+    border-top:1px solid var(--border)}
+  .pager button{background:none;border:0;color:var(--muted);font-size:13px;cursor:pointer;padding:2px 6px}
+  .pager button:hover:not(:disabled){color:#fff}
+  .pager button:disabled{opacity:.3;cursor:default}
+
+  .footer{display:flex;gap:18px;align-items:center;padding:12px 4px;font-size:11px;color:var(--dim)}
+  .footer a{color:var(--muted);text-decoration:none}
+  .footer a:hover{color:#fff}
+  .footer .copy{margin-left:auto}
+
+  .empty{padding:40px;text-align:center;color:var(--dim)}
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <div class="logo"><span class="mark">◎</span> Capstone Project</div>
+  <div class="topnav">
+    <span>⠿ Services <span class="caret">▾</span></span>
+    <span>☉ Support <span class="caret">▾</span></span>
+  </div>
+  <div class="right">
+    <span class="pill"><span class="statusdot" id="statusDot"></span><span id="modeLabel">Live</span></span>
+    <span class="select">English</span>
+    <span class="select">Theme: Dark</span>
+    <span class="bell">🔔</span>
+    <span class="user">👤 <span>soc-analyst@lab.local</span></span>
+  </div>
+</div>
+
+<div class="wrap">
+  <aside class="sidebar">
+    <div class="sb-title">SOC AS-A-SERVICE</div>
+    <nav class="nav">
+      <a class="open" href="#"><span class="ic">▦</span> Dashboards <span class="grp-caret">▾</span></a>
+      <a class="sub" href="/soc">Monitoring Overview</a>
+      <a class="active sub" href="/usecases">Monitoring Use Cases</a>
+      <a class="sub" href="/">Classic Dashboard</a>
+      <a href="/alerts"><span class="ic">⚠</span> Alerts</a>
+      <a href="#"><span class="ic">✓</span> Service Requests</a>
+      <a href="#"><span class="ic">🖳</span> My Assets</a>
+      <a href="#"><span class="ic">▤</span> Reports</a>
+      <a href="#"><span class="ic">🔍</span> Forensic Analysis</a>
+      <a href="#"><span class="ic">≣</span> Audit Logs</a>
+      <a href="#"><span class="ic">⚙</span> Settings <span class="grp-caret">▸</span></a>
+    </nav>
+    <div class="sb-ver">v1.0 — Capstone</div>
+  </aside>
+
+  <main class="main">
+    <div class="crumb">⌂ <span>›</span> <b>SOC Monitoring Use Cases</b>
+      <span class="select range">Last 90 Days</span></div>
+
+    <div class="tabs">
+      <div class="tab on" id="tabIT">IT Use Cases</div>
+      <div class="tab" id="tabOT">OT Use Cases</div>
+    </div>
+
+    <section class="panel" style="flex:1;min-height:0">
+      <div class="p-head">KILL CHAIN STAGES <span class="close-details" id="clearSel">Close details</span></div>
+      <div class="chain" id="chain"></div>
+
+      <div class="toolbar">
+        <span class="title" id="tblTitle">All Use Cases</span>
+        <span class="count" id="tblCount">0</span>
+        <label class="search">🔍 <input id="q" type="search" placeholder="Search IT use cases..."></label>
+        <div class="icons"><span title="Refresh" id="refreshBtn">⟳</span><span title="Columns">☰</span><span title="Settings">⚙</span></div>
+      </div>
+
+      <div class="tbl-wrap">
+        <table>
+          <thead><tr>
+            <th>SOC Detection Rule <span class="srt">⇅</span><span class="flt">▼</span></th>
+            <th>Mitre Technique <span class="srt">⇅</span><span class="flt">▼</span></th>
+            <th>Severity <span class="srt">⇅</span><span class="flt">▼</span></th>
+            <th>Detection Source <span class="srt">⇅</span><span class="flt">▼</span></th>
+            <th>Monitoring Status <span class="srt">⇅</span><span class="flt">▼</span></th>
+            <th>Monitoring Exclusion <span class="srt">⇅</span><span class="flt">▼</span></th>
+            <th>Detection Events <span class="srt">⇅</span></th>
+            <th>Alerts <span class="srt">⇅</span><span class="flt">▼</span></th>
+          </tr></thead>
+          <tbody id="rows"></tbody>
+        </table>
+        <div class="empty" id="empty" hidden>No use cases match.</div>
+      </div>
+
+      <div class="pager">
+        <button id="pgFirst">|‹</button><button id="pgPrev">‹</button>
+        <span id="pgLabel">Page 1 of 1</span>
+        <button id="pgNext">›</button><button id="pgLast">›|</button>
+      </div>
+    </section>
+
+    <div class="footer">
+      <a href="/soc">Overview</a><a href="/">Classic</a><a href="#">Reports</a><a href="#">Audit Logs</a>
+      <a href="#">Legal</a><a href="#">Privacy</a><a href="#">FAQ</a>
+      <span class="copy">DNS Traffic Anomaly Detection — Capstone. All data local.</span>
+    </div>
+  </main>
+</div>
+
+<script>
+"use strict";
+const $ = id => document.getElementById(id);
+const esc = s => String(s ?? "").replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+
+/* ── Cyber Kill Chain stages + MITRE tactic mapping ───────────
+   Our detection rules carry MITRE ATT&CK tactics; each tactic is
+   mapped onto the Lockheed-Martin kill chain stage it belongs to. */
+const STAGES = [
+  {key:"recon",   label:"Reconnaissance",      icon:"👁"},
+  {key:"weapon",  label:"Weaponization",       icon:"💀"},
+  {key:"deliver", label:"Delivery",            icon:"✉"},
+  {key:"exploit", label:"Exploitation",        icon:"💻"},
+  {key:"install", label:"Installation",        icon:"⬇"},
+  {key:"c2",      label:"Command and Control", icon:"🎮"},
+  {key:"action",  label:"Action",              icon:"🕵"},
+];
+const TACTIC_TO_STAGE = {
+  Reconnaissance:"recon", Discovery:"recon",
+  ResourceDevelopment:"weapon",
+  InitialAccess:"deliver", Phishing:"deliver",
+  Execution:"exploit", PrivilegeEscalation:"exploit", DefenseEvasion:"exploit",
+  Persistence:"install",
+  CommandAndControl:"c2", "Command and Control":"c2",
+  Exfiltration:"action", Impact:"action", Collection:"action",
+};
+
+/* ── client-side state ──────────────────────── */
+let USECASES = [];            // aggregated rules
+let selStage = null;          // kill-chain filter
+let page = 1; const PAGE_SIZE = 8;
+let lastVersion = -1;
+let otMode = false;
+
+function store(k, v){ try { if (v === undefined) return JSON.parse(localStorage.getItem(k) || "{}"); localStorage.setItem(k, JSON.stringify(v)); } catch(e){ return {}; } }
+let toggles = store("uc_monitoring");   // rule -> false means monitoring off
+let excls   = store("uc_exclusion");    // rule -> true means excluded
+
+/* ── aggregation: one use case per detection rule ── */
+function aggregate(s){
+  const feed = s.feed || [], byRule = (s.totals||{}).by_rule || {};
+  const map = {};
+  for (const f of feed){
+    const r = map[f.rule] ??= {name:f.rule, techs:new Set(), stages:new Set(), high:0, med:0, low:0, newc:0, source:null};
+    (f.techniques||[]).forEach(t=>r.techs.add(t));
+    (f.tactics||[]).forEach(t=>{ const st = TACTIC_TO_STAGE[t]; if (st) r.stages.add(st); });
+    if (f.severity === "High") r.high++; else if (f.severity === "Low") r.low++; else r.med++;
+    if (f.is_new) r.newc++;
+    if (!r.source && f.source) r.source = f.source;
+  }
+  for (const name of Object.keys(byRule)) map[name] ??= {name, techs:new Set(), stages:new Set(), high:0, med:0, low:0, newc:0, source:null};
+  return Object.values(map).map(r => ({
+    ...r,
+    techs: [...r.techs], stages: [...r.stages],
+    severity: r.high >= r.med && r.high >= r.low ? "High" : r.med >= r.low ? "Medium" : "Low",
+    events: byRule[r.name] ?? (r.high + r.med + r.low),
+    alerts: r.newc,
+    source: r.source || "DNS Detection Pipeline",
+  })).sort((a,b)=>b.events - a.events);
+}
+
+/* ── kill chain render ──────────────────────── */
+function renderChain(){
+  const counts = {};
+  for (const u of USECASES) for (const st of u.stages) counts[st] = (counts[st]||0) + u.events;
+  $("chain").innerHTML = STAGES.map(s=>{
+    const n = counts[s.key] || 0;
+    const cls = (n ? "" : " zero") + (selStage === s.key ? " sel" : "");
+    return `<div class="stage${cls}" data-stage="${s.key}">
+      <div class="ring">${s.icon}<span class="cnt">${n}</span></div>
+      <div class="lab">${esc(s.label)}</div></div>`;
+  }).join("");
+  document.querySelectorAll(".stage").forEach(el=>{
+    el.onclick = () => { selStage = selStage === el.dataset.stage ? null : el.dataset.stage; page = 1; renderChain(); renderTable(); };
+  });
+}
+
+/* ── table render ───────────────────────────── */
+function filtered(){
+  const q = $("q").value.trim().toLowerCase();
+  if (otMode) return [];                                 // no OT sensors in this lab
+  return USECASES.filter(u =>
+    (!selStage || u.stages.includes(selStage)) &&
+    (!q || u.name.toLowerCase().includes(q) || u.techs.join(" ").toLowerCase().includes(q)
+        || u.source.toLowerCase().includes(q)));
+}
+
+function renderTable(){
+  const list = filtered();
+  const stageLabel = selStage ? STAGES.find(s=>s.key===selStage).label : "All";
+  $("tblTitle").textContent = `${otMode ? "OT" : stageLabel} Use Cases`;
+  $("tblCount").textContent = list.length;
+
+  const pages = Math.max(Math.ceil(list.length / PAGE_SIZE), 1);
+  page = Math.min(page, pages);
+  const rows = list.slice((page-1)*PAGE_SIZE, page*PAGE_SIZE);
+
+  $("rows").innerHTML = rows.map(u=>{
+    const on = toggles[u.name] !== false;
+    const ex = !!excls[u.name];
+    return `<tr class="${on ? "" : "off"}" data-rule="${esc(u.name)}">
+      <td class="rule-cell" title="${esc(u.name)}">${esc(u.name)}</td>
+      <td class="tech">${esc(u.techs.join(", ") || "—")}<span class="editic">✎</span></td>
+      <td><span class="sevcell sev-${u.severity}"><span class="sevdot"></span>${u.severity}<span class="editic">✎</span></span></td>
+      <td><span class="src"><span class="box">▣</span>${esc(u.source)}</span></td>
+      <td><span class="switch ${on ? "on" : ""}" data-act="toggle"></span><span class="editic">✎</span></td>
+      <td><span class="excl ${ex ? "yes" : ""}" data-act="excl" title="${ex ? "Excluded from monitoring" : "Not excluded"}">${ex ? "✓" : "✕"}</span></td>
+      <td class="num">${u.events}</td>
+      <td class="num">${u.alerts}</td>
+    </tr>`;
+  }).join("");
+  $("empty").hidden = rows.length > 0;
+
+  $("pgLabel").textContent = `Page ${page} of ${pages}`;
+  $("pgFirst").disabled = $("pgPrev").disabled = page <= 1;
+  $("pgNext").disabled = $("pgLast").disabled = page >= pages;
+
+  // row controls
+  document.querySelectorAll("#rows [data-act]").forEach(el=>{
+    el.onclick = e => {
+      const rule = el.closest("tr").dataset.rule;
+      if (el.dataset.act === "toggle"){ toggles[rule] = toggles[rule] === false; store("uc_monitoring", toggles); }
+      else { excls[rule] = !excls[rule]; store("uc_exclusion", excls); }
+      renderTable();
+    };
+  });
+}
+
+/* ── data loop (same /api/state as every page) ── */
+async function tick(force){
+  try {
+    const r = await fetch("/api/state", {cache:"no-store"});
+    if (!r.ok) return;
+    const s = await r.json();
+    if (!force && s.version === lastVersion) return;
+    lastVersion = s.version;
+    $("modeLabel").textContent = s.mode === "demo" ? "Demo" : "Live";
+    $("statusDot").className = "statusdot" + (s.pipeline?.status === "running" ? " running" : s.pipeline?.status === "error" ? " error" : "");
+    USECASES = aggregate(s);
+    renderChain(); renderTable();
+  } catch(e){ /* server restarting; keep polling */ }
+}
+
+/* ── wiring ─────────────────────────────────── */
+$("q").addEventListener("input", ()=>{ page = 1; renderTable(); });
+$("clearSel").onclick = ()=>{ selStage = null; renderChain(); renderTable(); };
+$("refreshBtn").onclick = ()=>tick(true);
+$("pgFirst").onclick = ()=>{ page = 1; renderTable(); };
+$("pgPrev").onclick  = ()=>{ page--; renderTable(); };
+$("pgNext").onclick  = ()=>{ page++; renderTable(); };
+$("pgLast").onclick  = ()=>{ page = 1e9; renderTable(); };
+$("tabIT").onclick = ()=>{ otMode = false; $("tabIT").classList.add("on"); $("tabOT").classList.remove("on"); page=1; renderTable(); };
+$("tabOT").onclick = ()=>{ otMode = true;  $("tabOT").classList.add("on"); $("tabIT").classList.remove("on"); page=1; renderTable(); };
+
+tick(true);
+setInterval(()=>tick(false), 3000);
+</script>
+</body>
+</html>

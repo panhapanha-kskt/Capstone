@@ -96,6 +96,24 @@ unset DNS_DETECT_MODELS_DIR
 R=data/external/tu2023/repo/datasets/base_malicious_dataset
 ```
 
+### Step 0 (done 2026-11-08): convert the Tu benign captures
+
+Moved from Week 4, Task C1. Already run; kept here so the work can be reproduced. Truncation check first (each file's `truncated_share` must be below 0.01; all four were 0.0):
+
+```bash
+python3 -c "
+import sys, glob; sys.path[:0] = ['src', 'scripts']
+from make_labeled_features import truncation_report
+for f in sorted(glob.glob('data/external/tu2023/repo/datasets/base_benign_dataset/*.pcap')):
+    print(f.split('/')[-1], truncation_report(f))" 2>/dev/null
+
+python3 scripts/make_labeled_features.py --label 0 --family benign_tu2023 \
+    --input data/external/tu2023/repo/datasets/base_benign_dataset/*.pcap \
+    --output data/external/tu2023/benign_tu2023.json 2>/dev/null
+```
+
+Result: 876,599 rows (ALEXA 68,710 · daily 1: 279,141 · daily 2: 304,036 · daily 3: 224,712), about 30 minutes. Do not use `--max-per-file`: it samples single queries at random and breaks Path B's windows.
+
 ### Step 1: reconvert the 6 tools at 15,000 each (~35 min, re-parses all pcaps)
 
 ```bash
@@ -188,15 +206,125 @@ python3 scripts/run_cv.py --labeled data/processed/merged_features_labeled.json 
 git checkout data/processed/
 ```
 
-### 5.4 Multi-seed check (is v3's difference real?)
+### 5.4 Multi-seed check (is a difference real or chance?)
+
+Moved here from Week 4 (NEXT_TASKS_PER_TOOL.md, Task E), extended with v3.
+
+**Run this after 5.3.** Step 5.4.1 ends with `git checkout data/processed/`, which would delete the file that the leave-one-tool-out test reads.
+
+#### Why
+
+Every result so far comes from **one training run (seed 42)**. Training has randomness: the Random Forest's random trees, the validation halves used for calibration, and the autoencoder's starting weights. Training again with another seed gives slightly different false alarms. With only about 1,168 benign rows in the frozen test set, a few alarms either way can come from that randomness alone.
+
+| Comparison | Seed 42 | Counting noise alone (95% range) | Verdict without more seeds |
+|---|---|---|---|
+| baseline vs v_dnsshell | 23 vs 7 | 15–35 vs 3–14 | probably real |
+| baseline vs v_det | 23 vs 38 | 15–35 vs 27–52 | **unclear**: the ranges overlap |
+| baseline vs v3 | 23 vs ? | | fill in after v3 finishes |
+
+Those ranges cover only counting noise, not training randomness. The fix: train each configuration with **5 seeds** (42–46) on the **same split** and report the **mean ± standard deviation**. Only the seed changes; the data and test rows stay identical, so the spread across seeds shows exactly how much training randomness moves the result.
+
+**Rule for the report:** a difference counts as real when the two configurations' min–max ranges across seeds do not overlap.
+
+#### What the script does
+
+`scripts/run_multiseed.py` trains Path A, Path B and fusion once per seed, each into its own folder (`<out-root>/seed42` … `seed46`), so `models/` and the existing runs are never touched. It prints, for every metric, the mean, standard deviation, min and max over the seeds, and saves them to `<out-root>/summary.json`.
+
+It needs two inputs per configuration:
+
+- `--data`: the **labeled training file** of that run (`runs/<name>/merged_labeled.json`).
+- `--manifest`: the **split** of that run (`runs/<name>/split_manifest.json`).
+
+v3 already has both (its `merged_labeled.json` is copied right after training, section 4 Step 3). The three Week 4 runs do not, so 5.4.1 rebuilds them.
+
+#### 5.4.1 Rebuild the training files for baseline, v_dnsshell, v_det
+
+These runs were trained before the `cp ... merged_labeled.json` line existed. Rebuild each file with the same merge and labeling steps `train_models.sh` uses. Nothing is trained; it takes seconds:
 
 ```bash
-python3 scripts/run_multiseed.py --data runs/v3/merged_labeled.json \
-    --manifest runs/v3/split_manifest.json --seeds 42 43 44 45 46 \
-    --out-root runs/multiseed_v3 --skip-path-b 2>/dev/null | tail -8
+cd /home/ounnha/Documents/Capstone
+export PYTHONPATH=src
+
+mk() {   # mk <run> <input files...>
+  run=$1; shift
+  python3 -m dns_detect.ingest.merge --input "$@" --output runs/$run/merged_all.json 2>/dev/null
+  python3 -m dns_detect.ingest.labeling --input runs/$run/merged_all.json \
+      --output runs/$run/merged_labeled.json --allowlist config/dns_allowlist.txt 2>/dev/null
+  python3 -c "import json; d=json.load(open('runs/$run/merged_labeled.json')); print('$run', len(d), 'rows')"
+}
+mk baseline   data/processed/labeled_tunnels.json data/processed/labeled_benign.json
+git checkout data/processed/ 2>/dev/null; true
 ```
 
-A difference vs baseline counts as real only when the two min–max ranges across seeds do not overlap. Note: with ~218K rows even Path A-only seeds take longer than Week 4's.
+Expected: `baseline 18349 rows`, matching its `[8/12] Labeled` line.
+
+**v_dnsshell and v_det need one extra step.** Section 4 Step 1 overwrote `tunnels_dns_shell.json` and `tunnels_det.json` with 15,000-row versions, but those runs were trained on 5,000 rows each. Rebuilt from the current files they would come out at 33349 rows instead of 23349 and not match their manifests. So recreate the 5,000-row files in a separate folder first (the `mk` function above must still be defined in the same terminal):
+
+```bash
+R=data/external/tu2023/repo/datasets/base_malicious_dataset
+mkdir -p data/external/tu2023/cap5000
+python3 scripts/convert_external_tunnels.py --root $R --families dns_shell det \
+    --max-per-family 5000 --out-dir data/external/tu2023/cap5000 2>/dev/null
+
+mk v_dnsshell data/processed/labeled_tunnels.json data/processed/labeled_benign.json data/external/tu2023/cap5000/tunnels_dns_shell.json
+mk v_det      data/processed/labeled_tunnels.json data/processed/labeled_benign.json data/external/tu2023/cap5000/tunnels_det.json
+git checkout data/processed/ 2>/dev/null; true
+```
+
+Expected: `v_dnsshell 23349 rows`, `v_det 23349 rows`. The conversion is deterministic (seed 42, same contiguous blocks), so the 5,000-row files should match the ones those runs were trained on; the `not in the manifest` check in 5.4.2 confirms it. Takes about 5 minutes (dns_shell and det only).
+
+#### 5.4.2 Path A only, 5 seeds, all four configurations
+
+The fusion follows Path A on this test set (RESULTS_COMPARISON.md §6.2), so Path A's spread answers the main question. `--skip-path-b` trains Path A only (no Path B, no fusion) and skips the Transformer:
+
+```bash
+for run in baseline v_dnsshell v_det v3; do
+  python3 scripts/run_multiseed.py --data runs/$run/merged_labeled.json \
+      --manifest runs/$run/split_manifest.json --seeds 42 43 44 45 46 \
+      --out-root runs/multiseed_$run --skip-path-b 2>/dev/null | tail -8
+done
+```
+
+The three Week 4 runs take minutes per seed. **v3 takes much longer** (~218K rows instead of ~20K); run it last, or on its own under `nohup` overnight:
+
+```bash
+nohup python3 scripts/run_multiseed.py --data runs/v3/merged_labeled.json \
+    --manifest runs/v3/split_manifest.json --seeds 42 43 44 45 46 \
+    --out-root runs/multiseed_v3 --skip-path-b > logs/multiseed_v3.log 2>&1 &
+```
+
+Each run prints a table like:
+
+```
+metric                                   mean         sd        min        max
+path_a.false_alarms                   ...
+path_a.fpr                            ...
+path_a.pr_auc                         ...
+path_a.recall                         ...
+```
+
+**Check:** `runs/multiseed_<run>/seed42/train.log` must **not** contain `row(s) are not in the manifest`. If it does, the rebuilt training file differs from the one the run was trained on (see the 5,000-row note in 5.4.1).
+
+#### 5.4.3 Full check with Path B and fusion (optional, slow)
+
+Only if 5.4.2 leaves a question open, or for the final report. Each seed trains Path B too. For the Week 4 runs that is 15–25 minutes per seed (1.5–2 hours per configuration); for v3, Path B alone took hours in one seed, so 5 seeds would take more than a day. Do it for a Week 4 run overnight:
+
+```bash
+nohup python3 scripts/run_multiseed.py --data runs/v_dnsshell/merged_labeled.json \
+    --manifest runs/v_dnsshell/split_manifest.json --seeds 42 43 44 45 46 \
+    --out-root runs/multiseed_full_v_dnsshell > logs/multiseed_v_dnsshell.log 2>&1 &
+```
+
+Then read `tail -20 logs/multiseed_v_dnsshell.log`. The fusion rows are named `fusion_learned_lr.*`.
+
+#### 5.4.4 Read the result
+
+Fill in [table 6.6](#66-multi-seed-check-path-a-5-seeds):
+
+- **dns_shell helps for real** if v_dnsshell's Path A false-alarm **max** is below the baseline's **min**.
+- **det hurts for real** if v_det's **min** is above the baseline's **max**.
+- **v3 is better for real** if v3's **max** is below the baseline's **min**.
+- **If the ranges overlap,** the difference is within training randomness. Report it as "no clear effect".
 
 ---
 
@@ -246,10 +374,23 @@ A difference vs baseline counts as real only when the two min–max ranges acros
 
 ### 6.5 Conclusion (write after the tables are filled)
 
-- Did the 20× data increase (18K → 218K rows) move the frozen-test numbers beyond the seed spread?
+- Did the 12× data increase (18K → 218K rows) move the frozen-test numbers beyond the seed spread (table 6.6)?
 - Did Path B finally improve with 110K extra benign rows?
 - Does v3 keep recall 1.0 on the frozen test set and ~0 false alarms on CIC capture 3?
 - **Decision: does `runs/v3` replace `models/`?**
+
+### 6.6 Multi-seed check: Path A, 5 seeds
+
+Path A false alarms on the frozen test set (about 1,168 benign rows), seeds 42–46:
+
+| Run | Seed 42 (single run) | Mean | SD | Min | Max |
+|---|---|---|---|---|---|
+| baseline | 23 | | | | |
+| v_dnsshell | 7 | | | | |
+| v_det | 36 | | | | |
+| v3 | | | | | |
+
+Verdict (5.4.4): dns_shell helps — … · det hurts — … · v3 better than baseline — …
 
 ---
 
@@ -264,5 +405,7 @@ A difference vs baseline counts as real only when the two min–max ranges acros
 - [ ] 5.1 comparison table run and copied into 6.2
 - [ ] 5.2 CIC capture 3 false alarms recorded in 6.3
 - [ ] 5.3 leave-one-tool-out → table 6.4
-- [ ] 5.4 multi-seed check on v3
+- [ ] 5.4.1 training files rebuilt for baseline, v_dnsshell, v_det (5,000-row dns_shell/det files recreated in `cap5000/`)
+- [ ] 5.4.2 Path A multi-seed (5 seeds) for baseline, v_dnsshell, v_det, v3 → table 6.6
+- [ ] 5.4.3 (optional) full multi-seed with Path B and fusion
 - [ ] Conclusion 6.5 written · replace-`models/` decision made

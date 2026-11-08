@@ -2,7 +2,9 @@
 
 **DNS Traffic Anomaly Detection · task plan for training on the Tu et al. (2023) tools and comparing against the baseline · 2026-11-07**
 
-This is the work plan for the rest of Week 4. The baseline (old data) is trained. The next job is to add the new tunnel tools **one at a time**, measure what each one changes, then train on all of them together and compare with the baseline.
+This is the work plan for the rest of Week 4. The baseline (old data) is trained. The job here is to add the new tunnel tools **one at a time** and measure what each one changes.
+
+**Training on all the tools together (v3), the full comparison and the multi-seed check moved to Week 5:** [V3_BALANCED_TRAINING.md](../Week5/V3_BALANCED_TRAINING.md). They were Tasks C, D and E of this file.
 
 Background and the reason for every option: [NEW_DATASET_TRAINING_STEPS.md](NEW_DATASET_TRAINING_STEPS.md). Converter details: [CONVERTER_SPEEDUP.md](CONVERTER_SPEEDUP.md). New results vs the old models: [RESULTS_COMPARISON.md](RESULTS_COMPARISON.md).
 
@@ -16,11 +18,9 @@ Background and the reason for every option: [NEW_DATASET_TRAINING_STEPS.md](NEW_
 4. [Setup (every new terminal)](#4-setup-every-new-terminal)
 5. [Task A: check the baseline's false alarms on unseen benign traffic](#5-task-a-check-the-baselines-false-alarms-on-unseen-benign-traffic)
 6. [Task B: the per-tool loop (5 tools)](#6-task-b-the-per-tool-loop-5-tools)
-7. [Task C: train on all new data together](#7-task-c-train-on-all-new-data-together)
-8. [Task D: compare everything](#8-task-d-compare-everything)
-9. [Task E: multi-seed check (is a difference real or chance?)](#9-task-e-multi-seed-check-is-a-difference-real-or-chance)
-10. [Results tables (fill in)](#10-results-tables-fill-in)
-11. [Checklist](#11-checklist)
+7. [Tasks C, D, E: moved to Week 5](#7-tasks-c-d-e-moved-to-week-5)
+8. [Results tables](#8-results-tables)
+9. [Checklist](#9-checklist)
 
 ---
 
@@ -41,8 +41,7 @@ Background and the reason for every option: [NEW_DATASET_TRAINING_STEPS.md](NEW_
 | dnscat2: convert · unseen test | **done**: `dnscat-aaaa.com`, 5000 kept (all AAAA); unseen test 5000 / 5000 |
 | iodine: convert · unseen test | **done**: `iodine-private.com`, 5000 kept (type 65399); unseen test **4996 / 5000 (99.92%)** — first tool below 100% |
 | Per-tool training runs for ozymandns/cobaltstrike/dnscat2/iodine | **skipped** (going straight to the single combined model v3) |
-| Training with all new data together (`runs/v3`) | to do — next step |
-| Training with all new data together | to do |
+| Training with all new data together (`runs/v3`), comparison, multi-seed | moved to Week 5: [V3_BALANCED_TRAINING.md](../Week5/V3_BALANCED_TRAINING.md) |
 
 Each run (`runs/baseline`, `runs/v_<tool>`) holds a complete model set: Path A, Path B and fusion. The detection pipeline still uses `models/` (the old models) unless `DNS_DETECT_MODELS_DIR=runs/<name>` is set.
 
@@ -242,8 +241,8 @@ Task B   for each of the 5 tools:
            1. convert the tool                               → tunnels_<tool>.json
            2. baseline on that tool (unseen-tool test)        → recall before training on it
            3. train baseline data + that tool → runs/v_<tool> → did adding it hurt anything?
-Task C   train on ALL new data together                       → runs/v3
-Task D   compare baseline vs every run, plus leave-one-tool-out on v3
+
+Tasks C, D, E (v3, full comparison, multi-seed) → Week 5, V3_BALANCED_TRAINING.md
 ```
 
 ### Why one tool at a time
@@ -258,7 +257,7 @@ Task D   compare baseline vs every run, plus leave-one-tool-out on v3
 | Baseline `--infer` on a new tool (step 2) | how well the model catches a tool it never saw | false alarms |
 | `runs/v_<tool>` vs `runs/baseline` on the frozen test set (step 3) | whether adding the tool hurt recall or false alarms on the original data | how well the new tool is caught (its rows are never in the test set) |
 | Baseline `--infer` on CIC capture 3 (Task A) | false alarms on benign traffic never seen | recall |
-| Leave-one-tool-out on v3 (Task D) | for every tool: recall when that tool was left out of training | — |
+| Leave-one-tool-out on v3 (Week 5, section 5.3) | for every tool: recall when that tool was left out of training | — |
 
 ### Suggested order (smallest first)
 
@@ -335,7 +334,7 @@ DNS_DETECT_MODELS_DIR=runs/baseline python3 -m dns_detect.models.path_a \
 rm -f tunnels_${TOOL}_model_results.csv
 ```
 
-Write `Attack detected / Total analyzed` into [table 10.2](#102-unseen-tool-test-baseline-before-training-on-the-tool). This must run **before** step 3; afterwards the tool is no longer unseen.
+Write `Attack detected / Total analyzed` into [table 8.2](#82-unseen-tool-test-baseline-before-training-on-the-tool). This must run **before** step 3; afterwards the tool is no longer unseen.
 
 ### Step 3: train baseline data + this tool
 
@@ -344,7 +343,7 @@ DNS_DETECT_MODELS_DIR=runs/v_$TOOL ./scripts/train_models.sh --force-retrain \
     --files data/processed/labeled_tunnels.json \
             data/processed/labeled_benign.json \
             data/external/tu2023/tunnels_$TOOL.json
-cp data/processed/merged_features_labeled.json runs/v_$TOOL/merged_labeled.json   # keep the exact training file (Task E)
+cp data/processed/merged_features_labeled.json runs/v_$TOOL/merged_labeled.json   # keep the exact training file (multi-seed check)
 git checkout data/processed/
 ```
 
@@ -356,7 +355,7 @@ Check:
 | `[9/12] Split: extended time_seed42.json with N new rows (train/val only, test frozen)` | `extended`, not `new` |
 | `[12/12] Fusion trained ...` | present |
 
-`git checkout data/processed/` restores the tracked files each training run rewrites; the results stay in `runs/`. The `cp` line before it keeps a copy of the exact labeled training file in the run folder, so the multi-seed check (Task E) can reuse it without retraining.
+`git checkout data/processed/` restores the tracked files each training run rewrites; the results stay in `runs/`. The `cp` line before it keeps a copy of the exact labeled training file in the run folder, so the multi-seed check (Week 5, section 5.4) can reuse it without retraining.
 
 ### Step 4: record the run's numbers
 
@@ -376,7 +375,7 @@ git checkout cic_benign_test_model_results.csv      # --infer overwrote this com
 rm -f tunnels_*_model_results.csv
 ```
 
-Add the numbers to tables 10.1 and 10.3, and to [RESULTS_COMPARISON.md](RESULTS_COMPARISON.md).
+Add the numbers to tables 8.1 and 8.3, and to [RESULTS_COMPARISON.md](RESULTS_COMPARISON.md).
 
 To watch Path B (step 11, the slowest), use a second terminal:
 
@@ -388,209 +387,35 @@ dns_shell is already done: steps 1–3, run folder `runs/v_dnsshell` ([section 2
 
 ---
 
-## 7. Task C: train on all new data together
+## 7. Tasks C, D, E: moved to Week 5
 
-After all 6 tools are converted.
+The last three tasks of this plan now live in [V3_BALANCED_TRAINING.md](../Week5/V3_BALANCED_TRAINING.md), together with their results tables:
 
-### C1. Benign captures from the Tu repository (optional; helps Path B)
-
-Truncation check first: each file's `truncated_share` must be below 0.01.
-
-```bash
-python3 -c "
-import sys, glob; sys.path[:0] = ['src', 'scripts']
-from make_labeled_features import truncation_report
-for f in sorted(glob.glob('data/external/tu2023/repo/datasets/base_benign_dataset/*.pcap')):
-    print(f.split('/')[-1], truncation_report(f))" 2>/dev/null
-
-python3 scripts/make_labeled_features.py --label 0 --family benign_tu2023 \
-    --input data/external/tu2023/repo/datasets/base_benign_dataset/*.pcap \
-    --output data/external/tu2023/benign_tu2023.json 2>/dev/null
-```
-
-Leave out any file that fails the check. Do not use `--max-per-file`: it samples single queries at random and breaks Path B's windows.
-
-### C2. Train
-
-```bash
-ls data/external/tu2023/tunnels_*.json      # must list exactly the 6 new tools (no dns2tcp / dnsexfiltrator)
-
-DNS_DETECT_MODELS_DIR=runs/v3 ./scripts/train_models.sh --force-retrain \
-    --files data/processed/labeled_tunnels.json \
-            data/processed/labeled_benign.json \
-            data/external/cic/cic_benign_train.json \
-            data/external/tu2023/tunnels_*.json \
-            data/external/tu2023/benign_tu2023.json
-```
-
-Leave out the last line if C1 was skipped. Check for `families:` with all 8 tools, `Split: extended`, and `Fusion trained`.
-
-**Keep `git checkout data/processed/` until after Task D.** The leave-one-tool-out test reads `data/processed/merged_features_labeled.json`, which this run just wrote.
-
----
-
-## 8. Task D: compare everything
-
-### D1. All runs on the frozen test set
-
-```bash
-python3 - runs/baseline runs/v_* runs/v3 <<'EOF'
-import json, os, sys
-runs = [r for r in sys.argv[1:] if os.path.isfile(f"{r}/evaluation_metrics.json")]
-print(f"{'run':18} {'A recall':>9} {'A fpr':>8} {'A PR-AUC':>9} {'B recall':>9} {'B fpr':>8} {'fus recall':>11} {'fus FA':>7} {'OR FA':>6}")
-for r in runs:
-    m = json.load(open(f"{r}/evaluation_metrics.json"))
-    a, b = m.get("path_a") or {}, m.get("path_b") or {}
-    t = (m.get("fusion") or {}).get("test") or {}
-    lr, orr = t.get("learned_lr") or {}, t.get("or_rule") or {}
-    f = lambda v: "-" if v is None else (f"{v:.4f}" if isinstance(v, float) else str(v))
-    print(f"{os.path.basename(r):18} {f(a.get('recall')):>9} {f(a.get('fpr')):>8} {f(a.get('pr_auc')):>9} "
-          f"{f(b.get('recall')):>9} {f(b.get('fpr')):>8} {f(lr.get('recall')):>11} "
-          f"{f(lr.get('false_alarms')):>7} {f(orr.get('false_alarms')):>6}")
-EOF
-```
-
-Copy the output into [table 10.3](#103-frozen-test-set-every-run-vs-baseline).
-
-**How to read it:**
-
-| Column | Meaning | Good |
+| Former task | What it is | Where in Week 5 |
 |---|---|---|
-| `A recall`, `B recall`, `fus recall` | share of test attacks caught | stays at or near 1.0 |
-| `A fpr`, `B fpr` | share of test benign rows wrongly flagged | lower |
-| `fus FA` | fusion false alarms (baseline: 23) | lower or equal |
-| `OR FA` | OR-rule false alarms (baseline: 116), for reference | — |
+| **C**: train on all new data together (`runs/v3`) | one model, all 8 tools, now scaled to ~100K attack / ~118K benign | section 4 (Steps 1–3) |
+| **D1**: all runs on the frozen test set | comparison script | section 5.1 · table 6.2 |
+| **D2**: v3 on unseen benign (CIC capture 3) | false-alarm check | section 5.2 · table 6.3 |
+| **D3**: leave-one-tool-out on v3 | recall on each tool when it's left out | section 5.3 · table 6.4 |
+| **E**: multi-seed check (5 seeds) | is a difference real or chance? Baseline, v_dnsshell, v_det and v3 | section 5.4 · table 6.6 |
 
-Every run is scored on the same 2,568 test rows, so differences come only from the training data.
-
-### D2. False alarms of v3 on unseen benign traffic
-
-```bash
-DNS_DETECT_MODELS_DIR=runs/v3 python3 -m dns_detect.models.path_a \
-    --infer data/external/cic/cic_benign_test.json 2>/dev/null | tail -4
-```
-
-Compare with Task A. More benign training data should lower the count.
-
-### D3. Leave-one-tool-out on v3
-
-Right after Task C, before `git checkout data/processed/`:
-
-```bash
-python3 scripts/run_cv.py --labeled data/processed/merged_features_labeled.json --strategies lofo \
-    --splits-dir runs/v3/cv_splits --out runs/v3/cv_lofo.json
-git checkout data/processed/
-```
-
-For every tool, this trains without it, then measures recall on it and false alarms on held-out benign data. `--splits-dir` keeps it from overwriting the committed split files in `data/processed/splits/`.
+Week 5 also records what changed on the way: the tools were reconverted at 15,000 rows each instead of 5,000, the Tu benign captures were converted (876,599 rows; only the ALEXA capture is used for training), and the 5,000-row dns_shell and det files have to be recreated for the multi-seed rebuild.
 
 ---
 
-## 9. Task E: multi-seed check (is a difference real or chance?)
+## 8. Results tables
 
-### Why
+Per-tool results only. The v3 rows, leave-one-tool-out and multi-seed tables are in Week 5, section 6.
 
-Every result so far comes from **one training run (seed 42)**. Training has randomness: the Random Forest's random trees, the validation halves used for calibration, and the autoencoder's starting weights. Training again with another seed gives slightly different false alarms. With only about 1,168 benign test rows, a few alarms either way can come from that randomness alone.
-
-| Comparison | Seed 42 | Counting noise alone (95% range) | Verdict without more seeds |
-|---|---|---|---|
-| baseline vs v_dnsshell | 23 vs 7 | 15–35 vs 3–14 | probably real |
-| baseline vs v_det | 23 vs 38 | 15–35 vs 27–52 | **unclear**: the ranges overlap |
-
-Those ranges cover only counting noise, not training randomness, so even "probably real" needs checking. The fix: train each configuration with **5 seeds** (42–46) on the **same split** and report the **mean ± standard deviation**. Only the seed changes; the data and test rows stay identical. So the spread across seeds shows exactly how much training randomness moves the result.
-
-**Rule for the report:** a difference counts as real when it is clearly larger than the spread across seeds, e.g. when the two configurations' min–max ranges don't overlap.
-
-### What the script does
-
-`scripts/run_multiseed.py` trains Path A, Path B and fusion once per seed, each into its own folder (`<out-root>/seed42` … `seed46`), so `models/` and your runs are never touched. It then prints, for every metric, the mean, standard deviation, min and max over the seeds, and saves them to `<out-root>/summary.json`.
-
-It needs two inputs per configuration:
-
-- `--data`: the **labeled training file** of that run.
-- `--manifest`: the **split** of that run (`runs/<name>/split_manifest.json`).
-
-### E1. Recreate the labeled training file for runs already done
-
-Runs trained before the `cp` line was added to step 3 (baseline, v_dnsshell, v_det) have no saved training file. Rebuild it with the same merge and labeling steps `train_models.sh` uses. Nothing is trained, and it takes seconds:
-
-```bash
-cd /home/ounnha/Documents/Capstone
-export PYTHONPATH=src
-
-mk() {   # mk <run> <input files...>
-  run=$1; shift
-  python3 -m dns_detect.ingest.merge --input "$@" --output runs/$run/merged_all.json 2>/dev/null
-  python3 -m dns_detect.ingest.labeling --input runs/$run/merged_all.json \
-      --output runs/$run/merged_labeled.json --allowlist config/dns_allowlist.txt 2>/dev/null
-  python3 -c "import json; d=json.load(open('runs/$run/merged_labeled.json')); print('$run', len(d), 'rows')"
-}
-mk baseline   data/processed/labeled_tunnels.json data/processed/labeled_benign.json
-mk v_dnsshell data/processed/labeled_tunnels.json data/processed/labeled_benign.json data/external/tu2023/tunnels_dns_shell.json
-mk v_det      data/processed/labeled_tunnels.json data/processed/labeled_benign.json data/external/tu2023/tunnels_det.json
-git checkout data/processed/ 2>/dev/null; true
-```
-
-Expected: `baseline 18349 rows`, `v_dnsshell 23349 rows`, `v_det 23349 rows`, the same counts as each run's `[8/12] Labeled` line.
-
-### E2. Path A only, 5 seeds (fast: minutes per seed)
-
-The fusion follows Path A on this test set (RESULTS_COMPARISON.md §6.2), so Path A's spread answers the main question. `--skip-path-b` trains Path A only (no Path B, no fusion) and skips the Transformer baseline:
-
-```bash
-for run in baseline v_dnsshell v_det; do
-  python3 scripts/run_multiseed.py --data runs/$run/merged_labeled.json \
-      --manifest runs/$run/split_manifest.json --seeds 42 43 44 45 46 \
-      --out-root runs/multiseed_$run --skip-path-b 2>/dev/null | tail -8
-done
-```
-
-Each run prints a table like:
-
-```
-metric                                   mean         sd        min        max
-path_a.false_alarms                   ...
-path_a.fpr                            ...
-path_a.pr_auc                         ...
-path_a.recall                         ...
-```
-
-**Check:** `runs/multiseed_<run>/seed42/train.log` must **not** contain `row(s) are not in the manifest`. If it does, the rebuilt training file differs from the original. Paste the message.
-
-### E3. Full check with Path B and fusion (optional, slow)
-
-Only if E2 leaves a question open, or for the final report. Each seed trains Path B too, about 15–25 minutes, so 5 seeds take 1.5–2 hours **per configuration**. Run it overnight:
-
-```bash
-nohup python3 scripts/run_multiseed.py --data runs/v_dnsshell/merged_labeled.json \
-    --manifest runs/v_dnsshell/split_manifest.json --seeds 42 43 44 45 46 \
-    --out-root runs/multiseed_full_v_dnsshell > logs/multiseed_v_dnsshell.log 2>&1 &
-```
-
-Then read `tail -20 logs/multiseed_v_dnsshell.log`. The fusion rows are named `fusion_learned_lr.*`.
-
-### E4. Read the result
-
-Fill in [table 10.6](#106-multi-seed-check-path-a-5-seeds):
-
-- **dns_shell helps for real** if v_dnsshell's Path A false-alarm **max** is below the baseline's **min**.
-- **det hurts for real** if v_det's **min** is above the baseline's **max**.
-- **If the ranges overlap,** the difference is within training randomness. Report it as "no clear effect".
-
----
-
-## 10. Results tables (fill in)
-
-### 10.1 False alarms on unseen benign traffic (CIC capture 3, 25,222 queries)
+### 8.1 False alarms on unseen benign traffic (CIC capture 3, 25,222 queries)
 
 | Run | Attack detected (= false alarms) | Rate | Within 0.1%? |
 |---|---|---|---|
 | baseline | 1 | 0.004% | ✅ |
 | v_dnsshell | 0 | 0.000% | ✅ |
 | v_det | 1 | 0.004% | ✅ |
-| v3 | | | |
 
-### 10.2 Unseen-tool test (baseline, before training on the tool)
+### 8.2 Unseen-tool test (baseline, before training on the tool)
 
 | Tool | Domain | Queries kept | Detected | Recall |
 |---|---|---|---|---|
@@ -601,54 +426,26 @@ Fill in [table 10.6](#106-multi-seed-check-path-a-5-seeds):
 | dnscat2 | dnscat-aaaa.com | 5,000 | **5,000** | **100%** |
 | iodine | iodine-private.com | 5,000 | **4,996** | **99.92%** |
 
-### 10.3 Frozen test set: every run vs baseline
+### 8.3 Frozen test set: per-tool runs vs baseline
 
 | Run | Path A recall | Path A FPR | Path A PR-AUC | Path B recall | Path B FPR | Fusion recall | Fusion false alarms |
 |---|---|---|---|---|---|---|---|
 | baseline | 1.0 | 1.97% (23) | 0.9957 | 1.0 | 9.59% (112) | 1.0 | 23 |
 | v_dnsshell | 1.0 | 0.60% (7) | 1.0 | 1.0 | 9.67% (113) | 1.0 | 7 |
 | v_det | 1.0 | 3.08% (36) | 1.0 | 1.0 | 8.99% (105) | 1.0 | 38 |
-| v_ozymandns | | | | | | | |
-| v_cobaltstrike | | | | | | | |
-| v_dnscat2 | | | | | | | |
-| v_iodine | | | | | | | |
-| v3 (all) | | | | | | | |
 
-### 10.4 Leave-one-tool-out (v3)
+Per-tool runs for ozymandns, cobaltstrike, dnscat2 and iodine were skipped in favour of the single combined model (Week 5).
 
-| Tool left out | Recall on it | False-alarm rate |
-|---|---|---|
-| dns2tcp | | |
-| dnsexfiltrator | | |
-| dns_shell | | |
-| det | | |
-| ozymandns | | |
-| cobaltstrike | | |
-| dnscat2 | | |
-| iodine | | |
+### 8.4 Conclusion for Week 4
 
-### 10.5 Conclusion (write after the tables are filled)
-
-- Which tools did the baseline already catch without training on them, and which did it miss?
-- Did adding any tool raise false alarms on the frozen test set, and is that larger than the seed spread (10.6)?
-- Did v3 lower false alarms on unseen benign traffic?
-- Should `runs/v3` replace `models/`?
-
-### 10.6 Multi-seed check: Path A, 5 seeds
-
-Path A false alarms on the frozen test set (about 1,168 benign rows), seeds 42–46:
-
-| Run | Seed 42 (single run) | Mean | SD | Min | Max |
-|---|---|---|---|---|---|
-| baseline | 23 | | | | |
-| v_dnsshell | 7 | | | | |
-| v_det | 38 | | | | |
-
-Verdict (E4): dns_shell helps — … · det hurts — …
+- **The baseline generalises to unseen tools.** Trained on only dns2tcp and dnsexfiltrator, it caught 5 of the 6 new tools at 100% and iodine at 99.92% (4 misses out of 5,000). iodine is the only tool that showed any misses before being trained on.
+- **Adding a tool can help or hurt the original data.** dns_shell lowered fusion false alarms on the frozen test set from 23 to 7; det raised them to 38. Whether either change is larger than training randomness is checked by the multi-seed test (Week 5, section 5.4).
+- **det's harm does not carry over to unseen benign traffic.** v_det flags 1 of 25,222 CIC capture 3 queries (0.004%), the same as the baseline, so det stays in the combined model.
+- **Path B is the weak point.** It stayed at 105–113 false alarms in every retrained run, because no benign data was added. Week 5 adds about 110,000 benign rows to address this.
 
 ---
 
-## 11. Checklist
+## 9. Checklist
 
 - [x] Baseline trained (`runs/baseline`)
 - [x] dns_shell converted
@@ -661,10 +458,5 @@ Verdict (E4): dns_shell helps — … · det hurts — …
 - [x] cobaltstrike: convert (`cobaltstrike-txt.com`) · unseen test (5000 / 5000) · per-tool train skipped
 - [x] dnscat2: convert (`dnscat-aaaa.com`) · unseen test (5000 / 5000) · per-tool train skipped
 - [x] iodine: convert (`iodine-private.com`) · unseen test (**4996 / 5000, 99.92%**) · per-tool train skipped
-- [ ] Task C: benign Tu captures (optional) and v3
-- [ ] Task D: comparison table, v3 on CIC capture 3, leave-one-tool-out
-- [ ] Task E1: rebuild training files for baseline, v_dnsshell, v_det
-- [ ] Task E2: Path A multi-seed (5 seeds) for baseline, v_dnsshell, v_det → table 10.6
-- [ ] Task E3 (optional): full multi-seed with Path B and fusion
-- [ ] Results tables filled in and conclusion written
-- [ ] Decide whether `runs/v3` replaces `models/`
+- [x] Week 4 conclusion written (section 8.4)
+- [ ] Tasks C, D, E → continue in [Week 5, V3_BALANCED_TRAINING.md](../Week5/V3_BALANCED_TRAINING.md), section 7 checklist

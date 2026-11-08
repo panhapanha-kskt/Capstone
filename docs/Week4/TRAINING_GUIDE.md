@@ -239,6 +239,8 @@ Reference: the committed models (split `time_seed42`) score:
 | Path A | 1.000 | 0.0265 | 31 | 0.9936 |
 | Path B | 1.000 | 0.0640 | – | 1.000 |
 
+New training runs compared with these: [RESULTS_COMPARISON.md](RESULTS_COMPARISON.md).
+
 **Seed variation.** A difference between two runs only means something if it is larger than what a different random seed alone causes. To measure that:
 
 ```bash

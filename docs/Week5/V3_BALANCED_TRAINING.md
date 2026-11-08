@@ -154,7 +154,7 @@ cp data/processed/merged_features_labeled.json runs/v3/merged_labeled.json
 
 | Line | Expected |
 |---|---|
-| `[8/12] Labeled ... (families: ...)` | all 8 tools; ~100000 attack / ~118338 benign |
+| `[8/12] Labeled ... (families: ...)` | all 8 tools; ~100000 attack / ~118334 benign (4 benign rows are dropped by labeling, as in every run) |
 | `[9/12] Split:` | `extended ... (train/val only, test frozen)` |
 | `[12/12] Fusion trained` | present |
 
@@ -334,12 +334,13 @@ Fill in [table 6.6](#66-multi-seed-check-path-a-5-seeds):
 
 | Item | Value |
 |---|---|
-| `[8/12]` attack / benign / families | |
-| `[9/12]` train / val / test | |
-| Path A F1 / PR-AUC | |
-| Path B anomaly threshold | |
-| Fusion recall / false alarms (vs OR rule) | |
-| Training time | |
+| `[8/12]` attack / benign / families | 100,000 / 118,334 / all 8 (cobaltstrike, det, dns2tcp, dns_shell, dnscat2, dnsexfiltrator, iodine, ozymandns) |
+| `[9/12]` train / val / test | 183,203 / 32,563 / 2,568 (extended, 199,985 new rows to train/val, test frozen) |
+| Path A F1 / PR-AUC | 0.9972 / 1.0 |
+| Path B anomaly threshold | 0.01741 (99th percentile of benign validation error; baseline 0.04163) |
+| Path B early stopping | stopped after epoch 65, best weights from epoch 55 (val_loss 0.00355) |
+| Fusion recall / false alarms (vs OR rule) | 1.0 / **7** (vs 87) |
+| Training time | 26,243 s (7 h 17 min) |
 
 ### 6.2 Frozen test set (2,568 rows)
 
@@ -348,7 +349,11 @@ Fill in [table 6.6](#66-multi-seed-check-path-a-5-seeds):
 | baseline (10K/8.3K) | 1.0 | 23 | 23 | 112 |
 | v_dnsshell | 1.0 | 7 | 7 | 113 |
 | v_det | 1.0 | 38 | 36 | 105 |
-| **v3 (100K/118K)** | | | | |
+| **v3 (100K/118K)** | 1.0 | **7** | **8** | 79 (recall **0.0**) |
+
+**Path B in v3 detects nothing.** Its false alarms fell (112 → 79), but its recall fell from 1.0 to 0.0: every alarm it raises is a false one (precision 0). The autoencoder now reconstructs tunnel windows better than benign outliers. The median attack error is 0.57× the threshold, which is set at the 99th percentile of benign error. The fusion compensates by weighting Path A far more heavily (fusion weights: Path A 12.85, Path B 3.04). Path B's Isolation Forest still has recall 1.0 at 9.34% FPR.
+
+**All attacks in the frozen test set are dnsexfiltrator.** The time-based split put the latest attack rows into the test set, so "recall 1.0" here means "catches dnsexfiltrator" in every run. Recall on the other tools comes from the unseen-tool tests (Week 4) and the leave-one-tool-out test (5.3).
 
 ### 6.3 Unseen benign
 
@@ -399,9 +404,9 @@ Verdict (5.4.4): dns_shell helps — … · det hurts — … · v3 better than 
 - [x] All 6 Tu tools converted and unseen-tested (Week 4; iodine 99.92% is the headline)
 - [x] Tu benign converted: 876,599 rows, truncation 0.0% on all 4 files
 - [x] Benign inventory counted: 8,353 own + 41,275 CIC + 876,599 Tu
-- [ ] Step 1: tools reconverted at 15,000 each (domains re-checked)
-- [ ] Step 2: `benign_alexa.json` built (68,710 rows)
-- [ ] Step 3: `runs/v3` trained (log checks passed) · `merged_labeled.json` copied
+- [x] Step 1: tools reconverted at 15,000 each (domains re-checked)
+- [x] Step 2: `benign_alexa.json` built (68,710 rows)
+- [x] Step 3: `runs/v3` trained (log checks passed, 7 h 17 min) · `merged_labeled.json` copied
 - [ ] 5.1 comparison table run and copied into 6.2
 - [ ] 5.2 CIC capture 3 false alarms recorded in 6.3
 - [ ] 5.3 leave-one-tool-out → table 6.4

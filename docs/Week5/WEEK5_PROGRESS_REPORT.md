@@ -1,8 +1,8 @@
-# Week 5 Progress Report: All Tunnel Tools Tested, Balanced Model in Training
+# Week 5 Progress Report: All Tunnel Tools Tested, Balanced Model Trained
 
 **DNS Traffic Anomaly Detection · session summary · 2026-11-08**
 
-This report covers one working session. It closes out the Week 4 plan, measures every new tunnel tool on the baseline model before training on it, counts the available benign data, and starts training the single combined model (`runs/v3`) on a balanced dataset about 12 times larger than any earlier run.
+This report covers one working session. It closes out the Week 4 plan, measures every new tunnel tool on the baseline model before training on it, counts the available benign data, and trains the single combined model (`runs/v3`) on a balanced dataset about 12 times larger than any earlier run.
 
 Detailed plans and commands: [V3_BALANCED_TRAINING.md](V3_BALANCED_TRAINING.md) (Week 5) · [NEXT_TASKS_PER_TOOL.md](../Week4/NEXT_TASKS_PER_TOOL.md) (Week 4, now complete).
 
@@ -27,7 +27,9 @@ Detailed plans and commands: [V3_BALANCED_TRAINING.md](V3_BALANCED_TRAINING.md) 
 - **The baseline generalises to tools it has never seen.** Trained only on dns2tcp and dnsexfiltrator, it caught 5 of the 6 new Tu et al. (2023) tools at 100% and iodine at 99.92% (4,996 of 5,000). iodine is the first tool with any misses.
 - **det's harm stays in the frozen test period.** v_det had 38 fusion false alarms on the frozen test set (baseline: 23), but on unseen benign traffic (CIC capture 3) it flags 1 of 25,222 queries, the same as the baseline.
 - **There is far more benign data than expected:** 926,227 rows in total, of which 876,599 came from the newly converted Tu benign captures. Before this session every model had trained on only 8,349 benign rows.
-- **The combined model v3 is training on 100,000 attack rows vs 118,338 benign rows.** That is a near 1:1 balance and about 12 times the baseline's 18,349 rows. At the end of the session it was in step 11 of 12 (Path B).
+- **The combined model v3 is trained:** 100,000 attack vs 118,334 benign rows, a near 1:1 balance and about 12 times the baseline's 18,349 rows. It took 7 h 17 min. **The final model's false alarms on the frozen test set fell from 23 to 7, and it still caught every attack.** Path A alone fell from 23 to 8.
+- **Path B's autoencoder now catches nothing.** After training on the larger benign set its recall dropped from 1.0 to 0.0. The fusion compensates by relying on Path A, but Path B needs fixing.
+- **The frozen test set only tests one tool.** All its attacks are dnsexfiltrator, so recall on the other tools has to come from the unseen-tool tests and the leave-one-tool-out test.
 - **Week 4's plan is complete.** Its remaining tasks (train v3, compare all runs, multi-seed check) moved to Week 5.
 
 ---
@@ -150,7 +152,94 @@ ALEXA was converted on its own (about 3 minutes) so that it can go into training
 | `runs/v_det` | 15,000 | 8,349 | 23,349 | 3 |
 | **`runs/v3`** (training) | **100,000** | **118,338** | **218,338** | **8** |
 
-v3's benign side is 8,353 own + 41,275 CIC + 68,710 ALEXA.
+v3's benign side is 8,353 own + 41,275 CIC + 68,710 ALEXA = 118,338. Labeling drops 4 rows, the same as in every run, leaving 118,334.
+
+### 3.7 v3 results
+
+**Training summary** (`logs/training_20261107_220017.log`):
+
+```
+[8/12] Labeled 100000 attack / 118334 benign · files 218334 (families: cobaltstrike,det,dns2tcp,dns_shell,dnscat2,dnsexfiltrator,iodine,ozymandns)
+[9/12] Split: extended time_seed42.json with 199985 new rows (train/val only, test frozen) · train 183203 / val 32563 / test 2568 → runs/v3/split_manifest.json
+[10/12] Path A trained (F1 0.9972, PR-AUC 1)
+[11/12] Path B trained (window 20, anomaly threshold 0.01741)
+[12/12] Fusion trained (test: recall 1, false alarms 7 vs OR rule 87)
+Training complete in 26243s
+```
+
+All checks passed:
+
+- all 8 tools are present;
+- the split is `extended` and the test set is still the same 2,568 rows;
+- the 199,985 new rows (218,334 − 18,349) went to training and validation only.
+
+**Frozen test set, v3 vs earlier runs** (1,168 benign rows; recall is on the 1,400 attack rows):
+
+| Method | Baseline | v_dnsshell | v_det | **v3** | v3 recall |
+|---|---|---|---|---|---|
+| Path A false alarms | 23 | 7 | 36 | **8** (0.68%) | 1.0 |
+| Path B false alarms | 112 | 113 | 105 | 79 (6.76%) | **0.0** |
+| OR rule false alarms | 116 | 113 | 119 | 87 (7.45%) | 1.0 |
+| **Fusion false alarms** | **23** | **7** | **38** | **7 (0.60%)** | **1.0** |
+| Path A F1 / PR-AUC | 0.9919 / 0.9957 | 0.9975 / 1.0 | 0.9873 / 1.0 | 0.9972 / 1.0 | |
+
+**What it means:**
+
+- **Path A improved the most: 23 → 8 false alarms**, with recall still 1.0. More varied attack and benign data made the main classifier more precise.
+- **The fusion matches the best earlier run (7, like v_dnsshell)**, even though v3 also contains det, which pushed v_det up to 38. With much more benign data, det's effect disappears.
+- **This is still one seed.** Whether 23 → 7 is larger than training randomness is answered by the multi-seed check (V3_BALANCED_TRAINING.md, section 5.4).
+
+**Finding 1: Path B's autoencoder no longer detects attacks.**
+
+```
+Autoencoder: recall=0.000  FPR=6.227%  PR-AUC=0.787  | attack median error / benign p99 error = 0.573
+Isolation Forest: recall=1.000  FPR=9.341%  PR-AUC=1.0
+```
+
+- The autoencoder flags a window when its reconstruction error exceeds a threshold set at the 99th percentile of benign validation error (0.01741, down from 0.04163 in the baseline).
+- In v3, the typical attack window has an error only **0.57×** that threshold. The model reconstructs tunnel traffic *better* than unusual benign traffic, so it treats tunnels as normal.
+- A likely reason, not yet verified: tunnel queries are extremely repetitive (the same query shape thousands of times), which is easy to reconstruct. Meanwhile 118,000 varied benign rows widened what the model considers normal.
+- **The final model is not affected:** the fusion learned to rely on Path A (weight 12.85 for Path A vs 3.04 for Path B). But Path B as it stands adds only false alarms (precision 0).
+- Path B's second detector, the **Isolation Forest, still catches every attack** (recall 1.0, 9.34% FPR).
+
+**Path B's own evaluation** (held-out test windows, from the log):
+
+```
+── Calibrating Anomaly Threshold (benign val) ────────────────
+   Error stats → mean=0.0035  std=0.0036
+   Anomaly threshold: 0.0174  (percentile_99)
+
+── Final Evaluation (held-out test set) ──────────────────────
+              precision    recall  f1-score   support
+      benign       0.43      0.94      0.59      1092
+      attack       0.00      0.00      0.00      1381
+    accuracy                           0.41      2473
+
+Autoencoder: recall=0.000  FPR=6.227%  PR-AUC=0.7869  | attack median error / benign p99 error = 0.573
+Isolation Forest: recall=1.000  FPR=9.341%  PR-AUC=1.0
+   dnsexfiltrator   autoencoder recall=0.000   isolation forest recall=1.000
+```
+
+Path B scores 20-query windows rather than single queries, so its test set has 2,473 windows (1,092 benign, 1,381 attack), not 2,568 rows. Its PR-AUC of 0.787 shows the errors still rank attacks somewhat above benign; the threshold, at the 99th percentile of benign error, is simply too high for them.
+
+**Fusion step** (from the log):
+
+```
+[*] fusion weights: {'ml_score_A': 12.850, 'ml_score_B': 3.041, 'has_score_B': -3.504, 'rule_hits': 0.676}  intercept=-5.385  threshold=0.486541
+
+   detector         recall      FPR  false alarms  precision
+   path_a            1.000   0.0068        8/1168       0.994
+   path_b            0.000   0.0676       79/1168       0.000
+   or_rule           1.000   0.0745       87/1168       0.941
+   learned_lr        1.000   0.0060        7/1168       0.995
+```
+
+- The fusion is a logistic regression over four inputs: Path A's score, Path B's score, whether a Path B score exists, and the number of rule hits.
+- Path A's weight (12.85) is about four times Path B's (3.04), so the fusion follows Path A.
+- The final model's precision is 0.995: of its alarms on the frozen test set, 99.5% are real attacks.
+- The alert-tier boundaries were saved to `runs/v3/fusion_lr_tiers.json`, computed from 17,663 benign validation rows.
+
+**Finding 2: the frozen test set's attacks are all dnsexfiltrator.** Path B's per-family line lists only `dnsexfiltrator`. The time-based split put the latest attack captures into the test set, and that holds for every run, because the test set is frozen. So "recall 1.0 on the frozen test set" in every run means "catches dnsexfiltrator". For the other seven tools, recall comes from the unseen-tool tests (section 3.2) and the leave-one-tool-out test (section 9.1). The frozen test set remains valid for comparing **false alarms** between runs, because its 1,168 benign rows are identical for every run.
 
 ---
 
@@ -190,11 +279,32 @@ Whole files are used, not random samples, because Path B needs time-contiguous 5
 2. **Steps 1 and 2 ran in order**, with the results in section 3.4 and 68,710 ALEXA rows.
 3. **Step 3 was relaunched under `nohup`.** On the Kali clock the log is `logs/training_20261107_220017.log`.
 4. **Health check:** the training script had run 2h 07m. The Path B process had run 1h 30m at about 181% CPU. `dmesg` showed no out-of-memory kills, and 6.5 GiB of RAM was available before the run.
-5. **Path B progress at the last check:** the Transformer model (`dns_trafficformer`) was at epoch 59 of at most 200. Each epoch runs 3,107 batches. Validation loss improved slowly, from 0.00368 at epoch 32 to 0.00355 at epoch 55, and has not improved since (epochs 56–58). The best weights are saved to `runs/v3/dns_trafficformer.keras` after each improvement.
-6. **Epochs slowed down** from about 110 s to about 230–270 s each from epoch 46 on. Possible causes: another program competing for the CPU, or thermal throttling. Not yet checked.
-7. **When it will finish is unknown.** Training stops after 10 epochs in a row with no improvement (`patience=10`, no minimum improvement, `path_b_train.py:285`). The last improvement was at epoch 55. If none of epochs 56–65 improves, it stops after epoch 65, about 25 minutes after the last check. Every earlier gap between improvements was 2 to 9 epochs, so another improvement is likely, and each one restarts the countdown. In the worst case it runs all 200 epochs, about 9 more hours.
+5. **Path B training:** the Transformer autoencoder (`dns_trafficformer`) ran 3,107 batches per epoch. Validation loss improved slowly, from 0.00368 at epoch 32 to 0.00355 at epoch 55, then not at all for 10 epochs.
+6. **Epochs slowed down** from about 110 s to 230–290 s each between epochs 46 and 60, then returned to about 112 s by epoch 64. So the slowdown was temporary, most likely another load on the machine, not a problem with the training.
+7. **Early stopping ended Path B after epoch 65.** Training stops after 10 epochs in a row with no improvement (`patience=10`, `path_b_train.py:285`); epochs 56–65 did not beat epoch 55. The best weights, from epoch 55, were kept.
+8. **Threshold calibration and fusion** followed in a few minutes: anomaly threshold 0.01741, fusion with 7 false alarms. **Total training time: 26,243 s (7 h 17 min 23 s)**, about 31 times the baseline's 14 min. The results are in section 3.7.
 
-**Path B validation loss, epochs 32–58** (from `logs/training_20261107_220017.log`):
+**Where the 7 h 17 min went** (derived from the `ps` check and the log's timestamps; the Kali clock's time zone looks wrong, so only durations are used, not clock times):
+
+| Stage | Duration | How it was measured |
+|---|---|---|
+| Steps 1–10: merge, label, split, Path A | about 36 min | `ps` showed the script at 2 h 07 min and the Path B process at 1 h 30 min, so Path B started about 36.5 min in |
+| Step 11: Path B (65 epochs, threshold, evaluation) | about 6 h 37 min (91% of the total) | the rest of the run after subtracting the other stages |
+| Step 12: fusion and tier boundaries | about 4 min | the log's internal timestamps run from the start of step 12 to the end (about 220 s) |
+| **Total** | **26,243 s = 7 h 17 min 23 s** | `Training complete in 26243s` |
+
+For comparison:
+
+| Run | Rows | Training time |
+|---|---|---|
+| baseline | 18,349 | 14 min 8 s |
+| v_det | 23,349 | 20 min 22 s |
+| v_dnsshell | 23,349 | 24 min 42 s |
+| **v3** | **218,334** | **7 h 17 min 23 s** |
+
+The data grew about 12 times, but training time grew about 31 times. Path B is the reason: an epoch went from seconds to 2–5 minutes (3,107 batches each), and early stopping needed 65 epochs.
+
+**Path B validation loss, epochs 32–65** (from `logs/training_20261107_220017.log`):
 
 | Epoch | val_loss (best so far) | Improved? | Epoch time |
 |---|---|---|---|
@@ -210,9 +320,12 @@ Whole files are used, not random samples, because Path B needs time-contiguous 5
 | 49–54 | — | no | 252–264 s |
 | 55 | **0.00355** | yes (best) | 228 s |
 | 56–58 | — | no | 230–242 s |
-| 59 | in progress | | |
+| 59–60 | — | no | 281–292 s |
+| 61–63 | — | no | 148–195 s |
+| 64–65 | — | no | 112–113 s |
+| **stop** | best weights from epoch 55 restored | | |
 
-Training loss stayed at 0.0043 throughout, while validation loss kept falling slightly. So the model is not overfitting: it is still generalising to benign windows it doesn't train on, just with smaller and smaller gains.
+Training loss stayed at about 0.0043 (0.0042 from epoch 60) while validation loss fell slightly and then flattened. The model did not overfit; it simply stopped finding gains. Low reconstruction loss on benign data turned out not to mean good attack detection (section 3.7, Finding 1).
 
 ---
 
@@ -249,8 +362,9 @@ None of these changes are committed to git yet.
 | All 6 tools converted and tested unseen | ✅ |
 | Tu benign converted (876,599 rows) | ✅ |
 | Tools reconverted at 15,000 · ALEXA file built | ✅ |
-| `runs/v3` training | ⏳ running: step 11/12, Path B epoch 59, best val_loss 0.00355 (epoch 55) |
-| Comparison of v3 with the other runs, CIC capture 3, leave-one-tool-out | ❌ waits for v3 |
+| `runs/v3` training | ✅ done in 7 h 17 min 23 s (26,243 s; Path B about 6 h 37 min of it) · fusion 7 false alarms, recall 1.0 · `merged_labeled.json` copied |
+| v3 on the frozen test set | ✅ recorded (section 3.7) |
+| v3 on CIC capture 3, leave-one-tool-out, comparison table | ❌ next |
 | Multi-seed check (baseline, v_dnsshell, v_det, v3) | ❌ not started |
 | Decision: does v3 replace `models/`? | ❌ |
 
@@ -260,20 +374,17 @@ None of these changes are committed to git yet.
 
 ### 9.1 Next steps (Week 5, in order)
 
-1. **Finish v3.** When `✓ Training complete` appears, copy `data/processed/merged_features_labeled.json` to `runs/v3/merged_labeled.json` and check the log lines:
-   - `[8/12]`: about 100,000 attack / 118,338 benign, all 8 tools.
-   - `[9/12]`: `Split: extended ... test frozen`.
-   - `[12/12]`: `Fusion trained`.
-2. **Compare v3 with the other runs** (V3_BALANCED_TRAINING.md, sections 5.1–5.3):
-   - frozen test set: v3 should keep recall at 1.0 and have 23 fusion false alarms or fewer (the baseline's number);
-   - CIC capture 3: false alarms should stay near 0;
-   - leave-one-tool-out: recall on each tool when that tool is left out of training.
+1. ~~**Finish v3.**~~ Done: all log checks passed, and `merged_labeled.json` is copied (section 3.7).
+2. **Evaluate v3 further** (V3_BALANCED_TRAINING.md, sections 5.1–5.3):
+   - frozen test set: ✅ fusion 7 false alarms (baseline 23), recall 1.0;
+   - **CIC capture 3:** false alarms should stay near 0, within the 0.1% budget (about 25);
+   - **leave-one-tool-out:** recall on each tool when that tool is left out of training. Run it before any `git checkout data/processed/`. This is now the main recall test, since the frozen test set only contains dnsexfiltrator.
 3. **Multi-seed check** (section 5.4): Path A with 5 seeds for baseline, v_dnsshell, v_det and v3. A difference counts as real only when the min–max ranges across seeds do not overlap.
 4. **Write the conclusion** and decide whether `runs/v3` replaces `models/`.
 
 ### 9.2 What to watch in v3's results
 
-- **Path B:** it was stuck at 105–113 false alarms because no benign data had been added. v3 adds about 110,000 benign rows, so this is the main expected improvement.
+- **Path B:** it was stuck at 105–113 false alarms because no benign data had been added. **Result:** its false alarms fell to 79, but its recall fell to 0.0. More benign data alone did not fix Path B; it made the autoencoder treat tunnels as normal (section 3.7, Finding 1).
 - **iodine:** v3 has trained on iodine, so the leave-one-tool-out result for iodine is the honest check of how well it is covered.
 - **det:** whether the det effect (23 → 38) shows up again in the combined model.
 
@@ -281,6 +392,8 @@ None of these changes are committed to git yet.
 
 | Idea | Why | Effort |
 |---|---|---|
+| **Fix Path B** (new, highest priority) | v3's autoencoder has recall 0.0. Options to test: use Path B's Isolation Forest (recall 1.0) as Path B's output; check the feature scaling (the new benign sources may have stretched feature ranges so that tunnel windows look average); or train the autoencoder on per-source benign windows. Compare by Path B's recall and FPR on the frozen test set and the fusion's false alarms. | Medium |
+| **A test set covering every tool** (new) | The frozen test set only contains dnsexfiltrator attacks. A held-out block per tool, kept out of training like the frozen set, would measure recall on all 8 tools in one place. It needs a new split, so it can't be compared directly with the earlier runs. | Medium |
 | **Test v3 on a Tu daily capture** | About 280,000 real benign queries the model has never seen, 11 times larger than CIC capture 3. A strong false-alarm claim for the report. Needs a daily-only JSON, because `benign_tu2023.json` also contains ALEXA, which is in training. | Low |
 | **Look at iodine's 4 misses** | Re-run the baseline on `tunnels_iodine.json` and keep the CSV this time (it was deleted). Find which queries were missed and why. | Low |
 | **Convert the dropped tool variants** | dnscat2's MX / CNAME / TXT / mixed variants and cobaltstrike's AAAA variant were dropped because the converter keeps one domain per tool. Converting them as extra families with `--domain`, still capped, adds variety of tunnel behaviour, which is worth more than more copies of the same behaviour. | Medium |

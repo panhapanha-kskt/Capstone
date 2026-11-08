@@ -11,6 +11,8 @@ This document compares the new training results with the results already recorde
 | **v_dnsshell** | `runs/v_dnsshell` | old data **+ dns_shell** (5,000 queries) |
 | **v_det** | `runs/v_det` | old data **+ det** (5,000 queries) |
 
+Each new run trained **Path A, Path B and fusion** and saved a complete model set in its own folder (`runs/<name>/`). The detection pipeline still uses the old models in `models/` unless `DNS_DETECT_MODELS_DIR=runs/<name>` is set.
+
 Plan and commands: [NEXT_TASKS_PER_TOOL.md](NEXT_TASKS_PER_TOOL.md).
 
 ---
@@ -151,7 +153,15 @@ Path A uses no time features, so the 683-day gap between the attack and benign c
 
 ### 6.2 The fusion relies on Path A alone
 
-In every run the fusion's false alarms equal Path A's: 31 = 31, 23 = 23, 7 = 7. The learned fusion gives Path B almost no weight. That matches CHANGES.md §12.3: Path A and Path B scores are strongly correlated (0.963), so Path B adds little. In practice, **the detector's decision is Path A's decision.** Path B's higher false alarms therefore don't reach the final output.
+In every run the fusion's false alarms equal Path A's: 31 = 31, 23 = 23, 7 = 7.
+
+Path B is **not** ignored. In the old fusion (`models/fusion_lr.json`) the weights are 8.78 for Path A and 2.79 for Path B (intercept −5.77, alarm threshold 0.49). Working through that formula:
+
+- **Path B can never raise an alarm on its own.** With a Path A score near 0, even the highest Path B score gives an alarm probability of about 2%.
+- **Path B moves the bar for Path A.** A row needs a Path A score of about 0.74 to alarm when Path B is quiet, and about 0.42 when Path B is at its highest.
+- **On these test rows that never changed a decision.** Path A's scores are almost all near 0 or near 1, so few rows are borderline.
+
+Path A and Path B scores are also strongly correlated (0.963, CHANGES.md §12.3). In practice, **the detector's decision follows Path A**, and Path B's higher false alarms don't reach the final output on this test set. The new runs' weights are in `runs/<name>/fusion_lr.json` and have not been checked yet.
 
 ### 6.3 Adding a tool can help or hurt
 
@@ -188,7 +198,7 @@ How to check:
 2. **One run per configuration (seed 42).** Run-to-run variation is not measured yet. Use `scripts/run_multiseed.py` before claiming any difference in the final report.
 3. **Frozen test set: still above the 0.1% budget.** The best run (v_dnsshell) is at 0.60%. On unseen benign traffic from another network (section 4) it is 0%.
 4. **New tools are not in the frozen test set.** Their rows go to train/val only. How well a tool is caught comes from the unseen-tool test (section 5).
-5. **Path B worsened in the new runs** (71 → 112 false alarms), and its weight in the fusion is close to zero. Worth checking: compare its validation and test reconstruction errors, or retrain it with another seed.
+5. **Path B worsened in the new runs** (71 → 112 false alarms). It cannot raise an alarm on its own in the fusion (§6.2), so the final output is unaffected here. It still matters for borderline rows and for Path B used alone. Worth checking: compare its validation and test reconstruction errors, or retrain it with another seed.
 6. **The training data is easy.** The EDA reports that single features separate the classes (AUC up to 0.997), and 70–81% of rows repeat another row's feature vector. Unseen tools, unseen benign traffic and the leave-one-tool-out test are the meaningful tests.
 
 ---

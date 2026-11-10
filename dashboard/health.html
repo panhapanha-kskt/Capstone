@@ -1,0 +1,139 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Pipeline Health</title>
+<link rel="stylesheet" href="/static/css/soc.css">
+<style>
+  .big-tile{padding:20px 24px}
+  .big-tile .value{font-size:30px}
+  .spark{display:block;width:100%;height:60px;background:var(--panel2);border-radius:3px;margin-top:8px}
+  .spark path{fill:none;stroke:var(--green);stroke-width:1.6}
+  .spark .area{fill:var(--green);opacity:.18;stroke:none}
+</style>
+</head>
+<body>
+<div id="app-chrome"></div>
+<script src="/static/js/chrome.js"></script>
+<script>
+"use strict";
+const main = SOC.mount({active:"health"});
+main.innerHTML = `
+  <div class="page-head">
+    <h1>Pipeline Health</h1>
+    <span class="subtitle">Grounded in actual pipeline + collection telemetry. Dashboard server being up ≠ pipeline healthy.</span>
+  </div>
+  <div class="freshness" id="freshness"></div>
+  <div class="tilerow" id="tiles"></div>
+  <div class="panel">
+    <h2>Drift &amp; score health (from <code>monitoring_report.json</code>)</h2>
+    <div id="drift-body"></div>
+  </div>
+  <div class="panel">
+    <h2>Recent pipeline run history</h2>
+    <div class="sub">Last 30 runs from in-memory <code>STATE.history</code>; resets on server restart.</div>
+    <svg id="spark" class="spark" viewBox="0 0 400 60" preserveAspectRatio="none"></svg>
+    <div id="hist-summary" style="color:var(--muted);font-size:11.5px;margin-top:6px"></div>
+  </div>
+`;
+
+function bandCls(b){
+  return b === "Healthy" ? "good" : b === "Warning" ? "warn" : b === "Critical" ? "bad" : "";
+}
+
+function renderTiles(health, mode){
+  const tiles = [
+    {label:"Pipeline Health", value:health.band || "Unknown", cls:bandCls(health.band),
+     foot:(health.reasons||[]).join("; ") || "—", big:true},
+    {label:"Pipeline Status", value:health.pipeline_status || "—",
+     foot:"Runs: " + (health.pipeline_runs||0)},
+    {label:"Last Pipeline Run", value:SOC.relTime(health.pipeline_last_run_at),
+     foot:health.pipeline_last_run_at ? SOC.fmtDate(new Date(health.pipeline_last_run_at*1000).toISOString()) : "never"},
+    {label:"Last Duration", value:(health.pipeline_last_duration!=null?Number(health.pipeline_last_duration).toFixed(1)+"s":"—"), foot:""},
+    {label:"Alerts File Age", value:(health.alerts_file_age_seconds!=null?Math.round(health.alerts_file_age_seconds)+"s":"n/a"),
+     foot: health.alerts_file_mtime ? SOC.fmtDate(new Date(health.alerts_file_mtime*1000).toISOString()) : (mode==="demo"?"demo (in-memory)":"no file yet")},
+    {label:"Retrain Recommended", value:(health.retrain_recommended===true?"Yes":health.retrain_recommended===false?"No":"n/a"),
+     cls:(health.retrain_recommended?"warn":""), foot:"from monitor_report"},
+    {label:"Pipeline Error", value:(health.pipeline_error?"Yes":"No"), cls:(health.pipeline_error?"bad":""),
+     foot:(health.pipeline_error||"").slice(0,80) || "—"},
+  ];
+  document.getElementById("tiles").innerHTML = tiles.map(t=>`
+    <div class="tile ${t.cls||""} ${t.big?"big-tile":""}">
+      <div class="label">${SOC.esc(t.label)}</div>
+      <div class="value">${SOC.esc(t.value)}</div>
+      <div class="foot">${SOC.esc(t.foot)}</div>
+    </div>`).join("");
+}
+
+function renderFreshness(health, pipeline){
+  const nowIso = SOC.fmtDate(new Date().toISOString());
+  const parts = [
+    ["Last pipeline run", health.pipeline_last_run_at ? SOC.fmtDate(new Date(health.pipeline_last_run_at*1000).toISOString()) : "never"],
+    ["Alerts file mtime", health.alerts_file_mtime ? SOC.fmtDate(new Date(health.alerts_file_mtime*1000).toISOString()) : "no file"],
+    ["Dashboard tick", nowIso],
+  ];
+  document.getElementById("freshness").innerHTML = parts.map(([k,v])=>`<span><b>${SOC.esc(k)}:</b> ${SOC.esc(v)}</span>`).join("")
+    + '<span style="margin-left:auto;color:var(--dim)">These three timestamps are intentionally separate — the dashboard being fresh does not mean the pipeline is fresh.</span>';
+}
+
+function renderDrift(monitoring){
+  const body = document.getElementById("drift-body");
+  if (!monitoring){
+    body.innerHTML = '<div class="nag">No <code>monitoring_report.json</code> available yet. It is produced by the monitoring step after a pipeline run.</div>';
+    return;
+  }
+  const drift = monitoring.drift || {};
+  const sh = monitoring.score_health || {};
+  const av = monitoring.alert_volume || {};
+  const rows = [];
+  rows.push(`<div class="kvtable">
+    <span class="k">Live input</span><span class="v">${SOC.esc(monitoring.live_input||"—")}</span>
+    <span class="k">Trained on</span><span class="v">${SOC.esc(monitoring.trained_on||"—")}</span>
+    <span class="k">Retrain recommended</span><span class="v">${monitoring.retrain_recommended? '<span class="chip warn">Yes</span>' : '<span class="chip ok">No</span>'}</span>
+    <span class="k">Alert volume</span><span class="v">${SOC.esc(av.n_alerts||0)} alerts (rate ${SOC.esc((av.alert_rate||0).toFixed ? av.alert_rate.toFixed(4) : av.alert_rate)})</span>
+    <span class="k">Score column</span><span class="v">${SOC.esc(sh.column||"—")}</span>
+    <span class="k">Score mean</span><span class="v">${sh.mean!=null?Number(sh.mean).toFixed(4):"—"}</span>
+    <span class="k">Saturated high/low</span><span class="v">${sh.frac_saturated_high!=null?Number(sh.frac_saturated_high).toFixed(3):"—"} / ${sh.frac_saturated_low!=null?Number(sh.frac_saturated_low).toFixed(3):"—"}</span>
+  </div>`);
+  if (Object.keys(drift).length){
+    rows.push(`<h3 style="font-size:13px;color:#e7eaf2;margin:12px 0 6px">Per-feature drift</h3>`);
+    rows.push(`<table class="data" style="min-width:auto"><thead><tr><th>Feature</th><th>PSI</th><th>Band</th></tr></thead><tbody>${
+      Object.entries(drift).map(([k,v])=>{
+        const b = (v && v.band) || "unknown";
+        const cls = (b==="major"||b==="high") ? "warn" : b==="moderate" ? "warn" : "ok";
+        return `<tr><td>${SOC.esc(k)}</td><td class="num">${v && v.psi!=null ? Number(v.psi).toFixed(3) : "—"}</td><td><span class="chip ${cls}">${SOC.esc(b)}</span></td></tr>`;
+      }).join("")
+    }</tbody></table>`);
+  }
+  if ((monitoring.reasons||[]).length){
+    rows.push('<h3 style="font-size:13px;color:#e7eaf2;margin:12px 0 6px">Reasons</h3>');
+    rows.push('<ul style="padding-left:18px;color:#cfd4e2;font-size:12px">' + monitoring.reasons.map(r=>`<li>${SOC.esc(r)}</li>`).join("") + '</ul>');
+  }
+  body.innerHTML = rows.join("");
+}
+
+function renderSparkline(history){
+  const svg = document.getElementById("spark");
+  const pts = (history||[]).slice(-30);
+  if (!pts.length){ svg.innerHTML = ""; document.getElementById("hist-summary").textContent = "no history yet"; return; }
+  const maxT = Math.max(...pts.map(p=>p.total||0), 1);
+  const W = 400, H = 60;
+  const xs = (i)=> pts.length===1 ? W/2 : (i/(pts.length-1))*W;
+  const ys = (v)=> H - (v/maxT)*(H-6) - 3;
+  const linePath = pts.map((p,i)=>`${i===0?"M":"L"}${xs(i).toFixed(1)},${ys(p.total||0).toFixed(1)}`).join(" ");
+  const areaPath = linePath + ` L${W},${H} L0,${H} Z`;
+  svg.innerHTML = `<path class="area" d="${areaPath}"/><path d="${linePath}"/>`;
+  document.getElementById("hist-summary").textContent =
+    `Latest: ${pts[pts.length-1].total} alerts · peak in window: ${maxT}`;
+}
+
+SOC.pollState(async s => {
+  renderTiles(s.health||{}, s.mode);
+  renderFreshness(s.health||{}, s.pipeline||{});
+  renderDrift(s.monitoring);
+  renderSparkline(s.history);
+}, 4000);
+</script>
+</body>
+</html>

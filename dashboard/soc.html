@@ -618,9 +618,10 @@
         <a class="sub" href="/usecases">Monitoring Use Cases</a>
         <a class="sub" href="/">Classic Dashboard</a>
         <a href="/alerts"><span class="ic">⚠</span> Alerts</a>
-        <a href="#"><span class="ic">✓</span> Service Requests</a>
-        <a href="#"><span class="ic">🖳</span> My Assets</a>
-        <a href="#"><span class="ic">▤</span> Reports</a>
+        <a href="/events"><span class="ic">◉</span> Event Explorer</a>
+        <a href="/devices"><span class="ic">🖳</span> Sources &amp; Collection</a>
+        <a href="/health"><span class="ic">♥</span> Pipeline Health</a>
+        <a href="/incidents"><span class="ic">▤</span> Incidents</a>
         <a href="#"><span class="ic">🔍</span> Forensic Analysis</a>
         <a href="#"><span class="ic">≣</span> Audit Logs</a>
         <a href="#"><span class="ic">⚙</span> Settings <span class="grp-caret">▸</span></a>
@@ -635,6 +636,12 @@
         <section class="panel summary">
           <div class="p-head">SOC MONITORING SUMMARY <span class="info">ⓘ</span></div>
           <div class="sum-row" id="summaryRow"></div>
+        </section>
+
+        <!-- Week 6: operational metrics (persisted alert workflow, pipeline health) -->
+        <section class="panel summary">
+          <div class="p-head">OPERATIONAL METRICS <span class="info" title="Derived from persisted alert management + /api/health. 'Derived' statuses on the Alerts page are counted as Open unless the analyst has touched them.">ⓘ</span></div>
+          <div class="sum-row" id="opRow"></div>
         </section>
 
         <!-- row of donuts + categories -->
@@ -866,6 +873,11 @@
         `<div class="sum-item ${i.cls || ""}"><div class="sum-ic">${i.icon}</div>
      <div class="sum-val">${i.val}</div><div class="sum-lab">${esc(i.label)}</div></div>`).join("");
     }
+    function opRow(items) {
+      $("opRow").innerHTML = items.map(i =>
+        `<div class="sum-item ${i.cls || ""}" title="${esc(i.hint||"")}"><div class="sum-ic">${i.icon}</div>
+     <div class="sum-val">${i.val}</div><div class="sum-lab">${esc(i.label)}</div></div>`).join("");
+    }
 
     /* ── render from /api/state ────────────────── */
     let lastVersion = -1;
@@ -892,6 +904,33 @@
         { icon: "🛡", val: fmt(total), label: "Security Events" },
         { icon: "⚠", val: high, cls: "warn", label: "High Severity" },
         { icon: "⮝", val: t.new_alerts || 0, cls: "bad", label: "Escalated Alerts" },
+      ]);
+
+      // Week 6 operational row — grounded in persisted alert management + /api/health
+      const mgmt = feed.map(f => f.management).filter(Boolean);
+      const open = mgmt.filter(m => m.status === "Open").length;
+      const ack  = mgmt.filter(m => m.status === "Acknowledged").length;
+      const inv  = mgmt.filter(m => m.status === "Investigating").length;
+      const esc_ = mgmt.filter(m => m.status === "Escalated" || m.escalated).length;
+      const res  = mgmt.filter(m => m.status === "Resolved").length;
+      // "Derived-Open" = feed items without a management record yet, treated as Open-ish
+      const derivedOpen = feed.filter(f => !f.management).length;
+      const unack = open + derivedOpen;
+      const srcCount = (s.sources || []).length;
+      const band = (s.health && s.health.band) || "Unknown";
+      const bandCls = band === "Healthy" ? "" : band === "Warning" ? "warn" : band === "Critical" ? "bad" : "";
+      opRow([
+        { icon: "●", val: open + ack + inv + esc_, label: "Active Alerts",
+          hint: "Open + Acknowledged + Investigating + Escalated (persisted only)" },
+        { icon: "◔", val: unack, cls: "warn", label: "Unacknowledged",
+          hint: "Open or Derived-Open (no analyst touch yet)" },
+        { icon: "◑", val: inv, label: "Under Investigation" },
+        { icon: "⮝", val: esc_, cls: "bad", label: "Escalated" },
+        { icon: "✓", val: res, label: "Resolved" },
+        { icon: "🔺", val: high, cls: "warn", label: "Critical Events (feed)" },
+        { icon: "🖳", val: srcCount, label: "Collection Sources" },
+        { icon: "♥", val: band, cls: bandCls, label: "Pipeline Health",
+          hint: (s.health && (s.health.reasons||[]).join("; ")) || "" },
       ]);
 
       // 2. severity donut

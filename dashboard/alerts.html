@@ -142,6 +142,67 @@
   .kv{display:flex;gap:10px;font-size:12.5px}
   .kv .k{width:120px;color:var(--muted);flex:none}
   .kv .v{color:#e8ebf4;word-break:break-all;white-space:normal}
+
+  /* ── Week 6 additions ── */
+  .chip.derived{outline:1px dashed #6f7791;background:transparent;color:#cfd4e2;font-weight:500}
+  .chip.persisted{outline:1px solid #4a5066}
+  .chip.st-Open{background:#4a5066}
+  .chip.st-Acknowledged{background:#2f6fb2}
+  .chip.st-Investigating{background:#d9822b}
+  .chip.st-Escalated{background:var(--red)}
+  .chip.st-Resolved{background:var(--green2)}
+  .chip.st-Closed{background:#394057;color:#cfd4e2}
+
+  .row-menu-btn{background:none;border:0;color:var(--muted);cursor:pointer;font-size:16px;padding:4px 8px;line-height:1}
+  .row-menu-btn:hover{color:#fff}
+  .popmenu{position:absolute;background:var(--panel);border:1px solid var(--border);border-radius:4px;
+    box-shadow:0 8px 24px #000c;min-width:200px;padding:4px 0;z-index:30;font-size:12.5px}
+  .popmenu button{display:block;width:100%;text-align:left;background:none;border:0;color:var(--text);
+    padding:8px 14px;cursor:pointer;font:inherit}
+  .popmenu button:hover:not(:disabled){background:#242944;color:#fff}
+  .popmenu button:disabled{opacity:.35;cursor:default}
+  .popmenu .sep{height:1px;background:var(--border);margin:4px 0}
+  .popmenu .head{padding:6px 14px;font-size:11px;color:var(--dim);text-transform:uppercase;letter-spacing:.5px}
+
+  .modal-back{position:fixed;inset:0;background:#000a;z-index:40;display:flex;align-items:center;justify-content:center}
+  .modal{background:var(--panel);border:1px solid var(--border);border-radius:6px;min-width:420px;
+    max-width:560px;max-height:85vh;overflow:auto;box-shadow:0 20px 60px #000c}
+  .modal h3{font-weight:600;font-size:15px;color:#fff;padding:16px 18px;border-bottom:1px solid var(--border)}
+  .modal .body{padding:14px 18px;display:flex;flex-direction:column;gap:10px;font-size:12.5px;color:var(--text)}
+  .modal .foot{display:flex;gap:10px;justify-content:flex-end;padding:12px 18px;border-top:1px solid var(--border)}
+  .btn-sec{background:#2a2f42;color:#cfd4e2}
+  .btn-dng{background:var(--red)}
+  .field{display:flex;flex-direction:column;gap:4px}
+  .field label{font-size:11.5px;color:var(--muted)}
+  .field select, .field input[type=text], .field textarea{
+    background:var(--panel2);border:1px solid var(--border);border-radius:3px;
+    color:var(--text);padding:6px 8px;font:inherit;font-size:12.5px;outline:0}
+  .field select:focus, .field input:focus, .field textarea:focus{border-color:var(--blue)}
+  .field textarea{min-height:88px;resize:vertical}
+
+  .drawer-tabs{display:flex;border-bottom:1px solid var(--border);background:#1b2033}
+  .drawer-tab{padding:9px 16px;font-size:12px;color:var(--muted);cursor:pointer;border-bottom:2px solid transparent}
+  .drawer-tab.active{color:#fff;border-bottom-color:var(--green)}
+  .drawer-tab:hover{color:#fff}
+
+  .note-list{display:flex;flex-direction:column;gap:10px}
+  .note{background:var(--panel2);border:1px solid var(--border);border-radius:4px;padding:8px 10px}
+  .note .meta{font-size:11px;color:var(--muted);display:flex;gap:8px;margin-bottom:4px}
+  .note .meta b{color:#cfd4e2}
+  .note .txt{color:#e8ebf4;font-size:12.5px;white-space:pre-wrap;word-break:break-word}
+
+  .audit-row{display:grid;grid-template-columns:120px 1fr;gap:10px;font-size:11.5px;padding:4px 0;border-bottom:1px dashed #262b3d}
+  .audit-row .t{color:var(--muted);font-variant-numeric:tabular-nums}
+  .audit-row .a{color:#cfd4e2}
+  .audit-row .n{color:var(--muted);grid-column:1/-1;font-size:11px}
+
+  .kvtable{display:grid;grid-template-columns:140px 1fr;gap:6px 10px;font-size:12px}
+  .kvtable .k{color:var(--muted)}
+  .kvtable .v{color:#e8ebf4;word-break:break-all}
+
+  .nag{background:#1e2231;border:1px solid var(--border);border-left:3px solid var(--orange);
+    padding:8px 12px;border-radius:3px;font-size:11.5px;color:var(--muted)}
+  .nag b{color:#e7eaf2}
 </style>
 </head>
 <body>
@@ -170,9 +231,10 @@
       <a class="sub" href="/usecases">Monitoring Use Cases</a>
       <a class="sub" href="/">Classic Dashboard</a>
       <a class="active" href="/alerts"><span class="ic">⚠</span> Alerts</a>
-      <a href="#"><span class="ic">✓</span> Service Requests</a>
-      <a href="#"><span class="ic">🖳</span> My Assets</a>
-      <a href="#"><span class="ic">▤</span> Reports</a>
+      <a href="/events"><span class="ic">◉</span> Event Explorer</a>
+      <a href="/devices"><span class="ic">🖳</span> Sources &amp; Collection</a>
+      <a href="/health"><span class="ic">♥</span> Pipeline Health</a>
+      <a href="/incidents"><span class="ic">▤</span> Incidents</a>
       <a href="#"><span class="ic">🔍</span> Forensic Analysis</a>
       <a href="#"><span class="ic">≣</span> Audit Logs</a>
       <a href="#"><span class="ic">⚙</span> Settings <span class="grp-caret">▸</span></a>
@@ -187,10 +249,28 @@
 "use strict";
 /* ════════════════════════════════════════════════════════════
    Alerts — React 18 single-page app (FortiSOAR-style module)
-   Data source: the same GET /api/state used by every page.
+   Data source: GET /api/state (feed) + POST /api/alerts/{fp}/* (persistent mgmt).
+   The server-side fingerprint (fp) is the stable alert key.
    ════════════════════════════════════════════════════════════ */
-const { useState, useEffect, useMemo, useCallback } = React;
+const { useState, useEffect, useMemo, useCallback, useRef } = React;
 const html = htm.bind(React.createElement);
+
+/* ── simple API wrappers ──────────────────────── */
+async function apiPOST(url, body){
+  const r = await fetch(url, {method:"POST", cache:"no-store",
+    headers:{"Content-Type":"application/json"}, body:JSON.stringify(body||{})});
+  const data = await r.json().catch(()=>({}));
+  if (!r.ok) throw Object.assign(new Error(data.error||("HTTP "+r.status)), {code:r.status, data});
+  return data;
+}
+async function apiGET(url){
+  const r = await fetch(url, {cache:"no-store"});
+  if (!r.ok) throw new Error("HTTP "+r.status);
+  return r.json();
+}
+const ACTOR_KEY = "soc_actor";
+function currentActor(){ return localStorage.getItem(ACTOR_KEY) || "analyst-1"; }
+function setActor(a){ try { localStorage.setItem(ACTOR_KEY, a); } catch(e){} }
 
 const COLORS = { green:"#4caf50", yellow:"#c9a227", orange:"#d9822b", blue:"#4a90d9", red:"#e0564a" };
 const SEV_ORDER = ["Low","Medium","High","Critical"];
@@ -216,22 +296,47 @@ function fmtDate(iso){
   const p = n => String(n).padStart(2,"0");
   return `${p(d.getMonth()+1)}/${p(d.getDate())}/${d.getFullYear()} ${p(d.getHours())}:${p(d.getMinutes())}`;
 }
-function enrich(f, idNum){
+/* allowed transitions mirror server ALLOWED_TRANSITIONS */
+const TRANSITIONS = {
+  "Open":          ["Acknowledged", "Investigating", "Escalated", "Closed"],
+  "Acknowledged":  ["Investigating", "Escalated", "Resolved", "Closed"],
+  "Investigating": ["Escalated", "Resolved", "Closed"],
+  "Escalated":     ["Investigating", "Resolved", "Closed"],
+  "Resolved":      ["Closed", "Open"],
+  "Closed":        ["Open"],
+};
+function canTransition(from, to){ return (TRANSITIONS[from]||[]).includes(to); }
+
+function enrich(f){
   const sev = f.severity || "Medium";
-  const status = f.is_new ? "Open" : sev === "High" ? "Investigating" : "Closed";
   const ds = fmtDate(f.time);
+  const mgmt = f.management || null;
+  // Persisted vs derived status: prefer management, fall back to Week-5 derivation
+  const derivedStatus = f.is_new ? "Open" : sev === "High" ? "Investigating" : "Closed";
+  const status = mgmt ? mgmt.status : derivedStatus;
+  const persisted = !!mgmt;
+  const escalated = mgmt ? (mgmt.escalated ? "Yes" : "No")
+                         : (f.is_new && sev === "High" ? "Yes" : "No");
+  const assigned = mgmt && mgmt.assigned_to ? mgmt.assigned_to : "—";
+  const adate = mgmt && mgmt.assigned_at ? fmtDate(mgmt.assigned_at) : (mgmt ? "—" : ds);
+  const open = status === "Open" || status === "Acknowledged" || status === "Investigating" || status === "Escalated";
   return {
-    id: idNum,
+    fp: f.fp,
+    id: f.fp ? f.fp.slice(0, 8) : "—",
+    pipeline_id: f.id,
     weight: (sev === "High" ? 8 : sev === "Medium" ? 5 : 2) + (f.is_new ? 1 : 0),
-    severity: sev, assigned: "SOC Admin",
+    severity: sev,
+    assigned,
     name: f.rule || "—", source: f.source || "DNS Detection Pipeline",
-    type: alertType(f.rule), status,
-    escalated: f.is_new && sev === "High" ? "Yes" : "No",
-    adate: ds, cdate: ds,
-    ack: status === "Open" ? "Awaiting Action" : "Met",
-    resp: status === "Open" && sev === "High" ? "Awaiting Action" : status === "Open" ? "In Progress" : "Met",
+    type: alertType(f.rule), status, persisted,
+    escalated, adate, cdate: ds,
+    ack: !persisted && open ? "Awaiting Action" : persisted && mgmt.acknowledged_at ? "Met" : (open ? "Awaiting Action" : "Met"),
+    resp: open && sev === "High" ? "Awaiting Action" : open ? "In Progress" : "Met",
     client: f.client, domain: f.domain, description: f.description,
     tactics: f.tactics || [], techniques: f.techniques || [],
+    details: f.details || {},
+    is_new: f.is_new, mgmt,
+    _raw: f,
   };
 }
 
@@ -348,32 +453,186 @@ function SlaChip({v}){
   return html`<${Chip} val=${v} cls=${v==="Met" ? "sla-met" : v==="In Progress" ? "sla-prog" : "sla-wait"}/>`;
 }
 
-function Drawer({alert, onClose}){
+function Drawer({alert, analysts, onClose, onAction, bump, error}){
+  const [tab, setTab] = useState("overview");
+  const [note, setNote] = useState("");
+  const [audit, setAudit] = useState([]);
+  useEffect(()=>{
+    if (!alert) return;
+    setTab("overview"); setNote(""); setAudit([]);
+    apiGET(`/api/audit?alert_fp=${encodeURIComponent(alert.fp)}&limit=50`)
+      .then(r=>setAudit(r.records||[])).catch(()=>{});
+  }, [alert?.fp, bump]);
   if (!alert) return null;
+
   const rows = [
-    ["Alert ID", alert.id], ["Name", alert.name], ["Type", alert.type],
-    ["Severity", alert.severity], ["Status", alert.status], ["Escalated", alert.escalated],
-    ["Priority Weight", alert.weight], ["Source", alert.source], ["Assigned To", alert.assigned],
+    ["Alert FP", alert.fp], ["Pipeline UUID", alert.pipeline_id || "—"],
+    ["Rule", alert.name], ["Type", alert.type],
+    ["Severity", alert.severity],
+    ["Status", html`<${Chip} val=${alert.status} cls=${(alert.persisted?"persisted ":"derived ")+"st-"+alert.status}/>`],
+    ["Persistence", alert.persisted ? "Persisted (analyst-managed)" : "Derived (no analyst touch yet)"],
+    ["Escalated", alert.escalated],
+    ["Assigned To", alert.assigned], ["Assigned At", alert.adate],
+    ["Priority Weight", alert.weight],
+    ["Source", alert.source],
     ["Client IP", alert.client || "—"], ["Domain", alert.domain || "—"],
-    ["MITRE Tactics", alert.tactics.join(", ") || "—"], ["MITRE Techniques", alert.techniques.join(", ") || "—"],
+    ["MITRE Tactics", alert.tactics.join(", ") || "—"],
+    ["MITRE Techniques", alert.techniques.join(", ") || "—"],
     ["Ack SLA", alert.ack], ["Response SLA", alert.resp],
-    ["Created On", alert.cdate], ["Description", alert.description || "—"],
+    ["Created On", alert.cdate],
+    ["Description", alert.description || "—"],
   ];
+
+  async function submitNote(){
+    if (!note.trim()) return;
+    try { await onAction("notes", {text: note.trim()}); setNote(""); }
+    catch(e){ /* surfaced via error prop */ }
+  }
+
+  const nextOpts = TRANSITIONS[alert.status] || [];
   return html`<div class="drawer">
-    <div class="d-head">⚠ Alert #${alert.id}<span class="x" onClick=${onClose}>✕</span></div>
+    <div class="d-head">⚠ Alert ${alert.id}
+      <span class="x" onClick=${onClose}>✕</span></div>
+    <div class="drawer-tabs">
+      <div class=${"drawer-tab "+(tab==="overview"?"active":"")} onClick=${()=>setTab("overview")}>Overview</div>
+      <div class=${"drawer-tab "+(tab==="invest"?"active":"")} onClick=${()=>setTab("invest")}>Investigation</div>
+      <div class=${"drawer-tab "+(tab==="details"?"active":"")} onClick=${()=>setTab("details")}>Details</div>
+      <div class=${"drawer-tab "+(tab==="audit"?"active":"")} onClick=${()=>setTab("audit")}>Audit</div>
+    </div>
     <div class="d-body">
-      ${rows.map(([k,v])=>html`<div key=${k} class="kv"><span class="k">${k}</span><span class="v">${v}</span></div>`)}
+      ${error ? html`<div class="nag"><b>Last action failed:</b> ${error}</div>` : null}
+      ${tab==="overview" ? rows.map(([k,v])=>html`<div key=${k} class="kv"><span class="k">${k}</span><span class="v">${v}</span></div>`) : null}
+
+      ${tab==="invest" ? html`<${React.Fragment}>
+        <div class="field"><label>Status (current: ${alert.status})</label>
+          <select value=${alert.status} onChange=${e=>onAction("status", {status:e.target.value}).catch(()=>{})}>
+            <option value=${alert.status}>${alert.status} (no change)</option>
+            ${nextOpts.map(s=>html`<option key=${s} value=${s}>${s==="Open" && (alert.status==="Resolved"||alert.status==="Closed") ? "Reopen → Open" : s}</option>`)}
+          </select>
+        </div>
+        <div class="field"><label>Assigned to</label>
+          <select value=${alert.mgmt?.assigned_to||""} onChange=${e=>onAction("assign",{analyst_id:e.target.value||null}).catch(()=>{})}>
+            <option value="">— Unassigned —</option>
+            ${analysts.map(a=>html`<option key=${a.id} value=${a.id}>${a.name} (${a.role})</option>`)}
+          </select>
+        </div>
+        <div style=${{display:"flex", gap:8, flexWrap:"wrap"}}>
+          <button class="btn" style=${{background:"#2f6fb2"}} disabled=${alert.mgmt?.acknowledged_at}
+            onClick=${()=>onAction("acknowledge").catch(()=>{})}>${alert.mgmt?.acknowledged_at?"✓ Acknowledged":"Acknowledge"}</button>
+          <button class="btn btn-dng" disabled=${alert.status==="Closed"} onClick=${()=>onAction("escalate").catch(()=>{})}>Escalate</button>
+          <button class="btn" style=${{background:"#4caf50"}} disabled=${!canTransition(alert.status,"Resolved")}
+            onClick=${()=>onAction("status",{status:"Resolved"}).catch(()=>{})}>Mark Resolved</button>
+          <button class="btn btn-sec" disabled=${!canTransition(alert.status,"Closed")}
+            onClick=${()=>onAction("status",{status:"Closed"}).catch(()=>{})}>Close</button>
+          ${(alert.status==="Resolved"||alert.status==="Closed") ?
+            html`<button class="btn btn-sec" onClick=${()=>onAction("status",{status:"Open"}).catch(()=>{})}>Reopen</button>` : null}
+        </div>
+        <div class="field"><label>Add investigation note</label>
+          <textarea value=${note} onInput=${e=>setNote(e.target.value)} placeholder="Observations, evidence, false-positive reasoning, threat-intel findings…"/>
+          <div><button class="btn add" disabled=${!note.trim()} onClick=${submitNote}>Add note</button></div>
+        </div>
+        <div class="note-list">
+          ${((alert.mgmt?.notes)||[]).slice().reverse().map(n=>html`<div class="note" key=${n.id}>
+            <div class="meta"><b>${n.author}</b> · ${fmtDate(n.ts)}</div>
+            <div class="txt">${n.text}</div></div>`)}
+          ${(!alert.mgmt?.notes?.length) ? html`<div class="nag">No notes yet.</div>` : null}
+        </div>
+      <//>` : null}
+
+      ${tab==="details" ? html`<${React.Fragment}>
+        <div class="nag">Fields below come straight from the pipeline's <code>details</code> dict. "—" means the pipeline did not emit that field (demo mode or non-ML rule).</div>
+        <div class="kvtable">
+          ${Object.entries(alert.details||{}).length ?
+            Object.entries(alert.details).map(([k,v])=>html`<${React.Fragment} key=${k}>
+              <span class="k">${k}</span>
+              <span class="v">${typeof v==="object" ? JSON.stringify(v) : String(v)}</span>
+            <//>`) : html`<span class="k">(empty)</span><span class="v">no details provided</span>`}
+        </div>
+      <//>` : null}
+
+      ${tab==="audit" ? html`<${React.Fragment}>
+        <div class="nag"><b>Actor is not authenticated</b> in this phase. The server records actors as reported by the client.</div>
+        ${audit.length ? audit.map(e=>html`<div class="audit-row" key=${e.event_id}>
+          <span class="t">${fmtDate(e.timestamp)}</span>
+          <span class="a"><b>${e.action}</b> by <i>${e.actor}</i>${e.old_value||e.new_value?":":""}
+            ${e.old_value!==null && e.old_value!==undefined ? " "+JSON.stringify(e.old_value) : ""}
+            ${e.new_value!==null && e.new_value!==undefined ? " → "+JSON.stringify(e.new_value) : ""}</span>
+          ${e.note ? html`<span class="n">${e.note}</span>` : null}
+        </div>`) : html`<div class="nag">No audit events for this alert yet.</div>`}
+      <//>` : null}
     </div>
   </div>`;
 }
 
 const PAGE_SIZE = 10;
-function AlertsGrid({alerts}){
+function BulkMenu({selected, analysts, onClose, onConfirm}){
+  const [action, setAction] = useState("acknowledge");
+  const [status, setStatus] = useState("Investigating");
+  const [analyst, setAnalyst] = useState(analysts[0]?.id || "");
+  const [reason, setReason] = useState("");
+  // count how many are eligible
+  const eligible = useMemo(()=>{
+    if (action === "acknowledge") return selected.filter(a => a.status === "Open" || !a.persisted).length;
+    if (action === "escalate")   return selected.filter(a => a.status !== "Closed").length;
+    if (action === "close")      return selected.filter(a => canTransition(a.status, "Closed")).length;
+    if (action === "status")     return selected.filter(a => canTransition(a.status, status)).length;
+    if (action === "assign")     return selected.length;
+    return 0;
+  }, [action, status, selected]);
+  return html`<div class="modal-back" onClick=${e=>{ if (e.target.classList.contains("modal-back")) onClose(); }}>
+    <div class="modal">
+      <h3>Bulk action on ${selected.length} alert${selected.length===1?"":"s"}</h3>
+      <div class="body">
+        <div class="field"><label>Action</label>
+          <select value=${action} onChange=${e=>setAction(e.target.value)}>
+            <option value="acknowledge">Acknowledge</option>
+            <option value="assign">Assign to analyst</option>
+            <option value="status">Set status</option>
+            <option value="escalate">Escalate</option>
+            <option value="close">Close (where valid)</option>
+          </select>
+        </div>
+        ${action==="status" ? html`<div class="field"><label>Target status</label>
+          <select value=${status} onChange=${e=>setStatus(e.target.value)}>
+            ${["Acknowledged","Investigating","Escalated","Resolved","Closed"].map(s=>html`<option key=${s} value=${s}>${s}</option>`)}
+          </select></div>` : null}
+        ${action==="assign" ? html`<div class="field"><label>Analyst</label>
+          <select value=${analyst} onChange=${e=>setAnalyst(e.target.value)}>
+            <option value="">— Unassigned —</option>
+            ${analysts.map(a=>html`<option key=${a.id} value=${a.id}>${a.name} (${a.role})</option>`)}
+          </select></div>` : null}
+        <div class="nag">${eligible} of ${selected.length} selected alerts are valid for this action. Invalid ones will be reported as failed and skipped.</div>
+        <div class="field"><label>Optional reason (recorded in audit log)</label>
+          <input type="text" value=${reason} onInput=${e=>setReason(e.target.value)}/></div>
+      </div>
+      <div class="foot">
+        <button class="btn btn-sec" onClick=${onClose}>Cancel</button>
+        <button class="btn add" onClick=${()=>onConfirm({action, payload:{status, analyst_id: analyst||null, reason}})}>Apply to ${eligible}</button>
+      </div>
+    </div></div>`;
+}
+
+function AlertsGrid({alerts, analysts, doAction, refresh}){
   const [filters, setFilters] = useState({});
-  const [sort, setSort] = useState({key:"id", dir:-1});
+  const [sort, setSort] = useState({key:"severity", dir:-1});
   const [page, setPage] = useState(1);
   const [checked, setChecked] = useState(()=>new Set());
-  const [detail, setDetail] = useState(null);
+  const [detail, setDetail] = useState(null);     // active alert fp
+  const [menu, setMenu] = useState(null);         // {fp, x, y}
+  const [bulkOpen, setBulkOpen] = useState(false);
+  const [bulkResult, setBulkResult] = useState(null);
+  const [drawerErr, setDrawerErr] = useState("");
+  const [drawerBump, setDrawerBump] = useState(0);
+
+  // close row menu on outside click or Escape
+  useEffect(()=>{
+    if (!menu) return;
+    const close = ()=>setMenu(null);
+    const onKey = e => e.key === "Escape" && close();
+    document.addEventListener("click", close);
+    document.addEventListener("keydown", onKey);
+    return ()=>{ document.removeEventListener("click", close); document.removeEventListener("keydown", onKey); };
+  }, [menu]);
 
   const list = useMemo(()=>{
     let l = alerts.filter(a => Object.entries(filters).every(([k,q]) =>
@@ -389,26 +648,61 @@ function AlertsGrid({alerts}){
   const cur = Math.min(page, pages);
   const rows = list.slice((cur-1)*PAGE_SIZE, cur*PAGE_SIZE);
 
+  // re-sync active drawer object when state refreshes (feed items re-created)
+  const detailObj = useMemo(()=> detail ? alerts.find(a=>a.fp===detail) : null, [alerts, detail]);
+
   const setFilter = useCallback((k,v)=>{ setFilters(f=>({...f,[k]:v.trim().toLowerCase()})); setPage(1); }, []);
   const toggleSort = k => setSort(s => ({key:k, dir: s.key === k ? -s.dir : 1}));
-  const toggleRow = id => setChecked(c => { const n = new Set(c); n.has(id) ? n.delete(id) : n.add(id); return n; });
+  const toggleRow = fp => setChecked(c => { const n = new Set(c); n.has(fp) ? n.delete(fp) : n.add(fp); return n; });
   const toggleAll = e => setChecked(c => {
     const n = new Set(c);
-    rows.forEach(a => e.target.checked ? n.add(a.id) : n.delete(a.id));
+    rows.forEach(a => e.target.checked ? n.add(a.fp) : n.delete(a.fp));
     return n;
   });
+
+  async function rowAction(fp, action, payload){
+    try {
+      await doAction(fp, action, payload);
+      setMenu(null);
+    } catch(e) { /* surfaced in drawer or bulk result */ }
+  }
+
+  async function onDrawerAction(action, payload){
+    if (!detailObj) return;
+    setDrawerErr("");
+    try {
+      await doAction(detailObj.fp, action, payload);
+      setDrawerBump(x=>x+1);
+    } catch(e){
+      setDrawerErr(e.message || "Action failed");
+      throw e;
+    }
+  }
+
+  async function runBulk({action, payload}){
+    const selected = alerts.filter(a => checked.has(a.fp));
+    if (!selected.length) { setBulkOpen(false); return; }
+    const fps = selected.map(a=>a.fp);
+    try {
+      const data = await apiPOST("/api/alerts/bulk", {fps, action, payload, actor: currentActor()});
+      setBulkResult(data); setBulkOpen(false); setChecked(new Set()); refresh();
+    } catch(e){
+      setBulkResult({error: e.message}); setBulkOpen(false);
+    }
+  }
 
   return html`<${React.Fragment}>
     <div class="gridbar">
       <span class="items">${list.length} Item${list.length === 1 ? "" : "s"}</span>
-      <span class="iconbtn" title="Refresh">⟳</span>
-      <button class="btn add" type="button">＋ Add</button>
-      <button class="btn exec" type="button" disabled=${!checked.size}>⚙ Execute ▾</button>
+      <span class="iconbtn" title="Refresh" onClick=${refresh}>⟳</span>
+      <button class="btn exec" type="button" disabled=${!checked.size} onClick=${()=>setBulkOpen(true)}>⚙ Execute ▾</button>
       ${checked.size ? html`<span class="selinfo">${checked.size} selected</span>` : null}
       <div class="rtools">
-        <span class="iconbtn" title="Filters">⛛</span>
-        <span class="iconbtn" title="Search">🔍</span>
-        <span class="iconbtn" title="More options">☰</span>
+        <span style=${{color:"var(--muted)", fontSize:"11.5px"}}>Actor:</span>
+        <select class="colq" style=${{width:"auto", minWidth:120}} value=${currentActor()}
+          onChange=${e=>{ setActor(e.target.value); refresh(); }}>
+          ${analysts.map(a=>html`<option key=${a.id} value=${a.id}>${a.name}</option>`)}
+        </select>
       </div>
     </div>
 
@@ -417,33 +711,40 @@ function AlertsGrid({alerts}){
         <thead>
           <tr>
             <th style=${{width:34, cursor:"default"}}><input type="checkbox" class="cb"
-              checked=${rows.length > 0 && rows.every(a=>checked.has(a.id))} onChange=${toggleAll}/></th>
+              checked=${rows.length > 0 && rows.every(a=>checked.has(a.fp))} onChange=${toggleAll}/></th>
             ${COLUMNS.map(([k,label])=>html`<th key=${k} class=${sort.key===k?"sorted":""} onClick=${()=>toggleSort(k)}>
               ${label}<span class="srt">${sort.key===k ? (sort.dir>0?"▲":"▼") : "⇅"}</span></th>`)}
+            <th style=${{width:36, cursor:"default"}}></th>
           </tr>
           <tr class="filters">
             <th></th>
             ${COLUMNS.map(([k])=>html`<th key=${k}><input class="colq" placeholder="Search"
               value=${filters[k]||""} onInput=${e=>setFilter(k, e.target.value)}/></th>`)}
+            <th></th>
           </tr>
         </thead>
         <tbody>
-          ${rows.map(a=>html`<tr key=${a.id} class=${checked.has(a.id)?"checked":""} onClick=${()=>setDetail(a)}>
+          ${rows.map(a=>html`<tr key=${a.fp} class=${checked.has(a.fp)?"checked":""} onClick=${()=>setDetail(a.fp)}>
             <td onClick=${e=>e.stopPropagation()}><input type="checkbox" class="cb"
-              checked=${checked.has(a.id)} onChange=${()=>toggleRow(a.id)}/></td>
-            <td class="num">${a.id}</td>
+              checked=${checked.has(a.fp)} onChange=${()=>toggleRow(a.fp)}/></td>
+            <td class="num" title=${a.fp}>${a.id}</td>
             <td class="num">${a.weight}</td>
             <td><${Chip} val=${a.severity} cls=${"sev-"+a.severity}/></td>
             <td><span class="assg">${a.assigned}</span></td>
             <td class="name-cell" title=${a.name}>${a.name}</td>
             <td>${a.source}</td>
             <td>${a.type}</td>
-            <td class=${"st-"+a.status}>${a.status}</td>
+            <td><${Chip} val=${a.status} cls=${(a.persisted?"persisted ":"derived ")+"st-"+a.status}/></td>
             <td><${Chip} val=${a.escalated} cls=${a.escalated==="Yes"?"yes":"no"}/></td>
             <td class="num">${a.adate}</td>
             <td><${SlaChip} v=${a.ack}/></td>
             <td><${SlaChip} v=${a.resp}/></td>
             <td class="num">${a.cdate}</td>
+            <td onClick=${e=>{ e.stopPropagation();
+              const r = e.currentTarget.getBoundingClientRect();
+              setMenu({fp:a.fp, x: r.left - 180, y: r.bottom + 2, alert:a}); }}>
+              <button class="row-menu-btn" title="Row actions">⋯</button>
+            </td>
           </tr>`)}
         </tbody>
       </table>
@@ -458,15 +759,72 @@ function AlertsGrid({alerts}){
       <button disabled=${cur>=pages} onClick=${()=>setPage(pages)}>›|</button>
     </div>
 
-    <${Drawer} alert=${detail} onClose=${()=>setDetail(null)}/>
+    ${menu ? html`<div class="popmenu" style=${{left:menu.x+"px", top:menu.y+"px"}}
+      onClick=${e=>e.stopPropagation()}>
+      <div class="head">Alert ${menu.alert.id}</div>
+      <button disabled=${menu.alert.mgmt?.acknowledged_at} onClick=${()=>rowAction(menu.fp,"acknowledge")}>Acknowledge</button>
+      <button disabled=${!canTransition(menu.alert.status,"Investigating")} onClick=${()=>rowAction(menu.fp,"status",{status:"Investigating"})}>Start investigation</button>
+      <button onClick=${()=>{ setDetail(menu.fp); setMenu(null); }}>Add note…</button>
+      <button onClick=${()=>{ setDetail(menu.fp); setMenu(null); }}>Assign…</button>
+      <button disabled=${menu.alert.status==="Closed"} onClick=${()=>rowAction(menu.fp,"escalate")}>Escalate</button>
+      <button disabled=${!canTransition(menu.alert.status,"Resolved")} onClick=${()=>rowAction(menu.fp,"status",{status:"Resolved"})}>Resolve</button>
+      <button disabled=${!canTransition(menu.alert.status,"Closed")} onClick=${()=>rowAction(menu.fp,"status",{status:"Closed"})}>Close</button>
+      ${(menu.alert.status==="Resolved"||menu.alert.status==="Closed") ? html`<div class="sep"/><button onClick=${()=>rowAction(menu.fp,"status",{status:"Open"})}>Reopen</button>` : null}
+    </div>` : null}
+
+    ${bulkOpen ? html`<${BulkMenu} selected=${alerts.filter(a=>checked.has(a.fp))}
+      analysts=${analysts} onClose=${()=>setBulkOpen(false)} onConfirm=${runBulk}/>` : null}
+
+    ${bulkResult ? html`<div class="modal-back" onClick=${e=>{ if (e.target.classList.contains("modal-back")) setBulkResult(null); }}>
+      <div class="modal"><h3>Bulk result</h3>
+        <div class="body">
+          ${bulkResult.error ? html`<div class="nag"><b>Error:</b> ${bulkResult.error}</div>` :
+            html`<div><b>Total:</b> ${bulkResult.total}  <b>Succeeded:</b> ${bulkResult.succeeded}  <b>Failed:</b> ${bulkResult.failed}</div>
+                 ${(bulkResult.results||[]).filter(r=>!r.ok).slice(0,20).map(r=>html`<div class="nag" key=${r.fp}><b>${r.fp.slice(0,8)}</b>: ${r.error}</div>`)}`}
+        </div>
+        <div class="foot"><button class="btn btn-sec" onClick=${()=>setBulkResult(null)}>Close</button></div>
+      </div></div>` : null}
+
+    <${Drawer} alert=${detailObj} analysts=${analysts}
+      onClose=${()=>{ setDetail(null); setDrawerErr(""); }}
+      onAction=${onDrawerAction} bump=${drawerBump} error=${drawerErr}/>
   <//>`;
 }
 
 /* ── app root ───────────────────────────────── */
-function App(){
-  const state = useApiState();
+function useApiStateWithRefresh(){
+  const [state, setState] = useState(null);
+  const bumpRef = useRef(0);
+  const refresh = useCallback(()=>{ bumpRef.current += 1; forceTick(); }, []);
+  const forceRef = useRef(null);
+  function forceTick(){ if (forceRef.current) forceRef.current(); }
+  useEffect(()=>{
+    let version = -1, alive = true;
+    async function tick(force){
+      try {
+        const r = await fetch("/api/state", {cache:"no-store"});
+        if (!r.ok || !alive) return;
+        const s = await r.json();
+        if (!force && s.version === version) return;
+        version = s.version; setState(s);
+      } catch(e){}
+    }
+    forceRef.current = ()=>tick(true);
+    tick(true);
+    const t = setInterval(()=>tick(false), 3000);
+    return ()=>{ alive = false; clearInterval(t); };
+  }, []);
+  return [state, refresh];
+}
 
-  // keep the static top-bar chrome in sync
+function App(){
+  const [state, refresh] = useApiStateWithRefresh();
+  const [analysts, setAnalysts] = useState([]);
+
+  useEffect(()=>{
+    apiGET("/api/analysts").then(r=>setAnalysts(r.records||[])).catch(()=>{});
+  }, []);
+
   useEffect(()=>{
     if (!state) return;
     document.getElementById("modeLabel").textContent = state.mode === "demo" ? "Demo" : "Live";
@@ -476,19 +834,28 @@ function App(){
 
   const alerts = useMemo(()=>{
     const feed = state?.feed || [];
-    // feed is newest-first; number oldest = 1 like an auto-increment ID
-    return feed.map((f,i)=>enrich(f, feed.length - i));
+    return feed.map(enrich);
   }, [state]);
+
+  const doAction = useCallback(async (fp, action, payload)=>{
+    const body = Object.assign({actor: currentActor()}, payload||{});
+    await apiPOST(`/api/alerts/${encodeURIComponent(fp)}/${action}`, body);
+    refresh();
+  }, [refresh]);
 
   if (!state) return html`<div class="empty" style=${{paddingTop:80}}>Connecting to /api/state…</div>`;
 
   return html`<${React.Fragment}>
-    <div class="page-head"><h1>Alerts</h1><span class="edit">✎</span></div>
+    <div class="page-head"><h1>Alerts</h1>
+      <span style=${{marginLeft:12, color:"var(--muted)", fontSize:"12px"}}>
+        ${state.mode==="demo" ? "Demo mode — alerts have no pipeline details, so ML/anomaly fields will show empty." : ""}
+      </span>
+      <span class="edit">✎</span></div>
     <div class="widgets">
       <${SeverityPie} bySeverity=${(state.totals||{}).by_severity || {}}/>
       <${TypeBars} alerts=${alerts}/>
     </div>
-    <${AlertsGrid} alerts=${alerts}/>
+    <${AlertsGrid} alerts=${alerts} analysts=${analysts} doAction=${doAction} refresh=${refresh}/>
   <//>`;
 }
 

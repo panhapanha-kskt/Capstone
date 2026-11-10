@@ -1189,15 +1189,48 @@ Requirements:
 
 Do not reload persistent management data unnecessarily if it has not changed.
 
-## 12.4 React and Dependencies
+## 12.4 Fortinet-Inspired Enterprise SOC GUI Reference
 
-Preserve the existing React 18 + htm implementation for `/alerts` unless there is a strong technical reason to change it.
+IMPORTANT: Throughout Week 6 implementation, continuously use Fortinet
+enterprise security products as UI/UX design references.
 
-Avoid introducing a complex build system.
+Reference platforms:
+- FortiCloud SOC-as-a-Service.
+- FortiSOAR.
+- FortiSIEM.
+- FortiAnalyzer.
 
-Investigate whether the CDN dependencies can be vendored into `dashboard/` for offline operation.
+Design expectations:
 
-All pages should work in the project's intended deployment environment.
+1. Review the visual design and layout patterns of Fortinet SOC platforms.
+2. Follow enterprise SOC design principles, including:
+   - Professional dark/light dashboard layouts.
+   - Consistent sidebar navigation.
+   - Information-dense monitoring tables.
+   - Interactive KPI cards.
+   - Severity and status indicators.
+   - Investigation drawers and detail panels.
+   - Operational charts and analytics.
+   - Alert management workflows.
+   - Incident response interfaces.
+3. Maintain consistent visual design across every dashboard page.
+4. Improve the existing Week 5 GUI rather than replacing it.
+5. Use Fortinet products as inspiration, not as a direct copy.
+6. Maintain our own Capstone Project branding.
+7. Do not use Fortinet logos, trademarks, or imply official integration.
+
+QUICK REMINDER:
+
+Before implementing each new page or major UI component, review the
+relevant Fortinet GUI design patterns and determine how they can be
+adapted to our existing dashboard architecture.
+
+Do not spend excessive time researching the same references repeatedly.
+Focus on practical improvements to usability, consistency, and
+professional SOC presentation.
+
+The final result should feel like a professional enterprise SOC
+monitoring platform inspired by Fortinet's GUI experience.
 
 ---
 
@@ -1531,3 +1564,141 @@ The goal is to build a monitoring environment that allows a SOC analyst to:
 Start by auditing the existing repository. Do not immediately rewrite the existing pages or server.
 
 Implement incrementally, test after each major phase, and provide a final report showing exactly what was changed and what remains incomplete.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+cd /home/ounnha/Documents/Capstone
+export PYTHONPATH=src
+R=data/external/tu2023/repo/datasets/base_malicious_dataset
+
+
+┌──(venv)─(root㉿ounnha)-[/home/ounnha/Documents/Capstone]
+└─# python3 scripts/convert_external_tunnels.py --root $R \
+    --families dns_shell det ozymandns cobaltstrike dnscat2 iodine \
+    --max-per-family 15000 --out-dir data/external/tu2023 2>/dev/null
+
+
+[*] scanning 57 capture(s) from 6 tool(s) on 3 core(s)
+  [  1/57] iodine_base128/iodine128_srv_up.pcapng: 25065 queries (49s)
+  [  2/57] ozymandns/ozymandns_txt_up.pcapng: 50009 queries (75s)
+  [  3/57] dns_shell/dnsshell_txt_up.pcapng: 62529 queries (92s)
+  [  4/57] iodine_base64/iodine64_srv_up.pcapng: 25004 queries (96s)
+  [  5/57] iodine_base64/iodine64_cname_up.pcapng: 25003 queries (124s)
+  [  6/57] iodine_base128/iodine128_mx_up.pcapng: 25026 queries (139s)
+  [  7/57] iodine_base64/iodine64_mx_up.pcapng: 25002 queries (143s)
+  [  8/57] iodine_base128/iodine128_txt_up.pcapng: 24996 queries (174s)
+  [  9/57] iodine_base128/iodine128_null_up.pcapng: 24997 queries (188s)
+  [ 10/57] iodine_base64/iodine64_null_up.pcapng: 24997 queries (192s)
+  [ 11/57] iodine_base64/iodine64_txt_up.pcapng: 25005 queries (223s)
+  [ 12/57] dnscat2/dnscat_mx_up.pcapng: 25000 queries (229s)
+  [ 13/57] dnscat2/dnscat_aaaa_up.pcapng: 25000 queries (231s)
+  [ 14/57] dnscat2/dnscat_mix_up.pcapng: 25000 queries (265s)
+  [ 15/57] dnscat2/dnscat_cname_down.pcapng: 25000 queries (273s)
+  [ 16/57] iodine_base32/iodine32_srv_up.pcapng: 25004 queries (280s)
+  [ 17/57] dnscat2/dnscat_cname_up.pcapng: 25000 queries (305s)
+  [ 18/57] dnscat2/dnscat_txt_up.pcapng: 25000 queries (312s)
+  [ 19/57] iodine_base128/iodine128_private_up.pcapng: 25211 queries (320s)
+  [ 20/57] iodine_base64/iodine64_private_up.pcapng: 25013 queries (351s)
+  [ 21/57] iodine_base32/iodine32_cname_up.pcapng: 25004 queries (354s)
+  [ 22/57] iodine_base32/iodine32_mx_up.pcapng: 25010 queries (368s)
+  [ 23/57] iodine_base32/iodine32_null_up.pcapng: 25001 queries (403s)
+  [ 24/57] iodine_base32/iodine32_txt_up.pcapng: 25002 queries (417s)
+  [ 25/57] iodine_base128/iodine128_cname_up.pcapng: 23208 queries (448s)
+  [ 26/57] dnscat2/dnscat_aaaa_down.pcapng: 25000 queries (451s)
+  [ 27/57] iodine_base32/iodine32_private_up.pcapng: 25051 queries (455s)
+  [ 28/57] cobaltstrike/cobaltstrike_txt_up.pcapng: 25002 queries (486s)
+  [ 29/57] iodine_base32/iodine32_srv_down.pcapng: 13772 queries (488s)
+  [ 30/57] ozymandns/ozymandns_txt_down.pcapng: 25040 queries (490s)
+  [ 31/57] cobaltstrike/cobaltstrike_txt_down.pcapng: 25003 queries (524s)
+  [ 32/57] dnscat2/dnscat_txt_down.pcapng: 25000 queries (526s)
+  [ 33/57] dnscat2/dnscat_mix_down.pcapng: 25000 queries (528s)
+  [ 34/57] det/det_a_up.pcapng: 38365 queries (564s)
+  [ 35/57] iodine_base32/iodine32_cname_down.pcapng: 25055 queries (573s)
+  [ 36/57] iodine_base64/iodine64_cname_down.pcapng: 25021 queries (575s)
+  [ 37/57] dnscat2/dnscat_mx_down.pcapng: 25000 queries (601s)
+  [ 38/57] iodine_base32/iodine32_private_down.pcapng: 25146 queries (611s)
+  [ 39/57] iodine_base64/iodine64_private_down.pcapng: 25003 queries (613s)
+  [ 40/57] iodine_base128/iodine128_mx_down.pcapng: 11820 queries (637s)
+  [ 41/57] iodine_base128/iodine128_private_down.pcapng: 25028 queries (639s)
+  [ 42/57] iodine_base128/iodine128_cname_down.pcapng: 23120 queries (656s)
+  [ 43/57] iodine_base64/iodine64_mx_down.pcapng: 11109 queries (662s)
+  [ 44/57] iodine_base128/iodine128_srv_down.pcapng: 10691 queries (663s)
+  [ 45/57] iodine_base64/iodine64_srv_down.pcapng: 10322 queries (680s)
+  [ 46/57] iodine_base32/iodine32_mx_down.pcapng: 10463 queries (687s)
+  [ 47/57] iodine_base32/iodine32_txt_down.pcapng: 5911 queries (692s)
+  [ 48/57] iodine_base64/iodine64_txt_down.pcapng: 5911 queries (698s)
+  [ 49/57] cobaltstrike/cobaltstrike_aaaa_up.pcapng: 25001 queries (699s)
+  [ 50/57] iodine_base32/iodine32_null_down.pcapng: 5717 queries (704s)
+  [ 51/57] iodine_base128/iodine128_null_down.pcapng: 5719 queries (715s)
+  [ 52/57] iodine_base128/iodine128_txt_down.pcapng: 5648 queries (726s)
+  [ 53/57] cobaltstrike/cobaltstrike_aaaa_down.pcapng: 25000 queries (735s)
+  [ 54/57] cobaltstrike/cobaltstrike_a_up.pcapng: 25003 queries (736s)
+  [ 55/57] iodine_base64/iodine64_null_down.pcapng: 5211 queries (746s)
+  [ 56/57] dns_shell/dnsshell_txt_down.pcapng: 12500 queries (755s)
+  [ 57/57] cobaltstrike/cobaltstrike_a_down.pcapng: 25001 queries (765s)
+
+  cobaltstrike     domain=cobaltstrike-txt.com           50004 queries →  15000 kept  (dropped 100006 other)  types={'A': 8502, 'TXT': 6498}
+  det              domain=det-a.com                      38365 queries →  15000 kept  (dropped 0 other)  types={'A': 15000}
+  dns_shell        domain=dnsshell-txt.com               75024 queries →  15000 kept  (dropped 5 other)  types={'A': 13500, 'TXT': 1500}
+  dnscat2          domain=dnscat-aaaa.com                50000 queries →  15000 kept  (dropped 200000 other)  types={'AAAA': 15000}
+  iodine           domain=iodine-private.com            150412 queries →  15000 kept  (dropped 548854 other)  types={'65399': 15000}
+  ozymandns        domain=ozymandns-txt.com              74937 queries →  15000 kept  (dropped 112 other)  types={'A': 8198, 'TXT': 6802}
+
+Check every tunnel_domain above before training: a wrong one labels benign noise as attack.
+[*] done in 797s (fast, 3 job(s))
+                                   
+┌──(venv)─(root㉿ounnha)-[/home/ounnha/Documents/Capstone]
+└─# python3 scripts/make_labeled_features.py --label 0 --family benign_tu2023 \
+    --input data/external/tu2023/repo/datasets/base_benign_dataset/ALEXA.pcap \
+    --output data/external/tu2023/benign_alexa.json 2>/dev/null
+
+======================================================================
+PROVENANCE LABELING — every query labelled BENIGN
+======================================================================
+
+  ALEXA.pcap                           68710 queries  family=benign_tu2023  clients=1
+
+✅ 68710 labeled records → data/external/tu2023/benign_alexa.json
+

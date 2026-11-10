@@ -1,0 +1,196 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Event Explorer</title>
+<link rel="stylesheet" href="/static/css/soc.css">
+<style>
+  .ev-main{display:flex;flex-direction:column;flex:1;min-width:0}
+  .ev-count{padding:8px 18px;color:var(--muted);font-size:12px;background:#141827;border-bottom:1px solid var(--border)}
+  .pager{display:flex;align-items:center;justify-content:flex-end;gap:14px;padding:10px 16px;color:var(--muted);
+    font-size:12px;background:var(--panel2);border-top:1px solid var(--border)}
+  .pager button{background:none;border:0;color:var(--muted);font-size:13px;cursor:pointer;padding:2px 6px;font-family:inherit}
+  .pager button:disabled{opacity:.3;cursor:default}
+  .detail{position:fixed;top:46px;right:0;bottom:0;width:480px;background:var(--panel);border-left:1px solid var(--border);
+    box-shadow:-8px 0 24px #0008;z-index:20;display:flex;flex-direction:column;animation:slide .15s ease-out}
+  @keyframes slide{from{transform:translateX(30px);opacity:0}}
+  .detail .d-head{display:flex;align-items:center;gap:10px;padding:14px 16px;border-bottom:1px solid var(--border);font-weight:600;color:#fff}
+  .detail .d-head .x{margin-left:auto;cursor:pointer;color:var(--muted);font-size:16px}
+  .detail .d-body{flex:1;overflow-y:auto;padding:14px 16px;display:flex;flex-direction:column;gap:12px}
+  pre.json{background:var(--panel2);border:1px solid var(--border);border-radius:3px;padding:10px;font-size:11.5px;
+    color:#e8ebf4;white-space:pre-wrap;word-break:break-all;max-height:300px;overflow:auto}
+</style>
+</head>
+<body>
+<div id="app-chrome"></div>
+<script src="/static/js/chrome.js"></script>
+<script>
+"use strict";
+const main = SOC.mount({active:"events"});
+main.innerHTML = `
+  <div class="page-head">
+    <h1>Event Explorer</h1>
+    <span class="subtitle">DNS detection events with ML, statistical, and rule-based fields direct from the pipeline.</span>
+    <span class="right"><span id="mode-note" style="color:var(--muted);font-size:12px"></span></span>
+  </div>
+  <div class="filterbar">
+    <span class="bar-label">Filters</span>
+    <input id="f-q" placeholder="Global search…">
+    <input id="f-domain" placeholder="Domain contains">
+    <input id="f-ip" placeholder="Client IP contains">
+    <select id="f-sev"><option value="">Any severity</option><option>Low</option><option>Medium</option><option>High</option><option>Critical</option></select>
+    <select id="f-source"><option value="">Any source</option></select>
+    <input id="f-technique" placeholder="MITRE technique (e.g. T1572)">
+    <input id="f-from" placeholder="From ISO or epoch">
+    <input id="f-to" placeholder="To ISO or epoch">
+    <button class="btn blue" id="f-apply">Apply</button>
+    <button class="btn sec" id="f-clear">Clear</button>
+  </div>
+  <div class="ev-count"><span id="count">0</span> events · page <span id="page">1</span> · <span id="demo-nag"></span></div>
+  <div class="tbl-wrap">
+    <table class="data">
+      <thead><tr>
+        <th>Timestamp</th><th>Source IP</th><th>Domain</th><th>Query Type</th>
+        <th>Rule</th><th>Source</th><th>Severity</th>
+        <th>Tactic</th><th>Technique</th>
+        <th>Anomaly</th><th>ML Combined</th><th>Reason</th>
+      </tr></thead>
+      <tbody id="tbody"><tr><td class="empty" colspan="12">Loading events…</td></tr></tbody>
+    </table>
+  </div>
+  <div class="pager">
+    <button id="p-first">|‹</button>
+    <button id="p-prev">‹</button>
+    <span>Page <span id="p-cur">1</span> of <span id="p-total">1</span></span>
+    <button id="p-next">›</button>
+    <button id="p-last">›|</button>
+  </div>
+  <div id="detail-host"></div>
+`;
+
+let offset = 0, limit = 50, total = 0;
+let sources = new Set();
+
+function na(v){
+  if (v === null || v === undefined || v === "" || Number.isNaN(v)) return '<span style="color:var(--dim)">N/A</span>';
+  if (typeof v === "number") return v.toFixed(3);
+  return SOC.esc(v);
+}
+
+function row(r){
+  const tactic = (r.tactics||[])[0] || "";
+  const tech = (r.techniques||[])[0] || "";
+  return `<tr data-fp="${SOC.esc(r.fp)}">
+    <td class="num">${SOC.esc(r.timestamp)}</td>
+    <td>${na(r.client_ip)}</td>
+    <td title="${SOC.esc(r.domain)}" style="max-width:240px;overflow:hidden;text-overflow:ellipsis">${na(r.domain)}</td>
+    <td>${na(r.query_type)}</td>
+    <td title="${SOC.esc(r.rule)}">${na(r.rule)}</td>
+    <td>${na(r.source)}</td>
+    <td><span class="chip sev-${SOC.esc(r.severity||"Medium")}">${SOC.esc(r.severity||"—")}</span></td>
+    <td>${na(tactic)}</td><td>${na(tech)}</td>
+    <td class="num">${r.anomaly_score != null ? Number(r.anomaly_score).toFixed(2) : na(null)}</td>
+    <td class="num">${r.ml_combined_score != null ? Number(r.ml_combined_score).toFixed(3) : na(null)}</td>
+    <td style="max-width:300px;overflow:hidden;text-overflow:ellipsis" title="${SOC.esc(r.reason||"")}">${na(r.reason)}</td>
+  </tr>`;
+}
+
+function readFilters(){
+  const q = new URLSearchParams();
+  const map = {q:"f-q", domain:"f-domain", ip:"f-ip", severity:"f-sev", source:"f-source",
+               technique:"f-technique", from:"f-from", to:"f-to"};
+  for (const [k,id] of Object.entries(map)){
+    const v = (document.getElementById(id)||{}).value;
+    if (v && v.trim()) q.set(k, v.trim());
+  }
+  q.set("limit", String(limit));
+  q.set("offset", String(offset));
+  return q;
+}
+
+async function load(){
+  const q = readFilters();
+  const data = await SOC.apiGET("/api/events?" + q.toString());
+  total = data.total || 0;
+  const tbody = document.getElementById("tbody");
+  const nag = document.getElementById("demo-nag");
+  // populate source filter options from first page
+  const srcEl = document.getElementById("f-source");
+  for (const r of data.records||[]){
+    if (r.source) sources.add(r.source);
+  }
+  const preserved = srcEl.value;
+  srcEl.innerHTML = '<option value="">Any source</option>' + [...sources].map(s=>`<option ${s===preserved?"selected":""}>${SOC.esc(s)}</option>`).join("");
+  tbody.innerHTML = (data.records||[]).length ? data.records.map(row).join("") :
+    '<tr><td class="empty" colspan="12">No events match these filters.</td></tr>';
+  document.getElementById("count").textContent = total;
+  document.getElementById("p-cur").textContent = Math.floor(offset/limit) + 1;
+  document.getElementById("p-total").textContent = Math.max(Math.ceil(total/limit), 1);
+  document.getElementById("p-prev").disabled = offset <= 0;
+  document.getElementById("p-first").disabled = offset <= 0;
+  document.getElementById("p-next").disabled = offset + limit >= total;
+  document.getElementById("p-last").disabled = offset + limit >= total;
+  // click rows -> detail
+  for (const tr of tbody.querySelectorAll("tr[data-fp]")){
+    tr.addEventListener("click", ()=>openDetail(tr.dataset.fp));
+  }
+}
+
+async function openDetail(fp){
+  const host = document.getElementById("detail-host");
+  host.innerHTML = `<div class="detail"><div class="d-head">Event ${SOC.esc(fp.slice(0,8))}
+    <span class="x" id="d-close">✕</span></div><div class="d-body">Loading…</div></div>`;
+  document.getElementById("d-close").addEventListener("click", ()=>host.innerHTML="");
+  try {
+    const data = await SOC.apiGET("/api/events/" + encodeURIComponent(fp));
+    const ev = data.event || {};
+    const mgmt = data.management;
+    const audit = data.audit || [];
+    const body = `
+      <div class="nag info">Event ↔ Alert relationship is <b>direct</b> (same fingerprint). Related detections from the same client IP within 15m are shown as <b>inferred</b> links.</div>
+      <div><b>Fingerprint:</b> ${SOC.esc(fp)}</div>
+      <div><b>Pipeline alert UUID:</b> ${SOC.esc(ev.alert_id || "—")}</div>
+      <div><b>Rule:</b> ${SOC.esc(ev.rule_name)} <span style="color:var(--muted)">(${SOC.esc(ev.rule_source)})</span></div>
+      <div><b>Severity:</b> <span class="chip sev-${SOC.esc(ev.severity||"Medium")}">${SOC.esc(ev.severity)}</span></div>
+      <div><b>Source IP / Domain:</b> ${SOC.esc(ev.client_ip||"—")} → ${SOC.esc(ev.domain||"—")}</div>
+      <div><b>MITRE:</b> ${SOC.esc((ev.mitre_tactics||[]).join(", "))} / ${SOC.esc((ev.mitre_techniques||[]).join(", "))}</div>
+      <div><b>Description:</b> ${SOC.esc(ev.description||"—")}</div>
+      <h3 style="color:#e7eaf2;font-size:13px;margin-top:8px">Pipeline details (verbatim)</h3>
+      <pre class="json">${SOC.esc(JSON.stringify(ev.details||{}, null, 2))}</pre>
+      <h3 style="color:#e7eaf2;font-size:13px">Related alert record</h3>
+      ${mgmt ? `<div><b>Status:</b> ${SOC.esc(mgmt.status)}  <b>Assignee:</b> ${SOC.esc(mgmt.assigned_to||"—")}  <b>Notes:</b> ${(mgmt.notes||[]).length}</div>
+        <div><a href="/alerts" style="color:var(--cyan)">Open in Alerts →</a></div>`
+        : '<div class="nag">No analyst touch yet — status is derived on the Alerts page.</div>'}
+      <h3 style="color:#e7eaf2;font-size:13px">Audit (last 50)</h3>
+      ${audit.length ? audit.map(a=>`<div style="font-size:11.5px;color:var(--muted);border-bottom:1px dashed #262b3d;padding:4px 0">
+        <span class="num">${SOC.esc(SOC.fmtDate(a.timestamp))}</span> · <b style="color:#cfd4e2">${SOC.esc(a.action)}</b> by <i>${SOC.esc(a.actor)}</i></div>`).join("")
+        : '<div class="nag">No audit entries for this event.</div>'}
+    `;
+    host.querySelector(".d-body").innerHTML = body;
+  } catch(e){
+    host.querySelector(".d-body").innerHTML = `<div class="nag bad">Failed to load: ${SOC.esc(e.message)}</div>`;
+  }
+}
+
+// filter bar
+document.getElementById("f-apply").addEventListener("click", ()=>{ offset=0; load(); });
+document.getElementById("f-clear").addEventListener("click", ()=>{
+  ["f-q","f-domain","f-ip","f-sev","f-source","f-technique","f-from","f-to"].forEach(id=>{
+    const el = document.getElementById(id); if (el) el.value = "";
+  });
+  offset = 0; load();
+});
+document.getElementById("p-prev").addEventListener("click", ()=>{ offset=Math.max(0, offset-limit); load(); });
+document.getElementById("p-first").addEventListener("click", ()=>{ offset=0; load(); });
+document.getElementById("p-next").addEventListener("click", ()=>{ offset=offset+limit; load(); });
+document.getElementById("p-last").addEventListener("click", ()=>{ offset=Math.max(0,(Math.ceil(total/limit)-1)*limit); load(); });
+
+SOC.pollState(s => {
+  document.getElementById("mode-note").textContent = s.mode === "demo" ? "Demo mode: ML/anomaly fields will be empty (pipeline details not generated)." : "";
+  document.getElementById("demo-nag").textContent = s.mode === "demo" ? "demo mode — ML/anomaly fields not generated" : "";
+  load();
+}, 5000);
+</script>
+</body>
+</html>

@@ -171,9 +171,10 @@
       <a class="active sub" href="/usecases">Monitoring Use Cases</a>
       <a class="sub" href="/">Classic Dashboard</a>
       <a href="/alerts"><span class="ic">⚠</span> Alerts</a>
-      <a href="#"><span class="ic">✓</span> Service Requests</a>
-      <a href="#"><span class="ic">🖳</span> My Assets</a>
-      <a href="#"><span class="ic">▤</span> Reports</a>
+      <a href="/events"><span class="ic">◉</span> Event Explorer</a>
+      <a href="/devices"><span class="ic">🖳</span> Sources &amp; Collection</a>
+      <a href="/health"><span class="ic">♥</span> Pipeline Health</a>
+      <a href="/incidents"><span class="ic">▤</span> Incidents</a>
       <a href="#"><span class="ic">🔍</span> Forensic Analysis</a>
       <a href="#"><span class="ic">≣</span> Audit Logs</a>
       <a href="#"><span class="ic">⚙</span> Settings <span class="grp-caret">▸</span></a>
@@ -208,8 +209,8 @@
             <th>Mitre Technique <span class="srt">⇅</span><span class="flt">▼</span></th>
             <th>Severity <span class="srt">⇅</span><span class="flt">▼</span></th>
             <th>Detection Source <span class="srt">⇅</span><span class="flt">▼</span></th>
-            <th>Monitoring Status <span class="srt">⇅</span><span class="flt">▼</span></th>
-            <th>Monitoring Exclusion <span class="srt">⇅</span><span class="flt">▼</span></th>
+            <th title="Dashboard-only filter. Does not disable detection rules in the pipeline.">Dashboard Visibility <span class="srt">⇅</span><span style="color:var(--muted);cursor:help">ⓘ</span></th>
+            <th title="Flags a use case for exclusion from dashboard counts. Detection still runs server-side.">Monitoring Exclusion <span class="srt">⇅</span><span style="color:var(--muted);cursor:help">ⓘ</span></th>
             <th>Detection Events <span class="srt">⇅</span></th>
             <th>Alerts <span class="srt">⇅</span><span class="flt">▼</span></th>
           </tr></thead>
@@ -267,9 +268,54 @@ let page = 1; const PAGE_SIZE = 8;
 let lastVersion = -1;
 let otMode = false;
 
-function store(k, v){ try { if (v === undefined) return JSON.parse(localStorage.getItem(k) || "{}"); localStorage.setItem(k, JSON.stringify(v)); } catch(e){ return {}; } }
-let toggles = store("uc_monitoring");   // rule -> false means monitoring off
-let excls   = store("uc_exclusion");    // rule -> true means excluded
+/* Server-backed preferences (replaces Week-5 localStorage).
+   Falls back to localStorage if the server endpoint is unavailable, so an offline
+   demo still works. Debounces writes so a click doesn't flood the API. */
+let toggles = {};   // rule -> false means visibility off
+let excls   = {};   // rule -> true means excluded
+let notes   = {};   // rule -> freetext
+const legacy_toggles = (()=>{ try { return JSON.parse(localStorage.getItem("uc_monitoring") || "{}"); } catch(e){ return {}; } })();
+const legacy_excls   = (()=>{ try { return JSON.parse(localStorage.getItem("uc_exclusion")  || "{}"); } catch(e){ return {}; } })();
+
+function actorName(){ try { return localStorage.getItem("soc_actor") || "analyst-1"; } catch(e){ return "analyst-1"; } }
+
+async function loadPrefs(){
+  try {
+    const r = await fetch("/api/usecases", {cache:"no-store"});
+    if (!r.ok) throw new Error("HTTP "+r.status);
+    const data = await r.json();
+    const prefs = data.preferences || {};
+    toggles = {}; excls = {}; notes = {};
+    for (const [rule, rec] of Object.entries(prefs)){
+      toggles[rule] = rec.visibility === false ? false : true;
+      excls[rule]   = !!rec.excluded;
+      notes[rule]   = rec.note || "";
+    }
+  } catch(e){
+    // fallback to legacy local state for fully-offline demo
+    toggles = {...legacy_toggles};
+    excls   = {...legacy_excls};
+  }
+}
+
+let prefQueue = {};
+let prefTimer = null;
+function savePref(rule, patch){
+  prefQueue[rule] = Object.assign({}, prefQueue[rule] || {}, patch);
+  if (prefTimer) clearTimeout(prefTimer);
+  prefTimer = setTimeout(async ()=>{
+    const q = prefQueue; prefQueue = {}; prefTimer = null;
+    for (const [rule_name, p] of Object.entries(q)){
+      try {
+        await fetch("/api/usecases/preferences", {
+          method:"POST", cache:"no-store",
+          headers:{"Content-Type":"application/json"},
+          body: JSON.stringify(Object.assign({rule_name, actor: actorName()}, p)),
+        });
+      } catch(e){ /* best-effort; keep local optimistic state */ }
+    }
+  }, 300);
+}
 
 /* ── aggregation: one use case per detection rule ── */
 function aggregate(s){
@@ -350,15 +396,72 @@ function renderTable(){
   $("pgFirst").disabled = $("pgPrev").disabled = page <= 1;
   $("pgNext").disabled = $("pgLast").disabled = page >= pages;
 
-  // row controls
+  // row controls (optimistic; server call is debounced)
   document.querySelectorAll("#rows [data-act]").forEach(el=>{
     el.onclick = e => {
+      e.stopPropagation();
       const rule = el.closest("tr").dataset.rule;
-      if (el.dataset.act === "toggle"){ toggles[rule] = toggles[rule] === false; store("uc_monitoring", toggles); }
-      else { excls[rule] = !excls[rule]; store("uc_exclusion", excls); }
+      if (el.dataset.act === "toggle"){
+        toggles[rule] = toggles[rule] === false;   // was off → now true
+        savePref(rule, {visibility: toggles[rule]});
+      } else {
+        excls[rule] = !excls[rule];
+        savePref(rule, {excluded: excls[rule]});
+      }
       renderTable();
     };
   });
+  // click on row opens detail panel
+  document.querySelectorAll("#rows tr[data-rule]").forEach(tr=>{
+    tr.addEventListener("click", (e)=>{
+      if (e.target.closest("[data-act]")) return;
+      openRuleDetail(tr.dataset.rule);
+    });
+  });
+}
+
+function openRuleDetail(rule){
+  const u = USECASES.find(x=>x.name === rule);
+  if (!u) return;
+  const existing = document.getElementById("uc-detail-host");
+  if (existing) existing.remove();
+  const host = document.createElement("div");
+  host.id = "uc-detail-host";
+  host.style.cssText = "position:fixed;top:46px;right:0;bottom:0;width:420px;background:var(--panel);"
+    + "border-left:1px solid var(--border);box-shadow:-8px 0 24px #0008;z-index:30;"
+    + "display:flex;flex-direction:column;font-size:12.5px";
+  const esc2 = s => esc(s);
+  host.innerHTML = `
+    <div style="padding:14px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center">
+      <b style="color:#fff">Use case: ${esc2(u.name)}</b>
+      <span style="margin-left:auto;cursor:pointer;color:var(--muted);font-size:16px" id="uc-close">✕</span>
+    </div>
+    <div style="padding:14px 16px;overflow:auto;flex:1;display:flex;flex-direction:column;gap:10px">
+      <div style="background:#1e2231;border-left:3px solid var(--blue);padding:8px 12px;border-radius:3px;color:var(--muted);font-size:11.5px">
+        <b style="color:#e7eaf2">Dashboard Visibility is a UI filter.</b> Toggling it here does <b>not</b> stop the pipeline from running this rule.
+        Disabling detection requires an engine-side change, outside this dashboard's scope.
+      </div>
+      <div><span style="color:var(--muted)">Severity:</span> <span class="chip sev-${esc2(u.severity)}">${esc2(u.severity)}</span></div>
+      <div><span style="color:var(--muted)">Detection source:</span> ${esc2(u.source)}</div>
+      <div><span style="color:var(--muted)">MITRE techniques:</span> ${esc2(u.techs.join(", ") || "—")}</div>
+      <div><span style="color:var(--muted)">Kill-chain stages:</span> ${esc2(u.stages.join(", ") || "—")}</div>
+      <div><span style="color:var(--muted)">Associated events:</span> ${u.events}</div>
+      <div><span style="color:var(--muted)">Associated new-alerts:</span> ${u.alerts}</div>
+      <div><span style="color:var(--muted)">Dashboard visibility:</span> ${toggles[u.name] === false ? "Off" : "On"}
+        <span style="color:var(--muted)"> · Excluded: </span>${excls[u.name] ? "Yes" : "No"}</div>
+      <label style="color:var(--muted);font-size:11.5px">Analyst note (persisted server-side)</label>
+      <textarea id="uc-note" style="min-height:100px;background:var(--panel2);border:1px solid var(--border);
+        border-radius:3px;color:var(--text);padding:6px 8px;font:inherit;font-size:12px">${esc2(notes[u.name] || "")}</textarea>
+      <div><button class="btn" id="uc-save" style="background:var(--green2);color:#fff;border:0;border-radius:3px;padding:6px 14px;cursor:pointer">Save note</button></div>
+    </div>`;
+  document.body.appendChild(host);
+  document.getElementById("uc-close").onclick = ()=>host.remove();
+  document.getElementById("uc-save").onclick = async ()=>{
+    const text = document.getElementById("uc-note").value;
+    notes[u.name] = text;
+    savePref(u.name, {note: text});
+    host.remove();
+  };
 }
 
 /* ── data loop (same /api/state as every page) ── */
@@ -387,7 +490,7 @@ $("pgLast").onclick  = ()=>{ page = 1e9; renderTable(); };
 $("tabIT").onclick = ()=>{ otMode = false; $("tabIT").classList.add("on"); $("tabOT").classList.remove("on"); page=1; renderTable(); };
 $("tabOT").onclick = ()=>{ otMode = true;  $("tabOT").classList.add("on"); $("tabIT").classList.remove("on"); page=1; renderTable(); };
 
-tick(true);
+(async ()=>{ await loadPrefs(); tick(true); })();
 setInterval(()=>tick(false), 3000);
 </script>
 </body>

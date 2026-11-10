@@ -1,0 +1,157 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Incidents</title>
+<link rel="stylesheet" href="/static/css/soc.css">
+<style>
+  .inc-grid{display:grid;grid-template-columns:1fr 420px;gap:14px;padding:14px 18px;flex:1;min-height:0}
+  .inc-list{background:var(--panel);border:1px solid var(--border);border-radius:5px;overflow:auto}
+  .inc-detail{background:var(--panel);border:1px solid var(--border);border-radius:5px;overflow:auto;padding:14px}
+  .inc-row{padding:10px 14px;border-bottom:1px solid var(--border);cursor:pointer}
+  .inc-row:hover{background:#1f2436}
+  .inc-row.sel{background:#222842;border-left:3px solid var(--green)}
+  .inc-row h3{font-size:13px;color:#e7eaf2;font-weight:600;display:flex;align-items:center;gap:8px}
+  .inc-row .meta{color:var(--muted);font-size:11.5px;margin-top:3px}
+  .action-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:10px}
+  .action-btn{background:#2a2f42;color:#cfd4e2;border:1px solid var(--border);border-radius:3px;padding:10px;
+    cursor:pointer;font:inherit;font-size:12px;text-align:left}
+  .action-btn:hover{background:#3a3f55}
+  .action-btn b{display:block;color:#fff;font-size:12.5px;margin-bottom:2px}
+  .badge{display:inline-block;padding:2px 8px;border-radius:3px;font-size:10.5px;font-weight:600;text-transform:uppercase}
+  .badge.sim{background:#4a5066;color:#d6dae6}
+  .badge.pend{background:#c9a227}
+  .badge.notcfg{background:#5d6377;color:#eee}
+  .badge.fail{background:var(--red)}
+</style>
+</head>
+<body>
+<div id="app-chrome"></div>
+<script src="/static/js/chrome.js"></script>
+<script>
+"use strict";
+const main = SOC.mount({active:"incidents"});
+main.innerHTML = `
+  <div class="page-head">
+    <h1>Incidents</h1>
+    <span class="subtitle">Confirmed-incident queue with SOAR-ready response-action workflow.</span>
+    <span class="right">
+      <button class="btn" id="new-inc">+ New incident</button>
+    </span>
+  </div>
+  <div class="panel" style="margin-bottom:0">
+    <div class="nag info">
+      Response actions here are <b>SIMULATED</b> or <b>NOT CONFIGURED</b> — this project does not ship with real FortiSOAR / FortiGate / FortiEDR integrations.
+      No request on this page actually blocks IPs, isolates endpoints, or disrupts the network.
+    </div>
+  </div>
+  <div class="inc-grid">
+    <div class="inc-list" id="inc-list"><div class="empty">Loading incidents…</div></div>
+    <div class="inc-detail" id="inc-detail"><div class="empty">Select an incident to view actions.</div></div>
+  </div>
+`;
+
+let incidents = [];
+let integrations = {};
+let selectedId = null;
+
+async function load(){
+  const data = await SOC.apiGET("/api/incidents");
+  incidents = data.records || [];
+  integrations = data.integrations || {};
+  renderList();
+  if (selectedId) renderDetail(incidents.find(i=>i.id===selectedId));
+}
+
+function sevCls(s){
+  return s==="Critical"?"bad":s==="High"?"warn":s==="Medium"?"unk":"ok";
+}
+
+function renderList(){
+  const el = document.getElementById("inc-list");
+  if (!incidents.length){
+    el.innerHTML = '<div class="empty">No incidents yet. Create one from the Alerts page bulk menu, or use <b>+ New incident</b> above.</div>';
+    return;
+  }
+  el.innerHTML = incidents.sort((a,b)=>b.created_at.localeCompare(a.created_at)).map(inc=>`
+    <div class="inc-row ${inc.id===selectedId?"sel":""}" data-id="${SOC.esc(inc.id)}">
+      <h3>${SOC.esc(inc.title)}<span class="chip ${sevCls(inc.severity)}">${SOC.esc(inc.severity)}</span></h3>
+      <div class="meta">${SOC.esc(inc.id)} · ${SOC.esc(inc.status)} · ${(inc.alert_fps||[]).length} alerts · created ${SOC.esc(SOC.fmtDate(inc.created_at))}</div>
+    </div>`).join("");
+  for (const row of el.querySelectorAll("[data-id]")){
+    row.addEventListener("click", ()=>{ selectedId = row.dataset.id; renderList(); renderDetail(incidents.find(i=>i.id===selectedId)); });
+  }
+}
+
+const RESPONSE_ACTIONS = [
+  {key:"watchlist_ip",            label:"Add source IP to investigation watchlist", integ:null},
+  {key:"mark_domain",              label:"Mark domain for further investigation", integ:null},
+  {key:"create_investigation_report", label:"Create investigation report", integ:null},
+  {key:"export_evidence",          label:"Export evidence package", integ:null},
+  {key:"firewall_block_request",   label:"Prepare firewall block request", integ:"fortigate"},
+  {key:"endpoint_isolation_request", label:"Prepare endpoint isolation request", integ:"fortiedr"},
+];
+
+function statusBadge(s){
+  const map = {SIMULATED:"sim", NOT_CONFIGURED:"notcfg", PENDING:"pend", FAILED:"fail"};
+  return `<span class="badge ${map[s]||"sim"}">${SOC.esc((s||"").replace("_"," "))}</span>`;
+}
+
+function renderDetail(inc){
+  const el = document.getElementById("inc-detail");
+  if (!inc){ el.innerHTML = '<div class="empty">Select an incident.</div>'; return; }
+  el.innerHTML = `
+    <h2 style="color:#fff;font-size:15px;margin-bottom:8px">${SOC.esc(inc.title)}</h2>
+    <div class="kvtable">
+      <span class="k">Incident ID</span><span class="v">${SOC.esc(inc.id)}</span>
+      <span class="k">Severity</span><span class="v"><span class="chip ${sevCls(inc.severity)}">${SOC.esc(inc.severity)}</span></span>
+      <span class="k">Status</span><span class="v">${SOC.esc(inc.status)}</span>
+      <span class="k">Created</span><span class="v">${SOC.esc(SOC.fmtDate(inc.created_at))} by ${SOC.esc(inc.created_by)}</span>
+      <span class="k">Alert fingerprints</span><span class="v">${(inc.alert_fps||[]).map(f=>SOC.esc(f.slice(0,8))).join(", ")}</span>
+    </div>
+    <h3 style="font-size:13px;color:#e7eaf2;margin:14px 0 6px">Response actions</h3>
+    <div class="action-grid" id="act-grid">
+      ${RESPONSE_ACTIONS.map(a=>{
+        const cfg = a.integ ? !!(integrations[a.integ] && integrations[a.integ].configured) : true;
+        const hint = a.integ ? (cfg ? "" : " · NOT CONFIGURED") : "";
+        return `<button class="action-btn" data-k="${SOC.esc(a.key)}"><b>${SOC.esc(a.label)}</b><span style="color:var(--muted)">${SOC.esc(hint)||"SIMULATED"}</span></button>`;
+      }).join("")}
+    </div>
+    <h3 style="font-size:13px;color:#e7eaf2;margin:14px 0 6px">Action history</h3>
+    ${(inc.actions||[]).length ? (inc.actions.slice().reverse().map(a=>`<div style="padding:6px 0;border-bottom:1px dashed #262b3d;font-size:12px">
+      <span class="num" style="color:var(--muted)">${SOC.esc(SOC.fmtDate(a.ts))}</span> ·
+      <b style="color:#e7eaf2">${SOC.esc(a.action)}</b> ${statusBadge(a.status)} <span style="color:var(--muted)">by ${SOC.esc(a.actor)}</span>
+    </div>`).join("")) : '<div class="nag">No response actions recorded yet.</div>'}
+  `;
+  for (const b of el.querySelectorAll(".action-btn")){
+    b.addEventListener("click", async ()=>{
+      try {
+        await SOC.apiPOST(`/api/incidents/${encodeURIComponent(inc.id)}/action`,
+          {action: b.dataset.k, payload:{}, actor: localStorage.getItem("soc_actor") || "analyst-1"});
+        await load();
+      } catch(e){ alert("Action failed: " + e.message); }
+    });
+  }
+}
+
+document.getElementById("new-inc").addEventListener("click", async ()=>{
+  const title = prompt("Incident title?");
+  if (!title) return;
+  try {
+    const r = await SOC.apiPOST("/api/incidents", {
+      alert_fps: ["manual-" + Date.now().toString(36)],   // placeholder when created ad-hoc
+      title, severity: "Medium",
+      actor: localStorage.getItem("soc_actor") || "analyst-1",
+    });
+    selectedId = r.record.id;
+    await load();
+  } catch(e){ alert("Create failed: " + e.message); }
+});
+
+load();
+setInterval(load, 5000);
+SOC.pollState(()=>{}, 5000);   // keep the chrome's pipeline pill live
+</script>
+</body>
+</html>

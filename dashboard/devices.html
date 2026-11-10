@@ -1,0 +1,110 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Sources &amp; Collection</title>
+<link rel="stylesheet" href="/static/css/soc.css">
+</head>
+<body>
+<div id="app-chrome"></div>
+<script src="/static/js/chrome.js"></script>
+<script>
+"use strict";
+const main = SOC.mount({active:"devices"});
+main.innerHTML = `
+  <div class="page-head">
+    <h1>Sources &amp; Collection</h1>
+    <span class="subtitle">DNS query source IPs and log-file collection sources. Not an asset inventory.</span>
+  </div>
+  <div class="panel">
+    <div class="nag info">
+      <b>This project does not ship a device-agent inventory.</b> Hostname, OS, and last-seen for monitored endpoints are not available
+      from DNS logs alone. The rows below are derived from DNS query client IPs and pipeline <code>source_file</code> values.
+      Enrichment columns populate only when MDTI threat intelligence is configured in the pipeline.
+    </div>
+  </div>
+
+  <div class="panel">
+    <h2>Client IPs — DNS query sources</h2>
+    <div class="sub">
+      Status rules: <b>Active</b> = last event within 5× poll interval · <b>Quiet</b> = within 20× poll interval ·
+      <b>Unknown</b> = older. Never <i>Offline</i> because we cannot know.
+    </div>
+    <div class="tbl-wrap" style="max-height:420px;background:var(--panel2);border:1px solid var(--border);border-radius:3px">
+      <table class="data">
+        <thead><tr>
+          <th>Client IP</th><th>Events</th><th>Distinct Domains</th>
+          <th>Severity (H/M/L)</th>
+          <th>First Seen</th><th>Last Seen</th><th>Status</th>
+          <th>MDTI DNS</th><th>MDTI Reputation</th>
+        </tr></thead>
+        <tbody id="ip-body"><tr><td colspan="9" class="empty">Loading…</td></tr></tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="panel">
+    <h2>Collection sources — raw log files &amp; pipeline source_file counts</h2>
+    <div class="sub">File size/mtime from <code>data/raw</code>; event count from pipeline detail <code>source_file</code>.</div>
+    <div class="tbl-wrap" style="max-height:320px;background:var(--panel2);border:1px solid var(--border);border-radius:3px">
+      <table class="data">
+        <thead><tr>
+          <th>Source</th><th>Kind</th><th>Size</th><th>Last Modified</th><th>Event Count</th>
+        </tr></thead>
+        <tbody id="src-body"><tr><td colspan="5" class="empty">Loading…</td></tr></tbody>
+      </table>
+    </div>
+  </div>
+`;
+
+function fmtSize(b){
+  if (b === null || b === undefined) return "—";
+  const u = ["B","KB","MB","GB"]; let i = 0;
+  while (b >= 1024 && i < u.length-1){ b/=1024; i++; }
+  return b.toFixed(b >= 10 ? 0 : 1) + " " + u[i];
+}
+function fmtMtime(mt){
+  if (!mt) return "—";
+  return SOC.fmtDate(new Date(mt*1000).toISOString());
+}
+
+async function load(){
+  try {
+    const data = await SOC.apiGET("/api/devices");
+    const ipBody = document.getElementById("ip-body");
+    const clients = data.clients || [];
+    ipBody.innerHTML = clients.length ? clients.map(c=>{
+      const sev = c.severity || {};
+      const statusCls = c.status === "Active" ? "ok" : c.status === "Quiet" ? "warn" : "unk";
+      return `<tr>
+        <td class="num">${SOC.esc(c.ip)}</td>
+        <td class="num">${SOC.esc(c.event_count)}</td>
+        <td class="num">${SOC.esc(c.domain_count)}</td>
+        <td class="num">${sev.High||0} / ${sev.Medium||0} / ${sev.Low||0}</td>
+        <td class="num">${SOC.esc(SOC.fmtDate(c.first_seen ? new Date(c.first_seen*1000).toISOString() : null))}</td>
+        <td class="num">${SOC.esc(SOC.fmtDate(c.last_seen ? new Date(c.last_seen*1000).toISOString() : null))}</td>
+        <td><span class="chip ${statusCls}">${SOC.esc(c.status)}</span></td>
+        <td>${c.enriched_dns ? SOC.esc(c.enriched_dns) : '<span style="color:var(--dim)">MDTI disabled</span>'}</td>
+        <td>${c.enriched_reputation ? SOC.esc(c.enriched_reputation) : '<span style="color:var(--dim)">—</span>'}</td>
+      </tr>`;
+    }).join("") : '<tr><td colspan="9" class="empty">No client IPs observed yet.</td></tr>';
+
+    const srcBody = document.getElementById("src-body");
+    const sources = data.sources || [];
+    srcBody.innerHTML = sources.length ? sources.map(s=>`<tr>
+      <td>${SOC.esc(s.name)}</td>
+      <td>${SOC.esc(s.kind)}</td>
+      <td class="num">${fmtSize(s.size_bytes)}</td>
+      <td class="num">${fmtMtime(s.mtime)}</td>
+      <td class="num">${SOC.esc(s.event_count||0)}</td>
+    </tr>`).join("") : '<tr><td colspan="5" class="empty">No collection sources available.</td></tr>';
+  } catch(e){
+    document.getElementById("ip-body").innerHTML = `<tr><td colspan="9" class="empty">Error: ${SOC.esc(e.message)}</td></tr>`;
+  }
+}
+
+SOC.pollState(()=>load(), 5000);
+</script>
+</body>
+</html>

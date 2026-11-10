@@ -1,0 +1,4 @@
+# SOC management state — per-deployment, never commit.
+# Analyst notes, assignments, and audit history may be sensitive.
+*
+!.gitignore

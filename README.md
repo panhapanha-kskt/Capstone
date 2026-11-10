@@ -75,6 +75,36 @@ tests/           - Smoke tests
 - [Technical Documentation](docs/Document_DNS.md)
 - [Extension Plan](docs/PLAN.md)
 
+## Current Progress (2026-11-10)
+
+### Completed
+
+- **8 tunnel tools** converted and tested: dns2tcp, dnsexfiltrator, dns_shell, det, ozymandns, cobaltstrike, dnscat2, iodine
+- **Baseline generalizes to unseen tools:** trained only on dns2tcp and dnsexfiltrator, it detected 5 of 6 new tools at 100% recall and iodine at 99.92% (4,996/5,000)
+- **v3 combined model trained:** 100,000 attack rows (8 tools) + 118,334 benign rows, near 1:1 balance — 12x larger than any earlier run
+- **v3 fusion results:** 7 false alarms on the frozen test set (down from 23 baseline), recall 1.0, precision 0.995
+- **Tu et al. (2023) benign data converted:** 876,599 rows from 4 captures
+- **Week 4 plan fully complete** — all per-tool tasks, unseen-tool tests, and documentation done
+
+### v3 Model Comparison
+
+| Run | Attack rows | Benign rows | Fusion false alarms | Recall |
+|---|---|---|---|---|
+| baseline | 10,000 | 8,349 | 23 | 1.0 |
+| v_dnsshell | 15,000 | 8,349 | 7 | 1.0 |
+| v_det | 15,000 | 8,349 | 38 | 1.0 |
+| **v3** | **100,000** | **118,334** | **7** | **1.0** |
+
+### Remaining Work
+
+1. Evaluate v3 on CIC capture 3 (unseen benign, ~25K queries) — false alarms should stay within 0.1% budget
+2. Leave-one-tool-out test — main recall test since the frozen test set only contains dnsexfiltrator
+3. Multi-seed check (5 seeds) for baseline, v_dnsshell, v_det, and v3
+4. Fix Path B autoencoder — recall dropped to 0.0 after training on larger benign set (fusion compensates via Path A, but Path B needs repair)
+5. Write conclusion and decide whether v3 replaces production `models/`
+
+See [Week 5 Progress Report](docs/Week5/WEEK5_PROGRESS_REPORT.md) and [V3 Training Plan](docs/Week5/V3_BALANCED_TRAINING.md) for full details.
+
 ## Configuration
 
 All paths, thresholds, and model parameters are in `config/settings.yaml`.

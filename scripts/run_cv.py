@@ -233,8 +233,11 @@ def main():
         print(f"\n== strategy: {strategy} ==")
         if strategy == "lofo":
             # One run per (feature set, held-out family); deterministic, so no seed loop.
-            fams = sorted({str(f) for f in df.get("attack_family", pd.Series([], dtype=str)).unique()
-                           if str(f) not in ("benign", "nan", "")})
+            # Only ATTACK families: benign sources carry names like "benign_cic" / "benign_tu2023",
+            # and holding one out has no attacks to recall (it would report a meaningless recall 0).
+            attack_fam = df.get("attack_family", pd.Series([""] * len(df), index=df.index))[y == 1]
+            fams = sorted({str(f) for f in attack_fam.unique()
+                           if str(f) not in ("nan", "") and not str(f).startswith("benign")})
             wdf = add_window_features(df)  # label-free, past-only; shared by all feature sets
             lofo: dict = {}
             print(f"   {'feature set':24s} " + "  ".join(f"{f:>16s}" for f in fams) + "   recall mean / min   FPR")

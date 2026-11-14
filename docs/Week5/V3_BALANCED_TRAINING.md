@@ -370,14 +370,21 @@ v3 recorded 2026-11-14 with `scripts/week5_eval.sh` (Path A `--infer` on `data/e
 
 | Tool left out | Recall on it | False-alarm rate |
 |---|---|---|
-| dns2tcp | | |
-| dnsexfiltrator | | |
-| dns_shell | | |
-| det | | |
-| ozymandns | | |
-| cobaltstrike | | |
-| dnscat2 | | |
-| iodine | | |
+| dns2tcp | 1.0000 | 0.587% |
+| dnsexfiltrator | 1.0000 | 0.410% |
+| dns_shell | 1.0000 | 0.368% |
+| det | 1.0000 | 0.401% |
+| ozymandns | 1.0000 | 0.439% |
+| cobaltstrike | 1.0000 | 0.444% |
+| dnscat2 | 1.0000 | 0.414% |
+| iodine | 1.0000 | 0.351% |
+| **all 8 tools** | **mean 1.0, min 1.0** | **mean 0.427%** |
+
+Recorded 2026-11-14 with `scripts/week5_eval.sh` (`run_cv.py --strategies lofo --lofo-feature-sets step3`, output `runs/v3/cv_lofo.json`). For each tool, a new Random Forest is trained on benign data plus the other seven tools, with the alarm threshold set at a 0.1% false-alarm rate on validation benign rows; it is scored on the left-out tool and the latest 20% of benign rows. It tests v3's training data, not the saved v3 model.
+
+- **Recall:** every tool is caught at 100% without being in the training data, including iodine (4 misses out of 5,000 when unseen by the baseline in Week 4). The other seven tools cover each one.
+- **False alarms:** 0.35–0.59%, about four times the 0.1% budget the threshold was set for on validation rows. The threshold does not hold on later benign traffic: the same validation-to-test drift as on the frozen test set. Report it as a limitation.
+- **Correction to the raw output:** that run also listed `benign_cic` and `benign_tu2023` with recall 0.0 and printed a headline of mean 0.8 / min 0.0. Those two are benign sources, not tools: `run_cv.py` only excluded families named exactly `benign`. They have no attacks to recall, so they are left out above, and the headline over the 8 tools is mean 1.0 / min 1.0. `run_cv.py` now considers attack families only.
 
 ### 6.5 Conclusion (write after the tables are filled)
 
@@ -411,7 +418,7 @@ Verdict (5.4.4): dns_shell helps — … · det hurts — … · v3 better than 
 - [x] Step 3: `runs/v3` trained (log checks passed, 7 h 17 min) · `merged_labeled.json` copied
 - [x] 5.1 comparison table run and copied into 6.2 (confirmed from each run's `evaluation_metrics.json`, 2026-11-14)
 - [x] 5.2 CIC capture 3 false alarms recorded in 6.3 (v3: 1 / 25,222)
-- [ ] 5.3 leave-one-tool-out → table 6.4
+- [x] 5.3 leave-one-tool-out → table 6.4 (recall 1.0 on all 8 tools, false alarms 0.35–0.59%)
 - [ ] 5.4.1 training files rebuilt for baseline, v_dnsshell, v_det (5,000-row dns_shell/det files recreated in `cap5000/`)
 - [ ] 5.4.2 Path A multi-seed (5 seeds) for baseline, v_dnsshell, v_det, v3 → table 6.6
 - [ ] 5.4.3 (optional) full multi-seed with Path B and fusion

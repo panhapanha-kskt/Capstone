@@ -366,7 +366,7 @@ None of these changes are committed to git yet.
 | v3 on the frozen test set | ✅ recorded (section 3.7) |
 | v3 comparison table | ✅ confirmed from saved metrics (2026-11-14) |
 | v3 on CIC capture 3 | ✅ 1 / 25,222 (0.004%), same as the baseline (2026-11-14) |
-| v3 leave-one-tool-out | ❌ next |
+| v3 leave-one-tool-out | ✅ recall 1.0 on all 8 tools; false alarms 0.35–0.59%, above the 0.1% budget (2026-11-14) |
 | Multi-seed check (baseline, v_dnsshell, v_det, v3) | ❌ not started |
 | Decision: does v3 replace `models/`? | ❌ |
 
@@ -380,7 +380,7 @@ None of these changes are committed to git yet.
 2. **Evaluate v3 further** (V3_BALANCED_TRAINING.md, sections 5.1–5.3):
    - frozen test set: ✅ fusion 7 false alarms (baseline 23), recall 1.0;
    - **CIC capture 3:** ✅ 1 / 25,222 false alarms (0.004%), within the 0.1% budget (2026-11-14);
-   - **leave-one-tool-out:** recall on each tool when that tool is left out of training. Run it before any `git checkout data/processed/`. This is now the main recall test, since the frozen test set only contains dnsexfiltrator.
+   - **leave-one-tool-out:** ✅ recall 1.0 on every one of the 8 tools when it is left out of training; false alarms 0.35–0.59%, above the 0.1% budget (2026-11-14, V3_BALANCED_TRAINING.md table 6.4). This is the main recall test, since the frozen test set only contains dnsexfiltrator.
 3. **Multi-seed check** (section 5.4): Path A with 5 seeds for baseline, v_dnsshell, v_det and v3. A difference counts as real only when the min–max ranges across seeds do not overlap.
 4. **Write the conclusion** and decide whether `runs/v3` replaces `models/`.
 

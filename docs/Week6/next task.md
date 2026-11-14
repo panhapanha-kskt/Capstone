@@ -742,7 +742,7 @@ Not needed to close Week 5 or Week 6. Listed so they are not forgotten.
 - [x] Task 0: `runs/`, Tu data and training log confirmed on Kali (2026-11-14, all present, v3 218,334 rows)
 - [x] Task 1: comparison script run, table 6.2 confirmed (fusion FA 23 / 7 / 38 / 7, recall 1.0)
 - [x] Task 2: v3 on CIC capture 3 recorded in table 6.3 (1 / 25,222 = 0.004%)
-- [ ] Task 3: leave-one-tool-out run, table 6.4 filled
+- [x] Task 3: leave-one-tool-out run, table 6.4 filled (recall 1.0 on all 8 tools; false alarms 0.35–0.59%)
 - [ ] Task 4: training files rebuilt (18349 / 23349 / 23349 rows), `cap5000/` created
 - [ ] Task 5: multi-seed run for all four, both checks passed, table 6.6 filled, verdicts written
 - [ ] Task 10 done first (see the Path B section below): `runs/v3_iforest` is the second candidate

@@ -1,6 +1,8 @@
 # Results Comparison: Old Models vs New Training Runs
 
-**DNS Traffic Anomaly Detection · committed models vs the retrained baseline vs baseline + one new tool · updated 2026-11-07**
+**DNS Traffic Anomaly Detection · committed models vs the retrained baseline vs baseline + one new tool · updated 2026-11-07, missing numbers filled in 2026-11-14**
+
+> **Later results are elsewhere.** This document covers the Week 4 runs only. The combined model `runs/v3` (all 8 tools, 218K rows), its Isolation Forest variant `runs/v3_iforest`, the multi-seed check and leave-one-tool-out are in [V3_BALANCED_TRAINING.md](../Week5/V3_BALANCED_TRAINING.md) section 6 and [V3_EVALUATION_RESULTS.md](../Week6/V3_EVALUATION_RESULTS.md). The multi-seed check showed that the dns_shell and det effects below are within training randomness (section 6.3).
 
 This document compares the new training results with the results already recorded for the old models. It is updated after each run. All numbers come from the same held-out test rows, so the comparison is fair (section 1).
 
@@ -60,12 +62,12 @@ Plan and commands: [NEXT_TASKS_PER_TOOL.md](NEXT_TASKS_PER_TOOL.md).
 
 | Method | Old | Baseline | v_dnsshell | v_det |
 |---|---|---|---|---|
-| Path A | 31 (2.65%) | 23 (1.97%) | **7 (0.60%)** | 38 (3.25%)\* |
-| Path B | 71 (6.07%) | 112 (9.59%) | 113 (9.67%) | *to collect* |
+| Path A | 31 (2.65%) | 23 (1.97%) | **7 (0.60%)** | 36 (3.08%) |
+| Path B | 71 (6.07%) | 112 (9.59%) | 113 (9.67%) | 105 (8.99%) |
 | OR rule | 90 (7.70%) | 116 (9.93%) | 113 (9.67%) | 119 (10.19%) |
 | **Fusion** | **31 (2.65%)** | **23 (1.97%)** | **7 (0.60%)** | **38 (3.25%)** |
 
-Recall is **1.0 for every method in every run**: no test attack is missed. Rates are false alarms ÷ test benign rows (1,169 old, 1,168 new). \*v_det's Path A count is inferred from the fusion count (fusion has equalled Path A in every other run) and still needs confirming (section 8).
+Recall is **1.0 for every method in every run**: no test attack is missed. Rates are false alarms ÷ test benign rows (1,169 old, 1,168 new). v_det's Path A and Path B counts were confirmed from `runs/v_det/evaluation_metrics.json` (Week 5); v_det is the only run where the fusion (38) does not equal Path A (36).
 
 ### 3.2 Model quality
 
@@ -113,7 +115,8 @@ done
 |---|---|---|---|
 | Baseline | 1 / 25,222 | 0.004% | ✅ well inside |
 | v_dnsshell | **0 / 25,222** | 0.000% | ✅ |
-| v_det | *to collect* | | |
+| v_det | 1 / 25,222 | 0.004% | ✅ |
+| v3 (Week 5) | 1 / 25,222 | 0.004% | ✅ |
 
 **This is the most realistic false-alarm number so far.** It comes from a different network, recorded by a different team, with traffic the model never saw, and the false-alarm rate is close to zero. The 0.6–3% on the frozen test set comes from that test period's own benign traffic (the validation → test drift described in CHANGES.md §12.1), not from the model flagging normal DNS in general.
 
@@ -132,6 +135,12 @@ DNS_DETECT_MODELS_DIR=runs/baseline python3 -m dns_detect.models.path_a \
 |---|---|---|---|---|---|
 | dns_shell | dnsshell-txt.com | 75,024 (5 others dropped) | 5,000 | A 4,000 · TXT 1,000 | **5,000 / 5,000 (100%)** |
 | det | det-a.com | 38,365 (0 dropped) | 5,000 | A 5,000 | **5,000 / 5,000 (100%)** |
+| ozymandns | ozymandns-txt.com | 74,937 (112 dropped) | 5,000 | TXT 2,832 · A 2,168 | **5,000 / 5,000 (100%)** |
+| cobaltstrike | cobaltstrike-txt.com | 50,004 (100,006 dropped) | 5,000 | A 3,000 · TXT 2,000 | **5,000 / 5,000 (100%)** |
+| dnscat2 | dnscat-aaaa.com | 50,000 (200,000 dropped) | 5,000 | AAAA 5,000 | **5,000 / 5,000 (100%)** |
+| iodine | iodine-private.com | 150,412 (548,854 dropped) | 5,000 | type 65399 5,000 | **4,996 / 5,000 (99.92%)** |
+
+The last four were tested in Week 5 ([WEEK5_PROGRESS_REPORT.md](../Week5/WEEK5_PROGRESS_REPORT.md) section 3.2). The large "dropped" counts are the tools' other variants, each on its own domain; the converter keeps the most common domain. The det and dns_shell result files are saved in [docs/Week5/evidence/unseen_tool/](../Week5/evidence/README.md).
 
 Path A uses no time features, so the 683-day gap between the attack and benign captures cannot explain these results.
 
@@ -153,7 +162,7 @@ Path A uses no time features, so the 683-day gap between the attack and benign c
 
 ### 6.2 The fusion relies on Path A alone
 
-In every run the fusion's false alarms equal Path A's: 31 = 31, 23 = 23, 7 = 7.
+In almost every run the fusion's false alarms equal Path A's: 31 = 31, 23 = 23, 7 = 7. The exception is v_det (fusion 38, Path A 36).
 
 Path B is **not** ignored. In the old fusion (`models/fusion_lr.json`) the weights are 8.78 for Path A and 2.79 for Path B (intercept −5.77, alarm threshold 0.49). Working through that formula:
 
@@ -184,18 +193,20 @@ How to check:
 2. **Look at what was flagged.** The 38 v_det test false alarms: which domains are they?
 3. **Repeat with other seeds** (`scripts/run_multiseed.py`). With about 1,168 benign test rows, part of a 23 → 38 change can be randomness.
 
+**Checked (2026-11-14, multi-seed, Path A false alarms over seeds 42–46):** baseline 9–25 (mean 18.2), v_dnsshell 7–11 (mean 8.2), v_det 13–36 (mean 22.0). The ranges overlap, so **neither effect is proven**: dns_shell's help and det's harm are within training randomness. Seed 42, the single run above, was v_det's worst seed (36) and near the baseline's worst (23). Details: [V3_BALANCED_TRAINING.md](../Week5/V3_BALANCED_TRAINING.md) table 6.6.
+
 ### 6.4 What this means for the plan
 
-- **Per-tool runs answer which tools help.** dns_shell helps; det hurts on this test set.
-- **The unseen-benign test (section 4) should be repeated for every run.** On CIC capture 3 the models are close to zero false alarms, and that is the number that matters for deployment. v_det's figure is needed before concluding that det hurts in general.
-- **Unseen-tool recall is 100% for both new tools so far.** Path A generalises well to new tunnel tools.
+- **Per-tool runs answer which tools help, but only with several seeds.** On seed 42 dns_shell looked helpful and det harmful; the multi-seed check shows both effects are within training randomness (section 6.3).
+- **The unseen-benign test (section 4) should be repeated for every run.** On CIC capture 3 the models are close to zero false alarms, and that is the number that matters for deployment. v_det also flags only 1 of 25,222, so det does not hurt on new benign traffic.
+- **Unseen-tool recall is 100% for 5 of the 6 new tools, and 99.92% for iodine** (section 5). Path A generalises well to new tunnel tools.
 
 ---
 
 ## 7. Cautions
 
 1. **Small test set.** About 1,168 benign test rows: one false alarm ≈ 0.09%. Differences of a few alarms are not meaningful on their own.
-2. **One run per configuration (seed 42).** Run-to-run variation is not measured yet. Use `scripts/run_multiseed.py` before claiming any difference in the final report.
+2. **One run per configuration (seed 42).** Run-to-run variation was measured afterwards (multi-seed check, 2026-11-14): the baseline's Path A false alarms range from 9 to 25 with the seed alone, so single-run differences of this size are not meaningful (section 6.3).
 3. **Frozen test set: still above the 0.1% budget.** The best run (v_dnsshell) is at 0.60%. On unseen benign traffic from another network (section 4) it is 0%.
 4. **New tools are not in the frozen test set.** Their rows go to train/val only. How well a tool is caught comes from the unseen-tool test (section 5).
 5. **Path B worsened in the new runs** (71 → 112 false alarms). It cannot raise an alarm on its own in the fusion (§6.2), so the final output is unaffected here. It still matters for borderline rows and for Path B used alone. Worth checking: compare its validation and test reconstruction errors, or retrain it with another seed.
@@ -205,22 +216,11 @@ How to check:
 
 ## 8. Still to collect
 
-```bash
-cd /home/ounnha/Documents/Capstone
-export PYTHONPATH=src
+Nothing. Everything this section listed has been collected (2026-11-14):
 
-# v_det per-method false alarms
-python3 - runs/v_det <<'EOF'
-import json, sys
-t = (json.load(open(f"{sys.argv[1]}/evaluation_metrics.json")).get("fusion") or {}).get("test") or {}
-for k in ("path_a", "path_b", "or_rule", "learned_lr"):
-    b = t.get(k) or {}
-    print(f"  {k:10} recall={b.get('recall')}  fpr={b.get('fpr')}  false_alarms={b.get('false_alarms')}")
-EOF
+- v_det per-method false alarms: Path A 36, Path B 105, OR rule 119, fusion 38 (section 3.1);
+- v_det on CIC capture 3: 1 / 25,222 (section 4);
+- the unseen-tool tests for ozymandns, cobaltstrike, dnscat2 and iodine (section 5);
+- the multi-seed check (section 6.3).
 
-# v_det on unseen benign traffic
-DNS_DETECT_MODELS_DIR=runs/v_det python3 -m dns_detect.models.path_a \
-    --infer data/external/cic/cic_benign_test.json 2>/dev/null | tail -3
-```
-
-Then continue with the next tools: ozymandns, cobaltstrike, dnscat2, iodine ([NEXT_TASKS_PER_TOOL.md](NEXT_TASKS_PER_TOOL.md), Task B).
+All saved metrics files are in [docs/Week5/evidence/](../Week5/evidence/README.md). The `scripts/week5_eval.sh` script prints the frozen-test comparison and the CIC capture 3 check for every run.

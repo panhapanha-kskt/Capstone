@@ -77,11 +77,19 @@ Expected:
 
 ### 3.2 Invalid transition (Phase 4.3)
 
+*Corrected 2026-11-14.* The earlier version tried Escalated → Open and expected `allowed: ["Open"]`. That was wrong: from Escalated the allowed transitions are Investigating, Resolved and Closed (`ALLOWED_TRANSITIONS` in `dashboard/server.py`), so the `allowed` list would not be `["Open"]`. The clean test is **Closed → Investigating**: a closed alert may only be reopened.
+
 ```bash
-curl -s -o /dev/stderr -w '%{http_code}\n' -X POST http://127.0.0.1:9000/api/alerts/$FP/status \
-  -H 'Content-Type: application/json' -d '{"actor":"x","status":"Open"}'
+# close an alert, then try to move it straight to Investigating
+curl -s -X POST http://127.0.0.1:9000/api/alerts/$FP/status \
+  -H 'Content-Type: application/json' -d '{"actor":"analyst-1","status":"Closed"}' | jq .status
+curl -s -w '\nHTTP %{http_code}\n' -X POST http://127.0.0.1:9000/api/alerts/$FP/status \
+  -H 'Content-Type: application/json' -d '{"actor":"analyst-1","status":"Investigating"}'
 ```
-Expected: HTTP `409 Conflict` with `allowed: ["Open"]` (because Resolved → Open is reopen; from Escalated → Open is **not** allowed).
+
+Expected: the first call succeeds; the second returns HTTP `409 Conflict` with
+`{"error": "invalid transition Closed → Investigating", "allowed": ["Open"]}`.
+In the UI, a closed alert offers only "Reopen → Open".
 
 ### 3.3 Server restart test (Phase 14.3)
 

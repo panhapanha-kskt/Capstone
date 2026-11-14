@@ -785,18 +785,18 @@ Not needed to close Week 5 or Week 6. Listed so they are not forgotten.
 **Close Week 6**
 
 - [ ] Task 8: all pages checked in demo mode
-- [ ] Task 8: restart persistence confirmed
-- [ ] Task 8: invalid transition refused with 409
+- [x] Task 8: restart persistence confirmed (status, assignee, note and 3 audit entries kept after restart; 2026-11-14, Windows, demo mode)
+- [x] Task 8: invalid transition refused with 409 (Closed → Investigating: HTTP 409, `allowed: ["Open"]`; 2026-11-14)
 - [ ] Task 8: bulk Execute works
 - [ ] Task 8: real mode tested, or marked "not tested"
 - [ ] Task 8: TESTING_REPORT.md filled in, section 3.2 corrected
 
 **Clean up**
 
-- [ ] Task 9: RESULTS_COMPARISON.md updated
-- [ ] Task 9: stale sentences fixed in the two Week 5 docs
-- [ ] Task 9: dashboard mapping differences documented or fixed
-- [ ] Task 9: README links fixed, Path B description updated after task 6
+- [x] Task 9: RESULTS_COMPARISON.md updated (v_det numbers, all 6 unseen tools, multi-seed verdict, pointer to Week 5/6 results)
+- [x] Task 9: stale sentences fixed in the two Week 5 docs (commit sentence, Path B epochs, 7 h 17 min training time)
+- [x] Task 9: dashboard mapping differences documented or fixed (documented in DASHBOARD_PROGRESS.md; code left for the dashboard work)
+- [x] Task 9: README links fixed, Path B description updated after task 6 (links point to `docs/week0/`; Path A/B descriptions and v3_iforest row updated)
 
 **Path B with Isolation Forest**
 

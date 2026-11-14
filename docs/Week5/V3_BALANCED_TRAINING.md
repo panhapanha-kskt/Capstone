@@ -78,7 +78,7 @@ The three Tu daily captures (real traffic, ~115 clients/day, Aug 1–3 2021) are
 - **Balance beats volume.** All benign (926K) vs 100K attack is a 9:1 skew toward benign; all attack uncapped (~450K kept-domain) vs ~120K benign skews 4:1 the other way. Either skew damages threshold calibration — the false-alarm side we are optimising. ~1:1.2 keeps both classes honest.
 - **Attack rows repeat.** The EDA found 81% of rows duplicate another row's exact feature vector; a tunnel sends the same encoded query shape thousands of times. 15,000 rows per tool captures a tool's behaviour; 150,000 captures it again 10 more times.
 - **Equal per-tool weight.** 15,000 each means no tool dominates (uncapped, iodine would outweigh det 4:1).
-- **Training time.** ~218K rows already pushes one run to an estimated 1–2 hours (Path B is the slow part); 1.3M rows would take a day per run and make the multi-seed check impractical.
+- **Training time.** ~218K rows was estimated at 1–2 hours per run; it actually took **7 h 17 min**, about 6 h 37 min of it Path B. 1.3M rows would take days per run and make the multi-seed check impractical. (With the Week 6 Isolation Forest Path B, the same 218K-row run takes 39 min.)
 - **The converter cap is a flag, not a limit:** `--max-per-family` (default 5,000) with contiguous time blocks, so Path B's 5-minute windows survive. Raising it to 15,000 is all the change needed.
 
 **Known limitation (future work):** for multi-variant tools the converter keeps only the dominant tunnel domain, so dnscat2's MX/CNAME/TXT variants and cobaltstrike's A/AAAA variants are dropped. Converting those variants as extra families (via `--domain`) would add behaviour *diversity* — worth more than extra volume if v3 needs further improvement.
@@ -132,7 +132,7 @@ python3 scripts/make_labeled_features.py --label 0 --family benign_tu2023 \
     --output data/external/tu2023/benign_alexa.json 2>/dev/null
 ```
 
-### Step 3: train v3 (1–2 h estimated — run under nohup)
+### Step 3: train v3 (estimated 1–2 h; actually 7 h 17 min — run under nohup)
 
 ```bash
 nohup env DNS_DETECT_MODELS_DIR=runs/v3 ./scripts/train_models.sh --force-retrain \

@@ -7,8 +7,8 @@ CADT Capstone Project, 2025-2026
 
 Detects DNS-based attacks (tunneling, NXDOMAIN floods, amplification, cache poisoning) using a two-path ML fusion approach:
 
-- **Path A:** Random Forest + Transformer ensemble (supervised classification)
-- **Path B:** Trafficformer autoencoder (unsupervised anomaly detection)
+- **Path A:** Random Forest, with gradient boosting added only when it helps on validation (supervised classification); a Transformer is trained as a comparison only
+- **Path B:** unsupervised anomaly detection on 20-query windows per client, trained on benign traffic only. Two models: the Trafficformer autoencoder (default) or an **Isolation Forest** (`--path-b-model iforest`), which trains in about a minute and detects tunnels where the autoencoder no longer does (see [PATH_B_ISOLATION_FOREST.md](docs/Week6/PATH_B_ISOLATION_FOREST.md))
 - **ML Bridge:** Fuses both paths into a combined threat score
 - **Detection Engine:** 6 rules + Z-score + MITRE ATT&CK mapping
 
@@ -23,7 +23,7 @@ Technitium DNS Server --> Filebeat --> Logstash --> Elasticsearch
                                           |
                         +-----------------+-----------------+
                         |                                   |
-                    Path A (RF+TF)                   Path B (Trafficformer)
+                    Path A (RF)              Path B (Trafficformer or Isolation Forest)
                         |                                   |
                         +----------> ML Bridge <------------+
                                         |
@@ -71,9 +71,10 @@ tests/           - Smoke tests
 
 ## Documentation
 
-- [Full Academic Paper](docs/README_full.md)
-- [Technical Documentation](docs/Document_DNS.md)
-- [Extension Plan](docs/PLAN.md)
+- [Full Academic Paper](docs/week0/README_full.md)
+- [Technical Documentation](docs/week0/Document_DNS.md)
+- [Extension Plan](docs/week0/PLAN.md)
+- [Week 6 progress report](docs/Week6/WEEK6_PROGRESS_REPORT.md) · [v3 evaluation results](docs/Week6/V3_EVALUATION_RESULTS.md) · [next tasks](docs/Week6/next%20task.md)
 
 ## Current Progress (2026-11-10)
 
@@ -94,13 +95,14 @@ tests/           - Smoke tests
 | v_dnsshell | 15,000 | 8,349 | 7 | 1.0 |
 | v_det | 15,000 | 8,349 | 38 | 1.0 |
 | **v3** | **100,000** | **118,334** | **7** | **1.0** |
+| **v3_iforest** (Isolation Forest Path B) | 100,000 | 118,334 | **7** | **1.0** |
 
 ### Remaining Work
 
 1. ~~Evaluate v3 on CIC capture 3~~ — done 2026-11-14: 1 / 25,222 false alarms (0.004%), within the 0.1% budget
 2. ~~Leave-one-tool-out test~~ — done 2026-11-14: recall 1.0 on all 8 tools when each is left out; false alarms 0.35–0.59%, above the 0.1% budget
 3. ~~Multi-seed check (5 seeds)~~ — done 2026-11-14: Path A false alarms baseline 9–25 (mean 18.2), v3 8–9 (mean 8.6); v3 is far more stable, but the improvement is borderline by the non-overlap rule
-4. Fix Path B autoencoder — recall dropped to 0.0 after training on larger benign set (fusion compensates via Path A, but Path B needs repair)
+4. ~~Fix Path B~~ — done 2026-11-14: the autoencoder's recall dropped to 0.0 on v3, so Path B can now use an Isolation Forest (recall 1.0, about a minute to train). `runs/v3_iforest` keeps fusion recall 1.0 with 7 false alarms and trains in 39 min instead of 7 h 17 min. Mentor approval pending before it replaces `models/`
 5. ~~Write conclusion and decide whether v3 replaces production `models/`~~ — done 2026-11-14: candidate `runs/v3_iforest`; `models/` kept until mentor approval
 
 See [Week 5 Progress Report](docs/Week5/WEEK5_PROGRESS_REPORT.md) and [V3 Training Plan](docs/Week5/V3_BALANCED_TRAINING.md) for full details.

@@ -8,7 +8,8 @@
 The single-page live dashboard was extended into a multi-page SOC-style monitoring suite,
 modeled on commercial SOC products (FortiCloud SOC-as-a-Service and FortiSOAR). All pages
 are served by the same zero-dependency `dashboard/server.py` (Python standard library only)
-and are driven by **one shared endpoint, `GET /api/state`**, polled every 3 seconds.
+and are driven by **one shared endpoint, `GET /api/state`**, polled every 3 seconds by the
+SOC pages (`/soc`, `/usecases`, `/alerts`). The classic page `/` polls every 2 seconds.
 Because demo mode and real mode both write into the same server state, every page works
 identically with `--demo` data and with real pipeline results — no page contains
 demo-specific logic.
@@ -49,6 +50,25 @@ Derived client-side from the pipeline's real fields; applies equally to demo and
 Alert counts are consistent across pages: the feed is capped at the newest 150 alerts,
 and the SOC donuts count alerts older than the cap as Closed/Met so every page's total
 equals `totals.alerts`.
+
+### Monitoring Overview (`/soc`) uses different rules
+
+*Added 2026-11-14 after an audit.* The table above describes the **Alerts page** (`/alerts`).
+The Monitoring Overview derives some of the same fields differently, so the two pages can
+show different numbers for "escalated" or "status":
+
+| Field on `/soc` | Rule on `/soc` | Rule on `/alerts` |
+|---|---|---|
+| **Escalated** KPI tile | every new alert (`totals.new_alerts`, `soc.html` line 906) | new **and** High |
+| **Alerts by Status** donut | Escalated = new · Confirmed = older High · In Progress = older Medium · Closed = the rest (`soc.html` lines 944–954) | Open / Investigating / Closed |
+| **Alerts by SLA** donut | Met = the alert has a MITRE technique (`soc.html` lines 959–962) | Ack / Response SLA from the status |
+
+One more detail on `/alerts`: **Response SLA** is *In Progress* for open Low alerts as well
+as Medium ones (`alerts.html` line 334), not only for Medium as written above.
+
+These are documented as they are; aligning `/soc` with `/alerts` (starting with the
+Escalated tile) is left for the dashboard work. Since Week 6, alerts that an analyst has
+touched use their **persisted** status on `/alerts` instead of these derived rules.
 
 ## How to run
 

@@ -337,7 +337,7 @@ Training loss stayed at about 0.0043 (0.0042 from epoch 60) while validation los
 | `docs/Week5/V3_BALANCED_TRAINING.md` (new) | v3 plan: data inventory, reasons for the balance, Step 0 (Tu benign conversion, done), Steps 1–3 (reconvert, ALEXA, train), evaluation 5.1–5.3, the full multi-seed check 5.4 (moved from Week 4 and extended with v3), results tables 6.1–6.6, checklist. |
 | `docs/Week5/WEEK5_PROGRESS_REPORT.md` (new) | this report |
 
-None of these changes are committed to git yet.
+These changes were committed to git on 2026-11-08.
 
 ---
 
@@ -399,7 +399,7 @@ None of these changes are committed to git yet.
 | **Test v3 on a Tu daily capture** | About 280,000 real benign queries the model has never seen, 11 times larger than CIC capture 3. A strong false-alarm claim for the report. Needs a daily-only JSON, because `benign_tu2023.json` also contains ALEXA, which is in training. | Low |
 | **Look at iodine's 4 misses** | Re-run the baseline on `tunnels_iodine.json` and keep the CSV this time (it was deleted). Find which queries were missed and why. | Low |
 | **Convert the dropped tool variants** | dnscat2's MX / CNAME / TXT / mixed variants and cobaltstrike's AAAA variant were dropped because the converter keeps one domain per tool. Converting them as extra families with `--domain`, still capped, adds variety of tunnel behaviour, which is worth more than more copies of the same behaviour. | Medium |
-| **Shorten Path B training** | With no minimum improvement, tiny gains keep resetting early stopping; v3's Path B may run all 200 epochs. A small `min_delta` would stop it once gains become negligible. Code change; check that results do not get worse. | Low |
+| **Shorten Path B training** | With no minimum improvement, tiny gains keep resetting early stopping; v3's Path B ran 65 epochs (about 6 h 37 min) for a validation-loss gain of about 0.0001 after epoch 32. **Resolved differently in Week 6:** Path B can now use an Isolation Forest (`--path-b-model iforest`) that trains in about a minute (docs/Week6/PATH_B_ISOLATION_FOREST.md). | Done |
 | **Find out why det hurts** | Compare the feature ranges of det, dns_shell and benign, and look at which test domains v_det flags. | Medium |
 | **A mixed-traffic test capture** | Today every tunnel query sits in a 5-minute window of pure tunnel traffic. A capture of a tunnel running alongside normal browsing on the same machine is the realistic test. | High |
 | **Train on everything (v4_full, optional)** | All ~450K attack and ~926K benign rows, as a final experiment after v3 is evaluated and the Tu daily test is done. Expect an overnight run and a risk of running out of memory on 7.7 GiB. | High |

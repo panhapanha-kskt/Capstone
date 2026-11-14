@@ -4,6 +4,8 @@
 
 Week 5 trained the combined model (`runs/v3`) but stopped before evaluating it. The Week 6 dashboard was built but not tested end to end. This file lists every open task, the exact command for each, what the output should look like, and where to write the result.
 
+Week 6 progress so far: [WEEK6_PROGRESS_REPORT.md](WEEK6_PROGRESS_REPORT.md) · results: [V3_EVALUATION_RESULTS.md](V3_EVALUATION_RESULTS.md) · Path B change: [PATH_B_ISOLATION_FOREST.md](PATH_B_ISOLATION_FOREST.md).
+
 Sources: the Week 5 checklist in [V3_BALANCED_TRAINING.md](../Week5/V3_BALANCED_TRAINING.md) (section 7), the Week 5 report [WEEK5_PROGRESS_REPORT.md](../Week5/WEEK5_PROGRESS_REPORT.md) (section 9.1), and the "not yet verified" list in [WEEK6_AUDIT_AND_FORTINET_ROADMAP.md](WEEK6_AUDIT_AND_FORTINET_ROADMAP.md) (section 1.6).
 
 ---
@@ -677,6 +679,30 @@ grep -E '^\[(8|9|10|11|12)/12\]|Training complete' logs/train_v3_iforest.log
 
 Training rewrites the four `data/processed/` files again; `git checkout data/processed/` restores them once the copy above is made.
 
+**Result (run on Kali, 2026-11-14):**
+
+```
+[8/12] Labeled 100000 attack / 118334 benign · files 218334 (families: cobaltstrike,det,dns2tcp,dns_shell,dnscat2,dnsexfiltrator,iodine,ozymandns)
+[9/12] Split: extended time_seed42.json with 199985 new rows (train/val only, test frozen) · train 183203 / val 32563 / test 2568 → runs/v3_iforest/split_manifest.json
+[10/12] Path A trained (F1 0.9972, PR-AUC 1)
+[11/12] Path B trained (iforest, window 20, anomaly threshold 0.4907)
+[12/12] Fusion trained (test: recall 1, false alarms 7 vs OR rule 110)
+✓ Training complete in 39m 5s · models saved to runs/v3_iforest/
+```
+
+| | `runs/v3` (autoencoder Path B) | `runs/v3_iforest` (Isolation Forest Path B) |
+|---|---|---|
+| Path A | F1 0.9972, PR-AUC 1 | F1 0.9972, PR-AUC 1 (identical: the runs are comparable) |
+| Path B | autoencoder, recall 0.0, threshold 0.01741 | Isolation Forest, threshold 0.4907 |
+| **Fusion recall / false alarms** (frozen test) | 1.0 / 7 | **1.0 / 7** |
+| OR rule false alarms | 87 | 110 |
+| **Training time** | 7 h 17 min | **39 min 5 s** |
+
+- **The final decision did not get worse:** the fusion still catches every attack with 7 false alarms.
+- **Path B now detects attacks**, where the autoencoder caught none.
+- **The OR rule rose (87 → 110)** because the Isolation Forest flags more benign windows by itself (9.34% vs 6.23%). The system decides with the fusion, not the OR rule.
+- **Most of the 39 minutes is step 10's comparison Transformer** (Path A, not used in any decision, trained with no progress output). Path B itself took about a minute.
+
 ### 13.4 Compare with v3
 
 The task 1 script does not pick up `runs/v3_iforest` (its `runs/v_*` pattern does not match it). This shorter script compares the two runs and shows which Path B model each used:
@@ -775,7 +801,7 @@ Not needed to close Week 5 or Week 6. Listed so they are not forgotten.
 - [x] Task 10: code pulled onto Kali (`main`, commit `9598ca4`)
 - [ ] Task 10: unit tests pass
 - [x] Task 10: Path B-only run reproduces recall 1.000 / FPR 9.341% / PR-AUC 1.0 (65.8 s, 2026-11-14)
-- [ ] Task 10: full run `runs/v3_iforest` trained, training time recorded
+- [x] Task 10: full run `runs/v3_iforest` trained, training time recorded (39 min 5 s; fusion 1.0 recall / 7 false alarms, same as v3)
 - [ ] Task 10: compared with v3 (fusion recall and false alarms), CIC capture 3 checked
 - [ ] Task 10: pipeline runs with `DNS_DETECT_MODELS_DIR=runs/v3_iforest`
 - [ ] Task 10: mentor agrees; result and reasoning written into the report

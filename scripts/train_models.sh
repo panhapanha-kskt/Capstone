@@ -105,6 +105,7 @@ FORCE_RETRAIN=false
 PATH_A_ONLY=false
 PATH_B_ONLY=false
 PATH_B_MODEL="dns_trafficformer"
+PATH_B_TYPE="trafficformer"   # Path B algorithm: trafficformer (autoencoder) or iforest (Isolation Forest)
 N_DAYS=20
 CUSTOM_DATA_DIR=""
 PCAP_LABEL=""          # provenance label applied to every query in input pcaps (0/1)
@@ -145,6 +146,8 @@ Training:
   --path-b-only       Train only Path B (Trafficformer)
   --n-days N          Path B window size in queries (default: 20)
   --model-name NAME   Path B model save name (default: dns_trafficformer)
+  --path-b-model T    Path B algorithm: trafficformer (Transformer autoencoder, default)
+                      or iforest (Isolation Forest — trains in minutes instead of hours)
   --seed N            Seed for Path A, Path B and a fresh split (default: 42)
 
 Split (one split for Path A, Path B and fusion — saved as <models>/split_manifest.json):
@@ -178,6 +181,7 @@ while [[ $# -gt 0 ]]; do
     --path-b-only)    PATH_B_ONLY=true;       shift ;;
     --n-days)         N_DAYS="${2:?--n-days needs a number}";           shift 2 ;;
     --model-name)     PATH_B_MODEL="${2:?--model-name needs a name}";   shift 2 ;;
+    --path-b-model)   PATH_B_TYPE="${2:?--path-b-model needs trafficformer or iforest}"; shift 2 ;;
     --seed)           SEED="${2:?--seed needs a number}";               shift 2 ;;
     --split-manifest) BASE_MANIFEST="${2:?--split-manifest needs a file}"; BASE_EXPLICIT=true; shift 2 ;;
     --new-split)      NEW_SPLIT=true;         shift ;;
@@ -195,6 +199,10 @@ while [[ $# -gt 0 ]]; do
     *) printf "${YELLOW}! Unknown option ignored: %s${NC}\n" "$1"; shift ;;
   esac
 done
+case "$PATH_B_TYPE" in
+  trafficformer|iforest) ;;
+  *) printf "${RED}✗ --path-b-model must be trafficformer or iforest (got: %s)${NC}\n" "$PATH_B_TYPE" >&2; exit 1 ;;
+esac
 
 # ── FILE PATHS ─────────────────────────────────────────────
 MERGED_FEATURES="$DATA_DIR/merged_features_all.json"
@@ -208,10 +216,15 @@ MEM_RF="$MODELS_DIR/dns_tunnel_rf.pkl"
 MEM_TF="$MODELS_DIR/dns_tunnel_transformer.keras"
 MEM_SCALER="$MODELS_DIR/dns_scaler.pkl"
 MEM_THRESHOLD="$MODELS_DIR/dns_threshold.json"
-# Path B saves <name>.keras (Keras 3 cannot store MultiHeadAttention in .h5); runs from before
-# Week 3 saved <name>.h5. Same order as path_b_predict: .keras first, then .h5.
-MEM_PATH_B="$MODELS_DIR/${PATH_B_MODEL}.keras"
-[[ -f "$MEM_PATH_B" || ! -f "$MODELS_DIR/${PATH_B_MODEL}.h5" ]] || MEM_PATH_B="$MODELS_DIR/${PATH_B_MODEL}.h5"
+# Path B model file. iforest: <name>_iforest.pkl. trafficformer: <name>.keras (Keras 3 cannot
+# store MultiHeadAttention in .h5); runs from before Week 3 saved <name>.h5. Same order as
+# path_b_predict: .keras first, then .h5.
+if [[ "$PATH_B_TYPE" == "iforest" ]]; then
+  MEM_PATH_B="$MODELS_DIR/${PATH_B_MODEL}_iforest.pkl"
+else
+  MEM_PATH_B="$MODELS_DIR/${PATH_B_MODEL}.keras"
+  [[ -f "$MEM_PATH_B" || ! -f "$MODELS_DIR/${PATH_B_MODEL}.h5" ]] || MEM_PATH_B="$MODELS_DIR/${PATH_B_MODEL}.h5"
+fi
 MEM_PATH_B_THRESHOLD="$MODELS_DIR/${PATH_B_MODEL}_threshold.json"
 MEM_PATH_B_NORM="$MODELS_DIR/${PATH_B_MODEL}_norm.json"
 MEM_METADATA="$MODELS_DIR/training_metadata.json"
@@ -705,10 +718,15 @@ fi
 # ══════════════════════════════════════════════════════════════
 if [[ "$TRAIN_PATH_B" == true ]]; then
   run_or_fail "Path B training failed" python3 -m dns_detect.models.path_b_train \
-    --filename "$MERGED_LABELED" --n_days "$N_DAYS" --save_name "$PATH_B_MODEL" --data_dir "/"     --split-manifest "$MEM_SPLIT" --seed "$SEED"
-  MEM_PATH_B="$MODELS_DIR/${PATH_B_MODEL}.keras"   # what path_b_train writes
-  [[ -f "$MEM_PATH_B" ]] || fail "Path B did not save ${PATH_B_MODEL}.keras"
-  say "Path B trained (window $N_DAYS, anomaly threshold $(json_num "$MEM_PATH_B_THRESHOLD" threshold))"
+    --filename "$MERGED_LABELED" --n_days "$N_DAYS" --save_name "$PATH_B_MODEL" --data_dir "/"     --split-manifest "$MEM_SPLIT" --seed "$SEED" --model "$PATH_B_TYPE"
+  # what path_b_train writes
+  if [[ "$PATH_B_TYPE" == "iforest" ]]; then
+    MEM_PATH_B="$MODELS_DIR/${PATH_B_MODEL}_iforest.pkl"; PATH_B_DESC="iforest, "
+  else
+    MEM_PATH_B="$MODELS_DIR/${PATH_B_MODEL}.keras"; PATH_B_DESC=""
+  fi
+  [[ -f "$MEM_PATH_B" ]] || fail "Path B did not save $(basename "$MEM_PATH_B")"
+  say "Path B trained (${PATH_B_DESC}window $N_DAYS, anomaly threshold $(json_num "$MEM_PATH_B_THRESHOLD" threshold))"
 else
   say "Path B skipped (existing model kept)"
 fi
@@ -775,6 +793,7 @@ update = {
     "attack_types_seen":      "$ATTACK_TYPES".split(","),
     "label_source":           "$LABEL_SRC",
     "path_b_model_name":      "$PATH_B_MODEL",
+    "path_b_model_type":      "$PATH_B_TYPE",
     "path_b_window_size":     $N_DAYS,
     "seed":                   $SEED,
     "split_manifest":         "$MEM_SPLIT",

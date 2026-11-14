@@ -62,9 +62,10 @@ FEED_LIMIT = 150
 # ──────────────────────────────────────────────────────────────
 def pipeline_steps(zscore):
     py = sys.executable
-    # Path B saves <name>.keras; runs from before Week 3 saved <name>.h5 (path_b_predict loads either).
+    # Path B saves <name>.keras (autoencoder) or <name>_iforest.pkl (Isolation Forest); runs from
+    # before Week 3 saved <name>.h5. path_b_predict picks the right one from the threshold file.
     path_b_ready = (
-        any((MODELS / f"{PATH_B_MODEL}{ext}").exists() for ext in (".keras", ".h5"))
+        any((MODELS / f"{PATH_B_MODEL}{suffix}").exists() for suffix in (".keras", ".h5", "_iforest.pkl"))
         and all((MODELS / n).exists() for n in (f"{PATH_B_MODEL}_threshold.json", f"{PATH_B_MODEL}_norm.json"))
     )
     bridge = [py, "-m", "dns_detect.fusion.bridge",

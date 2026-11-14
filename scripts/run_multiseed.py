@@ -14,6 +14,7 @@ Usage:
   python3 scripts/run_multiseed.py --data data/processed/week4/merged_week4.json \
       --manifest data/processed/week4/splits/time_seed42_cic.json --seeds 42 43 44 45 46
   python3 scripts/run_multiseed.py ... --skip-path-b      # Path A only (minutes, not hours)
+  python3 scripts/run_multiseed.py ... --path-b-model iforest   # full check with the fast Path B
 """
 
 import argparse
@@ -61,7 +62,7 @@ def train_seed(seed, args):
         data = Path(args.data)
         _run([py, "-m", "dns_detect.models.path_b_train", "--filename", data.name,
               "--data_dir", str(data.parent), "--n_days", "20", "--save_name", "dns_trafficformer",
-              "--split-manifest", manifest, "--seed", str(seed)], env, log)
+              "--split-manifest", manifest, "--seed", str(seed), "--model", args.path_b_model], env, log)
         fusion = [py, "scripts/train_fusion.py", "--labeled", args.data, "--split-manifest", manifest]
         if args.allow_heuristic_labels:
             fusion.append("--allow-heuristic-labels")
@@ -89,6 +90,8 @@ def main():
     ap.add_argument("--seeds", type=int, nargs="+", default=[42, 43, 44, 45, 46])
     ap.add_argument("--out-root", default="models_multiseed")
     ap.add_argument("--skip-path-b", action="store_true", help="Path A only (no Path B, no fusion)")
+    ap.add_argument("--path-b-model", choices=["trafficformer", "iforest"], default="trafficformer",
+                    help="Path B algorithm (iforest trains in minutes, so the full check is practical)")
     ap.add_argument("--out", default=None, help="summary JSON (default: <out-root>/summary.json)")
     ap.add_argument("--allow-heuristic-labels", action="store_true",
                     help="EXPERIMENTAL: train even if some labels are heuristic / weak_behavioral")

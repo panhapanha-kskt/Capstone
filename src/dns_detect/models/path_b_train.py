@@ -3,6 +3,12 @@
 train.py — Path B: Trafficformer (multi-feature, per-client sequence autoencoder)
 DNS Anomaly Detector — Week 5 ML Layer
 
+--model picks Path B's model (default trafficformer):
+  - trafficformer: the Transformer autoencoder below (slow: hours on ~200K rows).
+  - iforest: Isolation Forest on the same benign windows (minutes). Saved as
+    <save_name>_iforest.pkl; "model_type": "iforest" in <save_name>_threshold.json tells
+    path_b_predict which model to load. Same windows, threshold rule and evaluation.
+
 Design (research-backed — see docs/ML_IMPROVEMENTS.md):
   - Input is a MULTI-FEATURE vector per query (PATH_B_FEATURES), not just query
     length (Kitsune reconstructs multi-dimensional vectors; Nadler's tunneling
@@ -16,6 +22,7 @@ Design (research-backed — see docs/ML_IMPROVEMENTS.md):
 Usage:
   python -m dns_detect.models.path_b_train --filename merged_features_labeled.json \
       --n_days 20 --save_name dns_trafficformer --data_dir data/processed
+  python -m dns_detect.models.path_b_train ... --model iforest      # fast Path B
 """
 
 import os
@@ -33,6 +40,7 @@ from dns_detect.parsing.dns_parser import load_multifeature_with_meta, PATH_B_FE
 from dns_detect.models.path_a import transformer_encoder
 from dns_detect.models.path_b_predict import (
     build_client_windows, normalize_features, compute_reconstruction_errors,
+    fit_iforest, iforest_model_path,
 )
 from dns_detect.utils.paths import MODELS_DIR
 
@@ -153,7 +161,10 @@ if __name__ == "__main__":
     parser.add_argument("--n_days",     type=int, required=True,
                         help="Window size (records per window)")
     parser.add_argument("--save_name",  type=str, required=True,
-                        help="Model save name (saved to models/<save_name>.keras)")
+                        help="Model save name (models/<save_name>.keras, or <save_name>_iforest.pkl)")
+    parser.add_argument("--model", choices=["trafficformer", "iforest"], default="trafficformer",
+                        help="Path B model: trafficformer (Transformer autoencoder, default) or "
+                             "iforest (Isolation Forest, trains in minutes)")
     parser.add_argument("--data_dir",   type=str, default="data",
                         help="Data directory (default: data/)")
     parser.add_argument("--threshold-method", choices=["percentile", "mean_std"],
@@ -270,34 +281,47 @@ if __name__ == "__main__":
               f"on ALL val windows (threshold less trustworthy)")
         x_valid_ben = x_valid
 
-    model = build_trafficformer(
-        input_shape=[N_DAYS, F],
-        head_size=64, num_heads=3, ff_dim=3,
-        num_transformer_blocks=3,
-        mlp_units=[64], mlp_dropout=0.4, dropout=0.25,
-        latent_dim=args.latent_dim,
-    )
-    model.compile(loss="mean_squared_error",
-                  optimizer=tf.keras.optimizers.Adam(learning_rate=1e-4))
-    model.summary()
+    IFOREST = args.model == "iforest"
+    IFOREST_TREES = 200
+    if IFOREST:
+        # Isolation Forest: no epochs, no GPU. Each tree is built from a 256-window subsample.
+        import joblib
+        print(f"\n[*] Path B model: Isolation Forest ({IFOREST_TREES} trees) on "
+              f"{len(x_train_ben)} benign windows")
+        model = fit_iforest(x_train_ben, seed=args.seed, n_estimators=IFOREST_TREES)
+        model_path = iforest_model_path(SAVE_NAME, _models_dir)
+        joblib.dump(model, model_path)
+        print(f"[+] Model saved → {model_path}")
+    else:
+        model = build_trafficformer(
+            input_shape=[N_DAYS, F],
+            head_size=64, num_heads=3, ff_dim=3,
+            num_transformer_blocks=3,
+            mlp_units=[64], mlp_dropout=0.4, dropout=0.25,
+            latent_dim=args.latent_dim,
+        )
+        model.compile(loss="mean_squared_error",
+                      optimizer=tf.keras.optimizers.Adam(learning_rate=1e-4))
+        model.summary()
 
-    early_stop = tf.keras.callbacks.EarlyStopping(
-        monitor="val_loss", patience=10, restore_best_weights=True
-    )
-    checkpoint = tf.keras.callbacks.ModelCheckpoint(
-        # Native Keras format: legacy .h5 cannot rebuild MultiHeadAttention under Keras 3.
-        os.path.join(_models_dir, f"{SAVE_NAME}.keras"),
-        monitor="val_loss", verbose=1, save_best_only=True, mode="min",
-    )
-    model.fit(
-        x_train_ben, x_train_ben,   # reconstruction: target = input
-        epochs=args.epochs, batch_size=32,
-        validation_data=(x_valid_ben, x_valid_ben),
-        callbacks=[early_stop, checkpoint],
-    )
-    print(f"\n[+] Model saved → {_models_dir}/{SAVE_NAME}.keras")
+        early_stop = tf.keras.callbacks.EarlyStopping(
+            monitor="val_loss", patience=10, restore_best_weights=True
+        )
+        checkpoint = tf.keras.callbacks.ModelCheckpoint(
+            # Native Keras format: legacy .h5 cannot rebuild MultiHeadAttention under Keras 3.
+            os.path.join(_models_dir, f"{SAVE_NAME}.keras"),
+            monitor="val_loss", verbose=1, save_best_only=True, mode="min",
+        )
+        model.fit(
+            x_train_ben, x_train_ben,   # reconstruction: target = input
+            epochs=args.epochs, batch_size=32,
+            validation_data=(x_valid_ben, x_valid_ben),
+            callbacks=[early_stop, checkpoint],
+        )
+        print(f"\n[+] Model saved → {_models_dir}/{SAVE_NAME}.keras")
 
-    # ── THRESHOLD ON BENIGN VALIDATION ERRORS ─────────────────────
+    # ── THRESHOLD ON BENIGN VALIDATION SCORES ─────────────────────
+    # Autoencoder: reconstruction error. Isolation Forest: -score_samples. Higher = more anomalous.
     print("\n── Calibrating Anomaly Threshold (benign val) ────────────────")
     val_errors = compute_reconstruction_errors(model, x_valid_ben)
     threshold, method, err_mean, err_std = compute_threshold(
@@ -306,11 +330,14 @@ if __name__ == "__main__":
     threshold_path = os.path.join(_models_dir, f"{SAVE_NAME}_threshold.json")
     with open(threshold_path, "w") as f:
         json.dump({
+            # path_b_predict.load_model_artifacts reads model_type to pick the model file
+            "model_type":  args.model,
             "threshold":   threshold,
             "method":      method,
             "window_size": N_DAYS,
             "n_features":  F,
-            "latent_dim":  args.latent_dim,
+            "latent_dim":  None if IFOREST else args.latent_dim,
+            "n_estimators": IFOREST_TREES if IFOREST else None,
             "error_mean":  err_mean,
             "error_std":   err_std,
         }, f, indent=2)
@@ -320,7 +347,6 @@ if __name__ == "__main__":
     print("\n── Final Evaluation (held-out test set) ──────────────────────")
     if len(x_test) > 0 and len(np.unique(yw_test)) > 1:
         from sklearn.metrics import roc_auc_score, average_precision_score, classification_report
-        from sklearn.ensemble import IsolationForest
         from dns_detect.models.thresholds import rates
 
         def _ranked(y, s):
@@ -343,27 +369,36 @@ if __name__ == "__main__":
         atk_med = float(np.median(test_errors[yw_test == 1]))
         ae["separation"] = {"attack_median_error": atk_med, "benign_p99_error": ben_p99,
                             "ratio": atk_med / ben_p99 if ben_p99 > 0 else None}
-        print(f"Autoencoder: recall={ae['recall']:.3f}  FPR={ae['fpr']:.3%}  PR-AUC={pr_auc}  "
-              f"| attack median error / benign p99 error = {ae['separation']['ratio']}")
 
-        # Baseline (Arp et al. P6): Isolation Forest on the same windows, flattened, benign-only,
-        # with its threshold at the same benign-validation percentile → same false-alarm rate.
-        flat = lambda w: w.reshape(len(w), -1)
-        iso = IsolationForest(n_estimators=200, random_state=args.seed, n_jobs=-1).fit(flat(x_train_ben))
-        iso_val = -iso.score_samples(flat(x_valid_ben))
-        iso_thr = float(np.percentile(iso_val, args.percentile))
-        iso_test = -iso.score_samples(flat(x_test))
-        iso_pred = (iso_test > iso_thr).astype(int)
-        iso_pr, iso_roc = _ranked(yw_test, iso_test)
-        iso_block = {**rates(yw_test, iso_pred), "pr_auc": iso_pr, "roc_auc": iso_roc,
-                     "threshold": iso_thr,
-                     "recall_by_family": _family_recall(yw_test, iso_pred, fam_test_win)}
-        print(f"Isolation Forest: recall={iso_block['recall']:.3f}  FPR={iso_block['fpr']:.3%}  PR-AUC={iso_pr}")
-        for f_name in ae["recall_by_family"]:
-            print(f"   {f_name:16s} autoencoder recall={ae['recall_by_family'][f_name]['recall']:.3f}   "
-                  f"isolation forest recall={iso_block['recall_by_family'][f_name]['recall']:.3f}")
+        if IFOREST:
+            # The Isolation Forest IS Path B's model here, so there is no separate baseline.
+            iso_block = None
+            print(f"Isolation Forest: recall={ae['recall']:.3f}  FPR={ae['fpr']:.3%}  PR-AUC={pr_auc}  "
+                  f"| attack median score / benign p99 score = {ae['separation']['ratio']}")
+            for f_name in ae["recall_by_family"]:
+                print(f"   {f_name:16s} isolation forest recall={ae['recall_by_family'][f_name]['recall']:.3f}")
+        else:
+            print(f"Autoencoder: recall={ae['recall']:.3f}  FPR={ae['fpr']:.3%}  PR-AUC={pr_auc}  "
+                  f"| attack median error / benign p99 error = {ae['separation']['ratio']}")
+
+            # Baseline (Arp et al. P6): Isolation Forest on the same windows, flattened, benign-only,
+            # with its threshold at the same benign-validation percentile → same false-alarm rate.
+            iso = fit_iforest(x_train_ben, seed=args.seed, n_estimators=IFOREST_TREES)
+            iso_val = compute_reconstruction_errors(iso, x_valid_ben)
+            iso_thr = float(np.percentile(iso_val, args.percentile))
+            iso_test = compute_reconstruction_errors(iso, x_test)
+            iso_pred = (iso_test > iso_thr).astype(int)
+            iso_pr, iso_roc = _ranked(yw_test, iso_test)
+            iso_block = {**rates(yw_test, iso_pred), "pr_auc": iso_pr, "roc_auc": iso_roc,
+                         "threshold": iso_thr,
+                         "recall_by_family": _family_recall(yw_test, iso_pred, fam_test_win)}
+            print(f"Isolation Forest: recall={iso_block['recall']:.3f}  FPR={iso_block['fpr']:.3%}  PR-AUC={iso_pr}")
+            for f_name in ae["recall_by_family"]:
+                print(f"   {f_name:16s} autoencoder recall={ae['recall_by_family'][f_name]['recall']:.3f}   "
+                      f"isolation forest recall={iso_block['recall_by_family'][f_name]['recall']:.3f}")
 
         save_metrics_block("path_b", {
+            "model_type": args.model,
             "precision": ae["precision"],
             "recall":    ae["recall"],
             "f1":        ae["f1"],
@@ -374,11 +409,14 @@ if __name__ == "__main__":
             "threshold": threshold,
             "threshold_method": method,
             "window_size": N_DAYS,
-            "latent_dim": args.latent_dim,
+            "latent_dim": None if IFOREST else args.latent_dim,
+            "n_estimators": IFOREST_TREES if IFOREST else None,
             "seed": args.seed,
             "features":  PATH_B_FEATURES,
             "split": split_name,
-            "autoencoder": ae,
+            # The model's own detail block; for iforest it is the Isolation Forest itself.
+            "autoencoder": None if IFOREST else ae,
+            "isolation_forest": ae if IFOREST else None,
             "isolation_forest_baseline": iso_block,
             "split_sizes": {
                 "train_windows": int(len(x_train)),
@@ -396,4 +434,7 @@ if __name__ == "__main__":
               "skipped. Need mixed benign+attack data for meaningful Path B metrics.")
 
     print("\n✅ Training complete.")
-    print("   Detects anomalies via RECONSTRUCTION ERROR on multi-feature, per-client windows.")
+    if IFOREST:
+        print("   Detects anomalies via ISOLATION SCORE (Isolation Forest) on multi-feature, per-client windows.")
+    else:
+        print("   Detects anomalies via RECONSTRUCTION ERROR on multi-feature, per-client windows.")

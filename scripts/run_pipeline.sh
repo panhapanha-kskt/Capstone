@@ -102,11 +102,16 @@ MEM_RF="$MODELS_DIR/dns_tunnel_rf.pkl"
 MEM_TF="$MODELS_DIR/dns_tunnel_transformer.keras"
 MEM_SCALER="$MODELS_DIR/dns_scaler.pkl"
 MEM_THRESHOLD="$MODELS_DIR/dns_threshold.json"
-# Path B saves <name>.keras (Keras 3 cannot store MultiHeadAttention in .h5); runs from before
-# Week 3 saved <name>.h5. Same order as path_b_predict: .keras first, then .h5.
-MEM_PATH_B="$MODELS_DIR/${PATH_B_MODEL}.keras"
-[[ -f "$MEM_PATH_B" || ! -f "$MODELS_DIR/${PATH_B_MODEL}.h5" ]] || MEM_PATH_B="$MODELS_DIR/${PATH_B_MODEL}.h5"
 MEM_PATH_B_THRESHOLD="$MODELS_DIR/${PATH_B_MODEL}_threshold.json"
+# Path B model file. Same rule as path_b_predict: the threshold file's "model_type" decides.
+# iforest → <name>_iforest.pkl. Otherwise <name>.keras (Keras 3 cannot store MultiHeadAttention
+# in .h5); runs from before Week 3 saved <name>.h5, so .keras first, then .h5.
+if grep -Eq '"model_type"[[:space:]]*:[[:space:]]*"iforest"' "$MEM_PATH_B_THRESHOLD" 2>/dev/null; then
+  MEM_PATH_B="$MODELS_DIR/${PATH_B_MODEL}_iforest.pkl"
+else
+  MEM_PATH_B="$MODELS_DIR/${PATH_B_MODEL}.keras"
+  [[ -f "$MEM_PATH_B" || ! -f "$MODELS_DIR/${PATH_B_MODEL}.h5" ]] || MEM_PATH_B="$MODELS_DIR/${PATH_B_MODEL}.h5"
+fi
 MEM_PATH_B_NORM="$MODELS_DIR/${PATH_B_MODEL}_norm.json"
 MEM_METADATA="$MODELS_DIR/training_metadata.json"
 

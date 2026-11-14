@@ -1,17 +1,23 @@
 #!/usr/bin/env python3
 """
-predict.py — Path B: Trafficformer Inference (multi-feature, per-client sequences)
+predict.py — Path B inference (multi-feature, per-client sequences)
 DNS Anomaly Detector — Week 5 ML Layer
 
-How it scores:
+Path B has two interchangeable models, chosen at training time and recorded as
+"model_type" in <save_name>_threshold.json:
+  - trafficformer (default): Transformer autoencoder; score = reconstruction error
+    (MSE between a window and its reconstruction).
+  - iforest: Isolation Forest on the flattened window; score = -score_samples(),
+    i.e. how quickly random splits isolate the window. Trains in minutes.
+
+How it scores (both models):
   - Each record is a multi-feature vector (PATH_B_FEATURES: length, entropy,
     subdomain count, digit ratio, longest label) — not a single scalar.
   - Records are grouped by client_ip and sorted by time, then cut into sliding
     windows that never cross a host boundary (a window is a real sequence).
-  - reconstruction_error = MSE(window, reconstructed_window); error > threshold
-    → ANOMALY. The threshold is the 99th percentile of benign-validation error
-    (saved at train time), not mean+kσ.
-  - ml_score_B = sigmoid of the error's z-score (0–1) for fusion with Path A.
+  - score > threshold → ANOMALY. The threshold is the 99th percentile of the
+    benign-validation scores (saved at train time), not mean+kσ.
+  - ml_score_B = sigmoid of the score's z-score (0–1) for fusion with Path A.
 
 Usage:
   python -m dns_detect.models.path_b_predict --filename week3_features_all.json --save_name dns_trafficformer
@@ -25,8 +31,12 @@ import json
 import argparse
 import numpy as np
 import pandas as pd
-import tensorflow as tf
 from pathlib import Path
+
+try:  # only the trafficformer model needs TensorFlow; an iforest model loads without it
+    import tensorflow as tf
+except ImportError:  # pragma: no cover - depends on the environment
+    tf = None
 
 from dns_detect.parsing.dns_parser import load_multifeature_with_meta, PATH_B_FEATURES
 from dns_detect.utils.paths import PROJECT_ROOT, MODELS_DIR
@@ -36,17 +46,61 @@ from dns_detect.utils.paths import PROJECT_ROOT, MODELS_DIR
 # HELPERS (shared with path_b_train.py and fusion/bridge.py)
 # ─────────────────────────────────────────────
 
+def iforest_model_path(save_name: str, model_dir: str) -> str:
+    """Where an Isolation Forest Path B model is saved: <save_name>_iforest.pkl."""
+    return os.path.join(model_dir, f"{save_name}_iforest.pkl")
+
+
+def flatten_windows(X_windows: np.ndarray) -> np.ndarray:
+    """(n_windows, window_size, F) → (n_windows, window_size·F) for tree models."""
+    return X_windows.reshape(len(X_windows), -1)
+
+
+def fit_iforest(x_train_windows: np.ndarray, seed: int = 42, n_estimators: int = 200):
+    """
+    Isolation Forest on benign training windows (Path B's fast model, also its baseline).
+    Each tree isolates windows with random splits on a 256-window subsample, so training
+    time barely grows with the dataset. Score windows with compute_reconstruction_errors().
+    """
+    from sklearn.ensemble import IsolationForest
+    return IsolationForest(n_estimators=n_estimators, random_state=seed,
+                           n_jobs=-1).fit(flatten_windows(x_train_windows))
+
+
 def load_model_artifacts(save_name: str, model_dir: str = None):
     """
     Load model + threshold + normalization params.
     Returns (model, threshold, window_size, error_mean, error_std, norm, features).
     `norm` is {"min": [...F], "range": [...F]} (per-feature).
+    The threshold file's "model_type" decides the model: "iforest" loads
+    <save_name>_iforest.pkl; anything else (or no key) loads the Keras autoencoder.
     """
     if model_dir is None:
         model_dir = str(MODELS_DIR)
     threshold_path = os.path.join(model_dir, f"{save_name}_threshold.json")
     norm_path      = os.path.join(model_dir, f"{save_name}_norm.json")
 
+    td = {}
+    if os.path.exists(threshold_path):
+        with open(threshold_path) as f:
+            td = json.load(f)
+
+    if td.get("model_type") == "iforest":
+        import joblib
+        model_path = iforest_model_path(save_name, model_dir)
+        if not os.path.exists(model_path):
+            raise FileNotFoundError(f"Model not found: {model_path} "
+                                    f"({os.path.basename(threshold_path)} says model_type=iforest)")
+        print(f"[*] Loading model: {model_path}  (Isolation Forest)")
+        model = joblib.load(model_path)
+    else:
+        model = _load_keras_model(save_name, model_dir, td)
+
+    return (model, *_threshold_and_norm(td, norm_path))
+
+
+def _load_keras_model(save_name: str, model_dir: str, td: dict):
+    """The Trafficformer autoencoder: .keras first, then a legacy .h5."""
     # Training saves .keras; older runs saved .h5.
     candidates = [os.path.join(model_dir, f"{save_name}{ext}")
                   for ext in (".keras", ".h5")]
@@ -55,11 +109,9 @@ def load_model_artifacts(save_name: str, model_dir: str = None):
         raise FileNotFoundError(
             f"Model not found: tried {' and '.join(candidates)}"
         )
-
-    td = {}
-    if os.path.exists(threshold_path):
-        with open(threshold_path) as f:
-            td = json.load(f)
+    if tf is None:
+        raise ImportError("TensorFlow is required to load the Trafficformer Path B model "
+                          f"({model_path}); install it or train Path B with --model iforest")
 
     print(f"[*] Loading model: {model_path}")
     try:
@@ -79,7 +131,11 @@ def load_model_artifacts(save_name: str, model_dir: str = None):
         model.load_weights(model_path)
         print(f"[*] Legacy .h5 — architecture rebuilt in code (latent_dim={latent}), weights loaded")
         print("[warn] .h5 models are deprecated under Keras 3 — retrain with path_b_train to save .keras")
+    return model
 
+
+def _threshold_and_norm(td: dict, norm_path: str):
+    """(threshold, window_size, error_mean, error_std, norm, features) from the saved files."""
     if td:
         threshold   = float(td["threshold"])
         window_size = int(td.get("window_size", 20))
@@ -107,7 +163,7 @@ def load_model_artifacts(save_name: str, model_dir: str = None):
         norm = {"min": np.zeros(len(features), dtype=np.float32),
                 "range": np.ones(len(features), dtype=np.float32)}
 
-    return model, threshold, window_size, error_mean, error_std, norm, features
+    return threshold, window_size, error_mean, error_std, norm, features
 
 
 def normalize_features(X: np.ndarray, norm: dict) -> np.ndarray:
@@ -148,9 +204,15 @@ def build_client_windows(X: np.ndarray, client_ip: np.ndarray, order: np.ndarray
 
 
 def compute_reconstruction_errors(model, X_windows: np.ndarray) -> np.ndarray:
-    """Per-window MSE reconstruction error. Shape: (N,)."""
+    """
+    Per-window anomaly score, higher = more anomalous. Shape: (N,).
+      autoencoder     : MSE reconstruction error.
+      Isolation Forest: -score_samples() on the flattened window (has `score_samples`).
+    """
     if len(X_windows) == 0:
         return np.zeros(0, dtype=np.float32)
+    if hasattr(model, "score_samples"):
+        return -model.score_samples(flatten_windows(X_windows))
     reconstructed = model.predict(X_windows, verbose=0)
     return np.mean(np.square(X_windows - reconstructed), axis=(1, 2))
 
@@ -226,7 +288,7 @@ if __name__ == "__main__":
     parser.add_argument("--filename",  type=str, required=True,
                         help="Week-3 features JSON to score")
     parser.add_argument("--save_name", type=str, required=True,
-                        help="Model name (loaded from models/<save_name>.h5)")
+                        help="Model name (models/<save_name>_threshold.json decides the model type)")
     parser.add_argument("--data_dir",  type=str, default="data",
                         help="Data directory (default: data/)")
     parser.add_argument("--model_dir", type=str, default=None,
@@ -240,7 +302,7 @@ if __name__ == "__main__":
     scores, anomalies, covered, threshold = score_records(str(full_path), args.save_name, args.model_dir)
 
     n_cov = int(covered.sum())
-    print("\n=======MODEL OUTPUT (Path B — Trafficformer)=================")
+    print("\n=======MODEL OUTPUT (Path B)==================================")
     print(f"File analyzed     : {full_path}")
     print(f"Records / windows : {len(scores)} / {n_cov}")
     print(f"Anomaly threshold : {threshold:.6f}")

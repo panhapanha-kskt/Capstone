@@ -367,7 +367,7 @@ None of these changes are committed to git yet.
 | v3 comparison table | ✅ confirmed from saved metrics (2026-11-14) |
 | v3 on CIC capture 3 | ✅ 1 / 25,222 (0.004%), same as the baseline (2026-11-14) |
 | v3 leave-one-tool-out | ✅ recall 1.0 on all 8 tools; false alarms 0.35–0.59%, above the 0.1% budget (2026-11-14) |
-| Multi-seed check (baseline, v_dnsshell, v_det, v3) | ❌ not started |
+| Multi-seed check (baseline, v_dnsshell, v_det, v3) | ✅ Path A false alarms over 5 seeds: baseline 9–25, v_dnsshell 7–11, v_det 13–36, v3 8–9 (2026-11-14) |
 | Decision: does v3 replace `models/`? | ❌ |
 
 ---
@@ -381,7 +381,7 @@ None of these changes are committed to git yet.
    - frozen test set: ✅ fusion 7 false alarms (baseline 23), recall 1.0;
    - **CIC capture 3:** ✅ 1 / 25,222 false alarms (0.004%), within the 0.1% budget (2026-11-14);
    - **leave-one-tool-out:** ✅ recall 1.0 on every one of the 8 tools when it is left out of training; false alarms 0.35–0.59%, above the 0.1% budget (2026-11-14, V3_BALANCED_TRAINING.md table 6.4). This is the main recall test, since the frozen test set only contains dnsexfiltrator.
-3. **Multi-seed check** (section 5.4): Path A with 5 seeds for baseline, v_dnsshell, v_det and v3. A difference counts as real only when the min–max ranges across seeds do not overlap.
+3. ✅ **Multi-seed check** (section 5.4): Path A with 5 seeds for baseline, v_dnsshell, v_det and v3. A difference counts as real only when the min–max ranges across seeds do not overlap. Result (V3_BALANCED_TRAINING.md table 6.6): no difference is proven by that rule; v3 vs baseline is borderline (ranges touch at 9); v3 is far more stable (SD 0.55 vs 7.56).
 4. **Write the conclusion** and decide whether `runs/v3` replaces `models/`.
 
 ### 9.2 What to watch in v3's results

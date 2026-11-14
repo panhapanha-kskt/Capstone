@@ -113,13 +113,36 @@ All v3_iforest numbers are read from `runs/v3_iforest/evaluation_metrics.json` b
 
 ---
 
+## 5b. Multi-seed check (Week 5 Tasks 4–5)
+
+Path A trained 5 times per run (seeds 42–46) on the same data and split, with `scripts/run_multiseed.py --skip-path-b`. The training files of the three Week 4 runs were rebuilt first (18,349 / 23,349 / 23,349 rows; the 5,000-row det and dns_shell files recreated in `data/external/tu2023/cap5000/`). Both checks passed: no rows missing from the manifests, and seed 42 reproduces every original number.
+
+Path A false alarms on the frozen test set (1,168 benign rows):
+
+| Run | Seed 42 | Mean | SD | Min | Max |
+|---|---|---|---|---|---|
+| baseline | 23 | 18.2 | 7.56 | 9 | 25 |
+| v_dnsshell | 7 | 8.2 | 1.79 | 7 | 11 |
+| v_det | 36 | 22.0 | 9.14 | 13 | 36 |
+| v3 | 8 | 8.6 | 0.55 | 8 | 9 |
+
+Verdicts (a difference is real only when the min–max ranges do not overlap):
+
+- **dns_shell helps:** not proven (7–11 overlaps 9–25).
+- **det hurts:** not supported (13–36 overlaps 9–25); seed 42's 36 was v_det's worst seed.
+- **v3 better than the baseline:** borderline (8–9 and 9–25 touch at 9).
+
+v3 is far more stable than any earlier run (SD 0.55 vs 7.56 for the baseline). Seed 42 was near the worst case for the baseline and the worst for v_det, so the single-run comparisons overstated both effects. The fusion's spread over seeds was not measured.
+
+---
+
 ## 6. What the results show
 
 1. **v3 is at least as good as every earlier run on false alarms:** 7 on the frozen test set (baseline 23) and 1 of 25,222 on unseen benign traffic.
 2. **Recall generalises across tools:** 1.0 on every tool when left out of training, so the frozen test set's dnsexfiltrator-only attacks are not hiding a weak tool.
 3. **The false-alarm threshold drifts:** set for 0.1% on validation rows, it gives 0.35–0.59% on later benign rows in leave-one-tool-out, and 0.6% (7 of 1,168) on the frozen test set. On benign traffic from another network (CIC capture 3) it stays at 0.004%.
 4. **The Isolation Forest fixes Path B without changing the final result:** the fusion stays at recall 1.0 and 7 false alarms, and training drops from 7 h 17 min to 39 min.
-5. **Single seed.** Every number above comes from one training run (seed 42). Whether 23 → 7 is larger than training randomness is answered by the multi-seed check.
+5. **Training randomness is large for the small runs.** Over 5 seeds the baseline's Path A false alarms range from 9 to 25, while v3's stay at 8–9. By the non-overlap rule no difference between runs is proven; v3 vs baseline is borderline (the ranges touch at 9). v3's main gain is a result that barely moves between trainings.
 
 ---
 
@@ -127,6 +150,6 @@ All v3_iforest numbers are read from `runs/v3_iforest/evaluation_metrics.json` b
 
 | Measurement | How | Where it goes |
 |---|---|---|
-| Multi-seed check (5 seeds) for baseline, v_dnsshell, v_det, v3 (and v3_iforest) | next task.md Tasks 4–5 | V3_BALANCED_TRAINING.md table 6.6 |
+| Fusion spread over seeds (optional; practical now with the Isolation Forest Path B) | `run_multiseed.py --path-b-model iforest` without `--skip-path-b` | V3_BALANCED_TRAINING.md 5.4.3 |
 | Pipeline run with `runs/v3_iforest` | next task.md 13.5 | next task.md checklist |
 | Conclusion and the replace-`models/` decision | next task.md Task 6 | V3_BALANCED_TRAINING.md section 6.5 |

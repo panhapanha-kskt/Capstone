@@ -31,6 +31,7 @@ Detailed documents:
 - **v3 does not raise false alarms on unseen benign traffic:** 1 of 25,222 queries in CIC capture 3 (0.004%), the same as the baseline.
 - **Every tunnel tool is caught when it is left out of training:** recall 1.0 on all 8 tools in the leave-one-tool-out test. False alarms in that test are 0.35–0.59%, above the 0.1% budget.
 - **Path B now uses an Isolation Forest.** The autoencoder had recall 0.0 on v3 and took about 6 h 37 min to train. The Isolation Forest scores recall 1.0 on the same data and trains in about a minute.
+- **Multi-seed check:** over 5 seeds, v3's Path A false alarms stay at 8–9 while the baseline's range from 9 to 25. No difference between runs is proven by the non-overlap rule (v3 vs baseline is borderline), but v3 is far more stable.
 - **The full system is as good as before and 11 times faster to train:** `runs/v3_iforest` has fusion recall 1.0 and 7 false alarms on the frozen test set, the same as v3, and trained in 39 min 5 s instead of 7 h 17 min.
 
 ---
@@ -90,7 +91,18 @@ All numbers below were produced on the Kali VM and are recorded with their comma
 
 Recall **1.0 for all 8 tools** (cobaltstrike, det, dns2tcp, dns_shell, dnscat2, dnsexfiltrator, iodine, ozymandns). False alarms 0.35–0.59%, mean 0.427%, against a threshold set for 0.1%.
 
-### 4.4 Path B: autoencoder vs Isolation Forest (same data, split and seed)
+### 4.4 Multi-seed check (Path A false alarms, seeds 42–46)
+
+| Run | Mean | SD | Min–max |
+|---|---|---|---|
+| baseline | 18.2 | 7.56 | 9–25 |
+| v_dnsshell | 8.2 | 1.79 | 7–11 |
+| v_det | 22.0 | 9.14 | 13–36 |
+| **v3** | **8.6** | **0.55** | **8–9** |
+
+No difference is proven by the non-overlap rule: dns_shell's help and det's harm are within training randomness, and v3 vs baseline is borderline (ranges touch at 9). v3 is far more stable.
+
+### 4.5 Path B: autoencoder vs Isolation Forest (same data, split and seed)
 
 | | Autoencoder | Isolation Forest |
 |---|---|---|
@@ -146,7 +158,7 @@ The autoencoder remains the default, so earlier runs and saved models are unchan
 | v3_iforest on CIC capture 3; Path B metrics confirmed from the saved file | ✅ 1 / 25,222; Path B recall 1.0, fusion 7 false alarms |
 | Unit tests (`test_path_b_iforest.py`, `test_path_b_load.py`, `test_bridge.py`) | ✅ 47 passed |
 | Pipeline run with `runs/v3_iforest` | ❌ |
-| Multi-seed check (Week 5 Tasks 4–5) | ❌ |
+| Multi-seed check (Week 5 Tasks 4–5) | ✅ baseline 9–25, v_dnsshell 7–11, v_det 13–36, v3 8–9 (Path A false alarms, 5 seeds) |
 | Conclusion and the replace-`models/` decision (Task 6) | ❌ |
 | Mentor agreement on a non-deep-learning Path B | ❌ |
 | Week 6 dashboard end-to-end test (Task 8) | ❌ |
@@ -159,7 +171,7 @@ In order (commands in [next task.md](next%20task.md)):
 
 1. ~~`bash scripts/week5_eval.sh --skip-lofo`~~ done: v3_iforest confirmed (Path B recall 1.0, fusion 7 false alarms, CIC capture 3 1 / 25,222).
 2. ~~Unit tests (Task 10.1)~~ done: 47 passed. Still to do: the pipeline with `runs/v3_iforest` (Task 10.5).
-3. Multi-seed check (Tasks 4–5). With the Isolation Forest, the full check including Path B and the fusion is now practical.
+3. ~~Multi-seed check (Tasks 4–5)~~ done: v3 8–9 vs baseline 9–25 false alarms; no difference proven by the non-overlap rule, v3 far more stable. Optional: the full check including Path B and the fusion, now practical with the Isolation Forest.
 4. Conclusion and decision (Task 6): `runs/v3`, `runs/v3_iforest`, or keep `models/`. The current evidence favours `runs/v3_iforest`: same final results as v3, with a Path B that works.
 5. Save the result files in git (Task 7), test the dashboard (Task 8), fix stale documentation (Task 9).
 6. Ask the mentor to agree that Path B may be a classical machine-learning model.

@@ -99,7 +99,7 @@ tests/           - Smoke tests
 
 1. ~~Evaluate v3 on CIC capture 3~~ — done 2026-11-14: 1 / 25,222 false alarms (0.004%), within the 0.1% budget
 2. ~~Leave-one-tool-out test~~ — done 2026-11-14: recall 1.0 on all 8 tools when each is left out; false alarms 0.35–0.59%, above the 0.1% budget
-3. Multi-seed check (5 seeds) for baseline, v_dnsshell, v_det, and v3
+3. ~~Multi-seed check (5 seeds)~~ — done 2026-11-14: Path A false alarms baseline 9–25 (mean 18.2), v3 8–9 (mean 8.6); v3 is far more stable, but the improvement is borderline by the non-overlap rule
 4. Fix Path B autoencoder — recall dropped to 0.0 after training on larger benign set (fusion compensates via Path A, but Path B needs repair)
 5. Write conclusion and decide whether v3 replaces production `models/`
 

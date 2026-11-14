@@ -769,8 +769,8 @@ Not needed to close Week 5 or Week 6. Listed so they are not forgotten.
 - [x] Task 1: comparison script run, table 6.2 confirmed (fusion FA 23 / 7 / 38 / 7, recall 1.0)
 - [x] Task 2: v3 on CIC capture 3 recorded in table 6.3 (1 / 25,222 = 0.004%)
 - [x] Task 3: leave-one-tool-out run, table 6.4 filled (recall 1.0 on all 8 tools; false alarms 0.35–0.59%)
-- [ ] Task 4: training files rebuilt (18349 / 23349 / 23349 rows), `cap5000/` created
-- [ ] Task 5: multi-seed run for all four, both checks passed, table 6.6 filled, verdicts written
+- [x] Task 4: training files rebuilt (18349 / 23349 / 23349 rows), `cap5000/` created (det and dns_shell conversions match Week 4; 2026-11-14)
+- [x] Task 5: multi-seed run for all four, both checks passed, table 6.6 filled, verdicts written (v3 8–9 vs baseline 9–25; no difference proven by the non-overlap rule; 2026-11-14)
 - [ ] Task 10 done first (see the Path B section below): `runs/v3_iforest` is the second candidate
 - [ ] Task 6: conclusion 6.5 written, decision between `runs/v3`, `runs/v3_iforest` or keeping `models/` made and recorded
 - [ ] Task 6: Week 5 report section 8 and README "Remaining Work" updated

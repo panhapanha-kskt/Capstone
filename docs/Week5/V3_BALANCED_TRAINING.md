@@ -220,7 +220,7 @@ Every result so far comes from **one training run (seed 42)**. Training has rand
 |---|---|---|---|
 | baseline vs v_dnsshell | 23 vs 7 | 15–35 vs 3–14 | probably real |
 | baseline vs v_det | 23 vs 38 | 15–35 vs 27–52 | **unclear**: the ranges overlap |
-| baseline vs v3 | 23 vs ? | | fill in after v3 finishes |
+| baseline vs v3 | 23 vs 8 | | measured: see table 6.6 (ranges 9–25 vs 8–9, touching at 9) |
 
 Those ranges cover only counting noise, not training randomness. The fix: train each configuration with **5 seeds** (42–46) on the **same split** and report the **mean ± standard deviation**. Only the seed changes; the data and test rows stay identical, so the spread across seeds shows exactly how much training randomness moves the result.
 
@@ -399,12 +399,22 @@ Path A false alarms on the frozen test set (about 1,168 benign rows), seeds 42�
 
 | Run | Seed 42 (single run) | Mean | SD | Min | Max |
 |---|---|---|---|---|---|
-| baseline | 23 | | | | |
-| v_dnsshell | 7 | | | | |
-| v_det | 36 | | | | |
-| v3 | | | | | |
+| baseline | 23 | 18.2 | 7.56 | 9 | 25 |
+| v_dnsshell | 7 | 8.2 | 1.79 | 7 | 11 |
+| v_det | 36 | 22.0 | 9.14 | 13 | 36 |
+| v3 | 8 | 8.6 | 0.55 | 8 | 9 |
 
-Verdict (5.4.4): dns_shell helps — … · det hurts — … · v3 better than baseline — …
+Recorded 2026-11-14 (`scripts/run_multiseed.py --skip-path-b`, summaries in `runs/multiseed_<run>/summary.json`). Both checks passed: no training log reports rows missing from the manifest, and seed 42 reproduces every original single-run number (23, 7, 36, 8).
+
+Verdict (5.4.4), by the rule that a difference is real only when the min–max ranges do not overlap:
+
+- **dns_shell helps: not proven.** v_dnsshell's max (11) is above the baseline's min (9). The means differ (8.2 vs 18.2), but the ranges overlap.
+- **det hurts: not supported.** v_det's min (13) is far below the baseline's max (25). Its 36 in seed 42 was its worst seed; the Week 4 "23 → 38" was mostly training randomness.
+- **v3 better than the baseline: borderline, not proven by the strict rule.** v3's max (9) equals the baseline's min (9): the ranges touch at one value.
+
+**The clearest result is stability:** the baseline's false alarms range from 9 to 25 with the seed alone; v3's from 8 to 9 (SD 0.55 vs 7.56). With 12 times more data, v3 gives nearly the same result every time it is trained. Seed 42 was near the worst case for the baseline (23) and the worst for v_det (36), so the single-run comparisons overstated both effects.
+
+These are Path A false alarms. The fusion followed Path A in every run, but its own spread over seeds was not measured (5.4.3, optional).
 
 ---
 
@@ -419,7 +429,7 @@ Verdict (5.4.4): dns_shell helps — … · det hurts — … · v3 better than 
 - [x] 5.1 comparison table run and copied into 6.2 (confirmed from each run's `evaluation_metrics.json`, 2026-11-14)
 - [x] 5.2 CIC capture 3 false alarms recorded in 6.3 (v3: 1 / 25,222)
 - [x] 5.3 leave-one-tool-out → table 6.4 (recall 1.0 on all 8 tools, false alarms 0.35–0.59%)
-- [ ] 5.4.1 training files rebuilt for baseline, v_dnsshell, v_det (5,000-row dns_shell/det files recreated in `cap5000/`)
-- [ ] 5.4.2 Path A multi-seed (5 seeds) for baseline, v_dnsshell, v_det, v3 → table 6.6
+- [x] 5.4.1 training files rebuilt for baseline, v_dnsshell, v_det (5,000-row dns_shell/det files recreated in `cap5000/`; 18349 / 23349 / 23349 rows)
+- [x] 5.4.2 Path A multi-seed (5 seeds) for baseline, v_dnsshell, v_det, v3 → table 6.6 (v3 8–9, baseline 9–25)
 - [ ] 5.4.3 (optional) full multi-seed with Path B and fusion
 - [ ] Conclusion 6.5 written · replace-`models/` decision made

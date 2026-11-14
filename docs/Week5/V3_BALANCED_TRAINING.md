@@ -386,12 +386,40 @@ Recorded 2026-11-14 with `scripts/week5_eval.sh` (`run_cv.py --strategies lofo -
 - **False alarms:** 0.35–0.59%, about four times the 0.1% budget the threshold was set for on validation rows. The threshold does not hold on later benign traffic: the same validation-to-test drift as on the frozen test set. Report it as a limitation.
 - **Correction to the raw output:** that run also listed `benign_cic` and `benign_tu2023` with recall 0.0 and printed a headline of mean 0.8 / min 0.0. Those two are benign sources, not tools: `run_cv.py` only excluded families named exactly `benign`. They have no attacks to recall, so they are left out above, and the headline over the 8 tools is mean 1.0 / min 1.0. `run_cv.py` now considers attack families only.
 
-### 6.5 Conclusion (write after the tables are filled)
+### 6.5 Conclusion (written 2026-11-14)
 
-- Did the 12× data increase (18K → 218K rows) move the frozen-test numbers beyond the seed spread (table 6.6)?
-- Did Path B finally improve with 110K extra benign rows?
-- Does v3 keep recall 1.0 on the frozen test set and ~0 false alarms on CIC capture 3?
-- **Decision: does `runs/v3` replace `models/`?**
+**1. Did the 12× data increase (18K → 218K rows) move the frozen-test numbers beyond the seed spread?**
+
+Not by the strict rule. Over 5 seeds, v3's Path A false alarms are 8–9 and the baseline's 9–25 (table 6.6); the ranges touch at 9, so the improvement is borderline, not proven. The averages differ clearly (8.6 vs 18.2), and v3 is far more stable (SD 0.55 vs 7.56): the larger dataset mostly removed the run-to-run randomness. The single-run comparison (23 → 7 fusion false alarms) overstated the gain, because seed 42 was near the baseline's worst case.
+
+**2. Did Path B finally improve with 110K extra benign rows?**
+
+No. The autoencoder's false alarms fell (112 → 79), but its recall fell from 1.0 to 0.0: it reconstructed tunnel windows better than unusual benign windows (Week 5 report, Finding 1). Path B was therefore replaced by an Isolation Forest on the same windows (`--path-b-model iforest`; docs/Week6/PATH_B_ISOLATION_FOREST.md). On v3's data it reaches recall 1.0, and the full run `runs/v3_iforest` trains in 39 min 5 s instead of 7 h 17 min.
+
+**3. Does v3 keep recall 1.0 on the frozen test set and ~0 false alarms on CIC capture 3?**
+
+Yes, both v3 and v3_iforest:
+
+| | v3 | v3_iforest |
+|---|---|---|
+| Fusion recall / false alarms, frozen test set (table 6.2) | 1.0 / 7 | 1.0 / 7 |
+| CIC capture 3, unseen benign (table 6.3) | 1 / 25,222 (0.004%) | 1 / 25,222 (0.004%) |
+| Leave-one-tool-out recall, 8 tools (table 6.4, same training data) | 1.0 on every tool | same data |
+| Path B recall | 0.0 | 1.0 |
+| Training time | 7 h 17 min | 39 min 5 s |
+
+Limitations to report: the frozen test set's attacks are all dnsexfiltrator; false alarms in leave-one-tool-out are 0.35–0.59%, above the 0.1% budget the threshold was set for; the fusion's spread over seeds was not measured (5.4.3).
+
+**4. Decision: does `runs/v3` replace `models/`?**
+
+- **Candidate: `runs/v3_iforest`**, not `runs/v3`. Both give the same final results, but v3's Path B detects nothing, and replacing `models/` with v3 would swap the old Path B (recall 1.0) for one with recall 0.0. v3_iforest has a working Path B and trains about 11 times faster.
+- **`models/` is not replaced yet.** It stays unchanged until the mentor agrees that Path B may be a classical machine-learning model (Isolation Forest) rather than deep learning. Until then the pipeline runs on the candidate by setting the folder:
+
+  ```bash
+  DNS_DETECT_MODELS_DIR=runs/v3_iforest ./scripts/run_pipeline.sh
+  ```
+
+- **After approval:** back up `models/` (`cp -r models models_backup_before_v3_iforest`), copy the model files of `runs/v3_iforest` into it, and run `./scripts/run_pipeline.sh` once to confirm it loads (docs/Week6/next task.md, section 9.2). The dashboard checks `models/` for trained models, so it shows the new model only after this step.
 
 ### 6.6 Multi-seed check: Path A, 5 seeds
 
@@ -432,4 +460,4 @@ These are Path A false alarms. The fusion followed Path A in every run, but its 
 - [x] 5.4.1 training files rebuilt for baseline, v_dnsshell, v_det (5,000-row dns_shell/det files recreated in `cap5000/`; 18349 / 23349 / 23349 rows)
 - [x] 5.4.2 Path A multi-seed (5 seeds) for baseline, v_dnsshell, v_det, v3 → table 6.6 (v3 8–9, baseline 9–25)
 - [ ] 5.4.3 (optional) full multi-seed with Path B and fusion
-- [ ] Conclusion 6.5 written · replace-`models/` decision made
+- [x] Conclusion 6.5 written · replace-`models/` decision made (candidate `runs/v3_iforest`; `models/` kept until mentor approval; 2026-11-14)

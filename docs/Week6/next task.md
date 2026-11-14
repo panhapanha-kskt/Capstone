@@ -772,8 +772,8 @@ Not needed to close Week 5 or Week 6. Listed so they are not forgotten.
 - [x] Task 4: training files rebuilt (18349 / 23349 / 23349 rows), `cap5000/` created (det and dns_shell conversions match Week 4; 2026-11-14)
 - [x] Task 5: multi-seed run for all four, both checks passed, table 6.6 filled, verdicts written (v3 8–9 vs baseline 9–25; no difference proven by the non-overlap rule; 2026-11-14)
 - [ ] Task 10 done first (see the Path B section below): `runs/v3_iforest` is the second candidate
-- [ ] Task 6: conclusion 6.5 written, decision between `runs/v3`, `runs/v3_iforest` or keeping `models/` made and recorded
-- [ ] Task 6: Week 5 report section 8 and README "Remaining Work" updated
+- [x] Task 6: conclusion 6.5 written, decision between `runs/v3`, `runs/v3_iforest` or keeping `models/` made and recorded (candidate `runs/v3_iforest`, `models/` kept until mentor approval)
+- [x] Task 6: Week 5 report section 8 and README "Remaining Work" updated
 
 **Protect the results**
 

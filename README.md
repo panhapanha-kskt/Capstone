@@ -101,7 +101,7 @@ tests/           - Smoke tests
 2. ~~Leave-one-tool-out test~~ — done 2026-11-14: recall 1.0 on all 8 tools when each is left out; false alarms 0.35–0.59%, above the 0.1% budget
 3. ~~Multi-seed check (5 seeds)~~ — done 2026-11-14: Path A false alarms baseline 9–25 (mean 18.2), v3 8–9 (mean 8.6); v3 is far more stable, but the improvement is borderline by the non-overlap rule
 4. Fix Path B autoencoder — recall dropped to 0.0 after training on larger benign set (fusion compensates via Path A, but Path B needs repair)
-5. Write conclusion and decide whether v3 replaces production `models/`
+5. ~~Write conclusion and decide whether v3 replaces production `models/`~~ — done 2026-11-14: candidate `runs/v3_iforest`; `models/` kept until mentor approval
 
 See [Week 5 Progress Report](docs/Week5/WEEK5_PROGRESS_REPORT.md) and [V3 Training Plan](docs/Week5/V3_BALANCED_TRAINING.md) for full details.
 

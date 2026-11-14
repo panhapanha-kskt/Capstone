@@ -381,11 +381,11 @@ There are now two candidates on the same data and split. They share Path A (same
 
 Replace `models/` with a candidate only if **all** of these hold for it:
 
-- [ ] fusion recall on the frozen test set is 1.0 (task 1 / task 10.4);
-- [ ] fusion false alarms on the frozen test set are at or below the baseline's 23 (task 1 / task 10.4);
-- [ ] false alarms on CIC capture 3 are within the 0.1% budget, 25 or fewer (task 2);
-- [ ] leave-one-tool-out recall shows no tool that v3's data fails to cover badly (task 3; same data for both candidates);
-- [ ] the improvement over the baseline is larger than the seed spread (task 5).
+- [x] fusion recall on the frozen test set is 1.0 (task 1 / task 10.4); both candidates: 1.0
+- [x] fusion false alarms on the frozen test set are at or below the baseline's 23 (task 1 / task 10.4); both: 7
+- [x] false alarms on CIC capture 3 are within the 0.1% budget, 25 or fewer (task 2); both: 1
+- [x] leave-one-tool-out recall shows no tool that v3's data fails to cover badly (task 3; same data for both candidates); 1.0 on all 8
+- [ ] the improvement over the baseline is larger than the seed spread (task 5). **Not met:** v3 8–9 vs baseline 9–25, ranges touch at 9 (borderline). Recorded as a limitation in V3_BALANCED_TRAINING.md 6.5.
 
 **Choosing between them, if both pass:** prefer `runs/v3_iforest` unless its fusion false alarms are clearly worse than v3's 7. v3's Path B detects nothing, so replacing `models/` with v3 would swap the old Path B (recall 1.0) for one with recall 0.0. `runs/v3_iforest` does not have that problem. State the reasoning in the conclusion either way.
 
@@ -411,9 +411,9 @@ For `runs/v3_iforest`, Path B is `dns_trafficformer_iforest.pkl` plus its `_thre
 
 ### 9.3 Update the other documents
 
-- [ ] V3_BALANCED_TRAINING.md: section 6.5 written, all boxes in section 7 ticked.
-- [ ] WEEK5_PROGRESS_REPORT.md section 8: change the three ❌ rows to ✅ with the numbers.
-- [ ] README.md "Remaining Work": remove the finished items, add the v3 results for CIC capture 3 and the multi-seed verdict.
+- [x] V3_BALANCED_TRAINING.md: section 6.5 written, all boxes in section 7 ticked (5.4.3 is optional and left open).
+- [x] WEEK5_PROGRESS_REPORT.md section 8: change the three ❌ rows to ✅ with the numbers.
+- [x] README.md "Remaining Work": remove the finished items, add the v3 results for CIC capture 3 and the multi-seed verdict.
 
 ---
 
@@ -422,6 +422,8 @@ For `runs/v3_iforest`, Path B is `dns_trafficformer_iforest.pkl` plus its `_thre
 Today every Week 5 result exists only on the Kali VM. `logs/` is gitignored and `runs/` has never been committed. If the VM is lost, no number in the report has a source.
 
 Copy the **small** result files into the docs folder and commit them. Do not commit model binaries or `merged_labeled.json`.
+
+**Shortcut:** `bash scripts/save_evidence.sh` does all of this section in one step. It copies the result files of every run (baseline, v_dnsshell, v_det, v3, v3_iforest), the multi-seed summaries, leave-one-tool-out, the CIC capture 3 scores, the Path B-only test, the key log lines and the two unseen-tool CSVs (checking they show 5,000 / 5,000). It skips anything over 5 MB and writes an index, `docs/Week5/evidence/README.md`. It ends by printing the `git add` / `commit` / `push` commands. `runs/` is now in `.gitignore`, so model folders cannot be committed by accident. The manual commands below do the same by hand.
 
 ```bash
 mkdir -p docs/Week5/evidence
@@ -771,14 +773,14 @@ Not needed to close Week 5 or Week 6. Listed so they are not forgotten.
 - [x] Task 3: leave-one-tool-out run, table 6.4 filled (recall 1.0 on all 8 tools; false alarms 0.35–0.59%)
 - [x] Task 4: training files rebuilt (18349 / 23349 / 23349 rows), `cap5000/` created (det and dns_shell conversions match Week 4; 2026-11-14)
 - [x] Task 5: multi-seed run for all four, both checks passed, table 6.6 filled, verdicts written (v3 8–9 vs baseline 9–25; no difference proven by the non-overlap rule; 2026-11-14)
-- [ ] Task 10 done first (see the Path B section below): `runs/v3_iforest` is the second candidate
+- [x] Task 10 done first (see the Path B section below): `runs/v3_iforest` is the second candidate
 - [x] Task 6: conclusion 6.5 written, decision between `runs/v3`, `runs/v3_iforest` or keeping `models/` made and recorded (candidate `runs/v3_iforest`, `models/` kept until mentor approval)
 - [x] Task 6: Week 5 report section 8 and README "Remaining Work" updated
 
 **Protect the results**
 
 - [ ] Task 7: evidence files copied to `docs/Week5/evidence/` (including `v3_iforest` and the two unseen-tool CSVs) and committed
-- [ ] Task 7: decided whether `runs/` goes into `.gitignore`
+- [x] Task 7: decided whether `runs/` goes into `.gitignore` (yes: added; small result files go to `docs/Week5/evidence/`)
 
 **Close Week 6**
 

@@ -1,0 +1,142 @@
+{
+  "last_trained": "2026-11-07T07:37:44Z",
+  "training_data": "/home/ounnha/Documents/Capstone/data/processed/merged_features_all.json",
+  "total_samples": "23349",
+  "attack_samples": "15000",
+  "benign_samples": "8349",
+  "attack_types_seen": [
+    "dns2tcp",
+    "dns_shell",
+    "dnsexfiltrator"
+  ],
+  "label_source": "files 23349",
+  "path_b_model_name": "dns_trafficformer",
+  "path_b_window_size": 20,
+  "seed": 42,
+  "split_manifest": "/home/ounnha/Documents/Capstone/runs/v_dnsshell/split_manifest.json",
+  "split_mode": "extended",
+  "split_sha256": "5b49c417964188ffbe2208a4e97ff0ce0da35b88acbc4c6e1fc0ac237a9c925f",
+  "fusion_trained": true,
+  "retrain_mode": "force",
+  "new_files_this_run": 3,
+  "skipped_files_this_run": 0,
+  "source_summary": {
+    "total_source_files": 3,
+    "csv_files": 0,
+    "json_files": 3,
+    "pcap_converted": 0,
+    "log_converted": 0
+  },
+  "feature_snapshot": {
+    "entropy": {
+      "mean": 3.9476,
+      "stdev": 0.7251,
+      "min": 1.0,
+      "max": 5.2199
+    },
+    "subdomain_depth": {
+      "mean": 2.536,
+      "stdev": 1.2076,
+      "min": 0,
+      "max": 5
+    },
+    "query_length": {
+      "mean": 51.8825,
+      "stdev": 55.7571,
+      "min": 2,
+      "max": 194
+    },
+    "numeric_ratio": {
+      "mean": 0.1689,
+      "stdev": 0.1963,
+      "min": 0.0,
+      "max": 0.6627
+    },
+    "consecutive_pattern_score": {
+      "mean": 0.0764,
+      "stdev": 0.0734,
+      "min": 0.0,
+      "max": 0.5714
+    },
+    "num_labels": {
+      "mean": 3.536,
+      "stdev": 1.2076,
+      "min": 1,
+      "max": 6
+    },
+    "first_label_length": {
+      "mean": 13.8814,
+      "stdev": 17.4089,
+      "min": 1,
+      "max": 63
+    },
+    "first_label_entropy": {
+      "mean": 2.5702,
+      "stdev": 1.1457,
+      "min": 0.0,
+      "max": 5.0285
+    },
+    "client_port": {
+      "mean": 49690.3852,
+      "stdev": 8499.457,
+      "min": 2482,
+      "max": 65534
+    },
+    "answer_size": {
+      "mean": 0,
+      "stdev": 0.0,
+      "min": 0,
+      "max": 0
+    },
+    "hour_of_day": {
+      "mean": 12.6965,
+      "stdev": 9.6694,
+      "min": 0,
+      "max": 23
+    },
+    "day_of_week": {
+      "mean": 2.8513,
+      "stdev": 1.1023,
+      "min": 1,
+      "max": 5
+    }
+  },
+  "model_files": {
+    "rf": "/home/ounnha/Documents/Capstone/runs/v_dnsshell/dns_tunnel_rf.pkl",
+    "transformer": "/home/ounnha/Documents/Capstone/runs/v_dnsshell/dns_tunnel_transformer.keras",
+    "scaler": "/home/ounnha/Documents/Capstone/runs/v_dnsshell/dns_scaler.pkl",
+    "threshold": "/home/ounnha/Documents/Capstone/runs/v_dnsshell/dns_threshold.json",
+    "trafficformer": "/home/ounnha/Documents/Capstone/runs/v_dnsshell/dns_trafficformer.keras",
+    "tf_threshold": "/home/ounnha/Documents/Capstone/runs/v_dnsshell/dns_trafficformer_threshold.json",
+    "tf_norm": "/home/ounnha/Documents/Capstone/runs/v_dnsshell/dns_trafficformer_norm.json",
+    "provenance": "/home/ounnha/Documents/Capstone/runs/v_dnsshell/training_provenance.json",
+    "split": "/home/ounnha/Documents/Capstone/runs/v_dnsshell/split_manifest.json",
+    "fusion": "/home/ounnha/Documents/Capstone/runs/v_dnsshell/fusion_lr.pkl"
+  },
+  "path_a_trained": "2026-11-07T07:37:44Z",
+  "path_a_prev": "first time",
+  "path_a_split_sha256": "5b49c417964188ffbe2208a4e97ff0ce0da35b88acbc4c6e1fc0ac237a9c925f",
+  "path_b_trained": "2026-11-07T07:37:44Z",
+  "path_b_prev": "first time",
+  "path_b_split_sha256": "5b49c417964188ffbe2208a4e97ff0ce0da35b88acbc4c6e1fc0ac237a9c925f",
+  "training_history": [
+    {
+      "date": "2026-11-07T07:37:44Z",
+      "total_samples": "23349",
+      "attack_samples": "15000",
+      "attack_types": [
+        "dns2tcp",
+        "dns_shell",
+        "dnsexfiltrator"
+      ],
+      "source_files": 3,
+      "new_files": 3,
+      "skipped_files": 0,
+      "retrain_mode": "force",
+      "path_a": "true",
+      "path_b": "true",
+      "fusion": "true",
+      "split_sha256": "5b49c417964188ffbe2208a4e97ff0ce0da35b88acbc4c6e1fc0ac237a9c925f"
+    }
+  ]
+}

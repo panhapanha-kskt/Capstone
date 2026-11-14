@@ -1,0 +1,17 @@
+[1/12] Models: Path A missing, Path B missing → training Path A + Path B
+[2/12] Environment ready (Python 3.13.12)
+[3/12] Found 10 new file(s): 10 labeled (10 json), 0 unlabeled
+[4/12] EDA: labeled 218338 (100000 attack / 118338 benign), unlabeled 0 · 0 warning(s) → data/processed/eda_data_report.html
+[5/12] Pre-process: nothing to convert (JSON/CSV only)
+[6/12] Merged 218334 records from 10 file(s) · 74895 distinct feature vectors, 75% of rows duplicated · 1 label conflicts
+[7/12] Feature EDA saved with 1 warning(s) → data/processed/eda_report.json
+[8/12] Labeled 100000 attack / 118334 benign · files 218334 (families: cobaltstrike,det,dns2tcp,dns_shell,dnscat2,dnsexfiltrator,iodine,ozymandns)
+[9/12] Split: extended time_seed42.json with 199985 new rows (train/val only, test frozen) · train 183203 / val 32563 / test 2568 → runs/v3/split_manifest.json
+[10/12] Path A trained (F1 0.9972, PR-AUC 1)
+Autoencoder: recall=0.000  FPR=6.227%  PR-AUC=0.7869499434400382  | attack median error / benign p99 error = 0.5731161940188516
+Isolation Forest: recall=1.000  FPR=9.341%  PR-AUC=1.0
+✅ Training complete.
+[11/12] Path B trained (window 20, anomaly threshold 0.01741)
+[*] fusion weights: {'ml_score_A': 12.850202580607585, 'ml_score_B': 3.0414153242355013, 'has_score_B': -3.5038012146591204, 'rule_hits': 0.6759991830578199}  intercept=-5.385  threshold=0.486541
+[12/12] Fusion trained (test: recall 1, false alarms 7 vs OR rule 87)
+Training complete in 26243s

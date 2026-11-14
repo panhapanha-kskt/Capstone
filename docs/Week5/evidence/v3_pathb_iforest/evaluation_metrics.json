@@ -1,0 +1,66 @@
+{
+  "path_b": {
+    "model_type": "iforest",
+    "precision": 0.9312204989885368,
+    "recall": 1.0,
+    "f1": 0.9643854748603351,
+    "fpr": 0.09340659340659341,
+    "pr_auc": 1.0,
+    "pr_auc_baseline": 0.5584310553983016,
+    "roc_auc": 1.0,
+    "threshold": 0.4907428131961453,
+    "threshold_method": "percentile_99",
+    "window_size": 20,
+    "latent_dim": null,
+    "n_estimators": 200,
+    "seed": 42,
+    "features": [
+      "query_length",
+      "query_entropy",
+      "subdomain_count",
+      "digit_ratio",
+      "longest_label",
+      "uniq_subdomains_5m",
+      "uniq_ratio_5m",
+      "info_chars_per_min",
+      "nxdomain_share_5m",
+      "qpm_client_5m",
+      "iat_std_5m"
+    ],
+    "split": "manifest:split_manifest.json",
+    "autoencoder": null,
+    "isolation_forest": {
+      "recall": 1.0,
+      "fpr": 0.09340659340659341,
+      "precision": 0.9312204989885368,
+      "f1": 0.9643854748603351,
+      "false_alarms": 102,
+      "benign": 1092,
+      "attack": 1381,
+      "pr_auc": 1.0,
+      "roc_auc": 1.0,
+      "recall_by_family": {
+        "dnsexfiltrator": {
+          "recall": 1.0,
+          "support": 1381
+        }
+      },
+      "separation": {
+        "attack_median_error": 0.6892646584126219,
+        "benign_p99_error": 0.5104681685846841,
+        "ratio": 1.3502598219271262
+      }
+    },
+    "isolation_forest_baseline": null,
+    "split_sizes": {
+      "train_windows": 182918,
+      "val_windows": 32259,
+      "test_windows": 2473,
+      "benign_train_windows": 99408
+    },
+    "test_support": {
+      "benign": 1092,
+      "attack": 1381
+    }
+  }
+}

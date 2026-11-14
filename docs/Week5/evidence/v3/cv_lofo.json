@@ -1,0 +1,234 @@
+{
+  "dataset_version": "666a21188af03909730d23264f84da357b5dfdadea23cdca13f7f7d2e6614e85",
+  "labeled_paths": [
+    "runs/v3/merged_labeled.json"
+  ],
+  "by_strategy": {
+    "lofo": {
+      "step3": {
+        "per_family": {
+          "benign_cic": {
+            "recall": 0.0,
+            "fpr": 0.004521254119834362,
+            "precision": 0.0,
+            "f1": 0.0,
+            "false_alarms": 107,
+            "benign": 23666,
+            "attack": 0,
+            "threshold": 0.060000000000000005,
+            "at_0.5": {
+              "recall": 0.0,
+              "fpr": 0.0003380376912025691,
+              "precision": 0.0,
+              "f1": 0.0,
+              "false_alarms": 8,
+              "benign": 23666,
+              "attack": 0
+            }
+          },
+          "benign_tu2023": {
+            "recall": 0.0,
+            "fpr": 0.004521254119834362,
+            "precision": 0.0,
+            "f1": 0.0,
+            "false_alarms": 107,
+            "benign": 23666,
+            "attack": 0,
+            "threshold": 0.060000000000000005,
+            "at_0.5": {
+              "recall": 0.0,
+              "fpr": 0.0003380376912025691,
+              "precision": 0.0,
+              "f1": 0.0,
+              "false_alarms": 8,
+              "benign": 23666,
+              "attack": 0
+            }
+          },
+          "cobaltstrike": {
+            "recall": 1.0,
+            "fpr": 0.004436744697033719,
+            "precision": 0.9930486593843099,
+            "f1": 0.9965122072745392,
+            "false_alarms": 105,
+            "benign": 23666,
+            "attack": 15000,
+            "threshold": 0.060000000000000005,
+            "at_0.5": {
+              "recall": 1.0,
+              "fpr": 0.0003380376912025691,
+              "precision": 0.9994669509594882,
+              "f1": 0.9997334044254865,
+              "false_alarms": 8,
+              "benign": 23666,
+              "attack": 15000
+            },
+            "pr_auc": 0.9999999733439957
+          },
+          "det": {
+            "recall": 1.0,
+            "fpr": 0.004014197583030508,
+            "precision": 0.9937065253395164,
+            "f1": 0.9968433294567205,
+            "false_alarms": 95,
+            "benign": 23666,
+            "attack": 15000,
+            "threshold": 0.07500000000000001,
+            "at_0.5": {
+              "recall": 1.0,
+              "fpr": 0.0003380376912025691,
+              "precision": 0.9994669509594882,
+              "f1": 0.9997334044254865,
+              "false_alarms": 8,
+              "benign": 23666,
+              "attack": 15000
+            },
+            "pr_auc": 0.9999997333866424
+          },
+          "dns2tcp": {
+            "recall": 1.0,
+            "fpr": 0.0058734048846446375,
+            "precision": 0.9829217348568621,
+            "f1": 0.9913873226346118,
+            "false_alarms": 139,
+            "benign": 23666,
+            "attack": 8000,
+            "threshold": 0.045000000000000005,
+            "at_0.5": {
+              "recall": 0.999625,
+              "fpr": 0.0003380376912025691,
+              "precision": 0.999000624609619,
+              "f1": 0.9993127147766323,
+              "false_alarms": 8,
+              "benign": 23666,
+              "attack": 8000
+            },
+            "pr_auc": 0.9999964592552648
+          },
+          "dns_shell": {
+            "recall": 1.0,
+            "fpr": 0.0036761598918279388,
+            "precision": 0.9942334460131239,
+            "f1": 0.9971083856815236,
+            "false_alarms": 87,
+            "benign": 23666,
+            "attack": 15000,
+            "threshold": 0.07500000000000001,
+            "at_0.5": {
+              "recall": 1.0,
+              "fpr": 0.0003380376912025691,
+              "precision": 0.9994669509594882,
+              "f1": 0.9997334044254865,
+              "false_alarms": 8,
+              "benign": 23666,
+              "attack": 15000
+            },
+            "pr_auc": 1.0
+          },
+          "dnscat2": {
+            "recall": 1.0,
+            "fpr": 0.0041409617172314716,
+            "precision": 0.993509074049543,
+            "f1": 0.9967439696989834,
+            "false_alarms": 98,
+            "benign": 23666,
+            "attack": 15000,
+            "threshold": 0.07000000000000002,
+            "at_0.5": {
+              "recall": 1.0,
+              "fpr": 0.0003380376912025691,
+              "precision": 0.9994669509594882,
+              "f1": 0.9997334044254865,
+              "false_alarms": 8,
+              "benign": 23666,
+              "attack": 15000
+            },
+            "pr_auc": 0.9999999866693328
+          },
+          "dnsexfiltrator": {
+            "recall": 1.0,
+            "fpr": 0.00409870700583115,
+            "precision": 0.9537434430138293,
+            "f1": 0.9763241396143519,
+            "false_alarms": 97,
+            "benign": 23666,
+            "attack": 2000,
+            "threshold": 0.07500000000000001,
+            "at_0.5": {
+              "recall": 1.0,
+              "fpr": 0.0003380376912025691,
+              "precision": 0.9960159362549801,
+              "f1": 0.998003992015968,
+              "false_alarms": 8,
+              "benign": 23666,
+              "attack": 2000
+            },
+            "pr_auc": 0.9999985044865404
+          },
+          "iodine": {
+            "recall": 1.0,
+            "fpr": 0.003507141046226654,
+            "precision": 0.9944971159583638,
+            "f1": 0.9972409666589104,
+            "false_alarms": 83,
+            "benign": 23666,
+            "attack": 15000,
+            "threshold": 0.060000000000000005,
+            "at_0.5": {
+              "recall": 0.9901333333333333,
+              "fpr": 0.0,
+              "precision": 1.0,
+              "f1": 0.9950422082272544,
+              "false_alarms": 0,
+              "benign": 23666,
+              "attack": 15000
+            },
+            "pr_auc": 0.9999992130961558
+          },
+          "ozymandns": {
+            "recall": 1.0,
+            "fpr": 0.004394489985633398,
+            "precision": 0.993114406779661,
+            "f1": 0.9965453095934096,
+            "false_alarms": 104,
+            "benign": 23666,
+            "attack": 15000,
+            "threshold": 0.09000000000000001,
+            "at_0.5": {
+              "recall": 1.0,
+              "fpr": 0.0003380376912025691,
+              "precision": 0.9994669509594882,
+              "f1": 0.9997334044254865,
+              "false_alarms": 8,
+              "benign": 23666,
+              "attack": 15000
+            },
+            "pr_auc": 0.999999973337777
+          }
+        },
+        "headline": {
+          "unseen_tool_recall_mean": 0.8,
+          "unseen_tool_recall_min": 0.0,
+          "benign_fpr_mean": 0.00431843150511282,
+          "families": 10,
+          "features": [
+            "query_length",
+            "query_entropy",
+            "has_digits",
+            "subdomain_count",
+            "longest_label",
+            "digit_ratio",
+            "unique_char_ratio",
+            "uniq_subdomains_5m",
+            "uniq_ratio_5m",
+            "info_chars_per_min",
+            "nxdomain_share_5m",
+            "qpm_client_5m",
+            "iat_std_5m",
+            "bigram_logprob"
+          ]
+        }
+      }
+    }
+  }
+}

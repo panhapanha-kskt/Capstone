@@ -1,0 +1,10 @@
+{
+  "q90": 0.0014911230327592567,
+  "q99": 0.002857979751512715,
+  "high": 0.48654092817212446,
+  "n_benign": 17663,
+  "note": "V1 was fitted on these validation rows, so its benign quantiles are in-sample.",
+  "tier_source": "v1_in_sample_val",
+  "threshold_rule": ">=",
+  "split": "split_manifest.json"
+}

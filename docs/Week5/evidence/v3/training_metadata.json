@@ -1,0 +1,152 @@
+{
+  "last_trained": "2026-11-08T14:17:32Z",
+  "training_data": "/home/ounnha/Documents/Capstone/data/processed/merged_features_all.json",
+  "total_samples": "218334",
+  "attack_samples": "100000",
+  "benign_samples": "118334",
+  "attack_types_seen": [
+    "cobaltstrike",
+    "det",
+    "dns2tcp",
+    "dns_shell",
+    "dnscat2",
+    "dnsexfiltrator",
+    "iodine",
+    "ozymandns"
+  ],
+  "label_source": "files 218334",
+  "path_b_model_name": "dns_trafficformer",
+  "path_b_window_size": 20,
+  "seed": 42,
+  "split_manifest": "/home/ounnha/Documents/Capstone/runs/v3/split_manifest.json",
+  "split_mode": "extended",
+  "split_sha256": "672ce6c732009bfc39b0837490bdf3f4de473b6aa9e24f85887df52bc8edcea0",
+  "fusion_trained": true,
+  "retrain_mode": "force",
+  "new_files_this_run": 10,
+  "skipped_files_this_run": 0,
+  "source_summary": {
+    "total_source_files": 10,
+    "csv_files": 0,
+    "json_files": 10,
+    "pcap_converted": 0,
+    "log_converted": 0
+  },
+  "feature_snapshot": {
+    "entropy": {
+      "mean": 4.0713,
+      "stdev": 0.5988,
+      "min": 1.0,
+      "max": 5.2332
+    },
+    "subdomain_depth": {
+      "mean": 3.5074,
+      "stdev": 1.8875,
+      "min": 0,
+      "max": 30
+    },
+    "query_length": {
+      "mean": 71.8256,
+      "stdev": 66.2658,
+      "min": 2,
+      "max": 251
+    },
+    "numeric_ratio": {
+      "mean": 0.2751,
+      "stdev": 0.2394,
+      "min": 0.0,
+      "max": 0.8154
+    },
+    "consecutive_pattern_score": {
+      "mean": 0.0609,
+      "stdev": 0.0591,
+      "min": 0.0,
+      "max": 0.7143
+    },
+    "num_labels": {
+      "mean": 4.5074,
+      "stdev": 1.8875,
+      "min": 1,
+      "max": 31
+    },
+    "first_label_length": {
+      "mean": 24.1805,
+      "stdev": 19.9479,
+      "min": 1,
+      "max": 63
+    },
+    "first_label_entropy": {
+      "mean": 2.9145,
+      "stdev": 1.1257,
+      "min": 0.0,
+      "max": 5.1155
+    },
+    "client_port": {
+      "mean": 50860.955,
+      "stdev": 8431.9057,
+      "min": 2482,
+      "max": 65535
+    },
+    "answer_size": {
+      "mean": 0,
+      "stdev": 0.0,
+      "min": 0,
+      "max": 0
+    },
+    "hour_of_day": {
+      "mean": 9.4024,
+      "stdev": 8.2657,
+      "min": 0,
+      "max": 23
+    },
+    "day_of_week": {
+      "mean": 3.3363,
+      "stdev": 1.9017,
+      "min": 0,
+      "max": 6
+    }
+  },
+  "model_files": {
+    "rf": "/home/ounnha/Documents/Capstone/runs/v3/dns_tunnel_rf.pkl",
+    "transformer": "/home/ounnha/Documents/Capstone/runs/v3/dns_tunnel_transformer.keras",
+    "scaler": "/home/ounnha/Documents/Capstone/runs/v3/dns_scaler.pkl",
+    "threshold": "/home/ounnha/Documents/Capstone/runs/v3/dns_threshold.json",
+    "trafficformer": "/home/ounnha/Documents/Capstone/runs/v3/dns_trafficformer.keras",
+    "tf_threshold": "/home/ounnha/Documents/Capstone/runs/v3/dns_trafficformer_threshold.json",
+    "tf_norm": "/home/ounnha/Documents/Capstone/runs/v3/dns_trafficformer_norm.json",
+    "provenance": "/home/ounnha/Documents/Capstone/runs/v3/training_provenance.json",
+    "split": "/home/ounnha/Documents/Capstone/runs/v3/split_manifest.json",
+    "fusion": "/home/ounnha/Documents/Capstone/runs/v3/fusion_lr.pkl"
+  },
+  "path_a_trained": "2026-11-08T14:17:32Z",
+  "path_a_prev": "first time",
+  "path_a_split_sha256": "672ce6c732009bfc39b0837490bdf3f4de473b6aa9e24f85887df52bc8edcea0",
+  "path_b_trained": "2026-11-08T14:17:32Z",
+  "path_b_prev": "first time",
+  "path_b_split_sha256": "672ce6c732009bfc39b0837490bdf3f4de473b6aa9e24f85887df52bc8edcea0",
+  "training_history": [
+    {
+      "date": "2026-11-08T14:17:32Z",
+      "total_samples": "218334",
+      "attack_samples": "100000",
+      "attack_types": [
+        "cobaltstrike",
+        "det",
+        "dns2tcp",
+        "dns_shell",
+        "dnscat2",
+        "dnsexfiltrator",
+        "iodine",
+        "ozymandns"
+      ],
+      "source_files": 10,
+      "new_files": 10,
+      "skipped_files": 0,
+      "retrain_mode": "force",
+      "path_a": "true",
+      "path_b": "true",
+      "fusion": "true",
+      "split_sha256": "672ce6c732009bfc39b0837490bdf3f4de473b6aa9e24f85887df52bc8edcea0"
+    }
+  ]
+}

@@ -1,0 +1,13 @@
+[1/12] Models: Path A missing, Path B missing → training Path A + Path B
+[2/12] Environment ready (Python 3.13.12)
+[3/12] Found 10 new file(s): 10 labeled (10 json), 0 unlabeled
+[4/12] EDA: labeled 218338 (100000 attack / 118338 benign), unlabeled 0 · 0 warning(s) → data/processed/eda_data_report.html
+[5/12] Pre-process: nothing to convert (JSON/CSV only)
+[6/12] Merged 218334 records from 10 file(s) · 74895 distinct feature vectors, 75% of rows duplicated · 1 label conflicts
+[7/12] Feature EDA saved with 1 warning(s) → data/processed/eda_report.json
+[8/12] Labeled 100000 attack / 118334 benign · files 218334 (families: cobaltstrike,det,dns2tcp,dns_shell,dnscat2,dnsexfiltrator,iodine,ozymandns)
+[9/12] Split: extended time_seed42.json with 199985 new rows (train/val only, test frozen) · train 183203 / val 32563 / test 2568 → runs/v3_iforest/split_manifest.json
+[10/12] Path A trained (F1 0.9972, PR-AUC 1)
+[11/12] Path B trained (iforest, window 20, anomaly threshold 0.4907)
+[12/12] Fusion trained (test: recall 1, false alarms 7 vs OR rule 110)
+✓ Training complete in 39m 5s · models saved to runs/v3_iforest/ · next: ./scripts/run_pipeline.sh

@@ -1,0 +1,19 @@
+{
+  "inputs": [
+    "ml_score_A",
+    "ml_score_B",
+    "has_score_B",
+    "rule_hits"
+  ],
+  "threshold": 0.48762079836198174,
+  "fpr_budget": 0.001,
+  "coefficients": {
+    "ml_score_A": 8.752668845072462,
+    "ml_score_B": 2.8208896169002626,
+    "has_score_B": -0.7492490063373393,
+    "rule_hits": 0.0
+  },
+  "intercept": -5.7607044467034925,
+  "split": "split_manifest.json",
+  "test_rows": 2568
+}

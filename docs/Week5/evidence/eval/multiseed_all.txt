@@ -1,0 +1,62 @@
+nohup: ignoring input
+===== baseline =====
+[*] label provenance: {'provenance': 18349}
+[*] seed 42: training → runs/multiseed_baseline/seed42  (log: runs/multiseed_baseline/seed42/train.log)
+[*] seed 43: training → runs/multiseed_baseline/seed43  (log: runs/multiseed_baseline/seed43/train.log)
+[*] seed 44: training → runs/multiseed_baseline/seed44  (log: runs/multiseed_baseline/seed44/train.log)
+[*] seed 45: training → runs/multiseed_baseline/seed45  (log: runs/multiseed_baseline/seed45/train.log)
+[*] seed 46: training → runs/multiseed_baseline/seed46  (log: runs/multiseed_baseline/seed46/train.log)
+
+metric                                   mean         sd        min        max
+path_a.false_alarms                   18.2000     7.5631     9.0000    25.0000
+path_a.fpr                             0.0156     0.0065     0.0077     0.0214
+path_a.pr_auc                          0.9987     0.0019     0.9957     1.0000
+path_a.recall                          1.0000     0.0000     1.0000     1.0000
+
+[+] summary → runs/multiseed_baseline/summary.json
+===== v_dnsshell =====
+[*] label provenance: {'provenance': 23349}
+[*] seed 42: training → runs/multiseed_v_dnsshell/seed42  (log: runs/multiseed_v_dnsshell/seed42/train.log)
+[*] seed 43: training → runs/multiseed_v_dnsshell/seed43  (log: runs/multiseed_v_dnsshell/seed43/train.log)
+[*] seed 44: training → runs/multiseed_v_dnsshell/seed44  (log: runs/multiseed_v_dnsshell/seed44/train.log)
+[*] seed 45: training → runs/multiseed_v_dnsshell/seed45  (log: runs/multiseed_v_dnsshell/seed45/train.log)
+[*] seed 46: training → runs/multiseed_v_dnsshell/seed46  (log: runs/multiseed_v_dnsshell/seed46/train.log)
+
+metric                                   mean         sd        min        max
+path_a.false_alarms                    8.2000     1.7889     7.0000    11.0000
+path_a.fpr                             0.0070     0.0015     0.0060     0.0094
+path_a.pr_auc                          1.0000     0.0000     1.0000     1.0000
+path_a.recall                          1.0000     0.0000     1.0000     1.0000
+
+[+] summary → runs/multiseed_v_dnsshell/summary.json
+===== v_det =====
+[*] label provenance: {'provenance': 23349}
+[*] seed 42: training → runs/multiseed_v_det/seed42  (log: runs/multiseed_v_det/seed42/train.log)
+[*] seed 43: training → runs/multiseed_v_det/seed43  (log: runs/multiseed_v_det/seed43/train.log)
+[*] seed 44: training → runs/multiseed_v_det/seed44  (log: runs/multiseed_v_det/seed44/train.log)
+[*] seed 45: training → runs/multiseed_v_det/seed45  (log: runs/multiseed_v_det/seed45/train.log)
+[*] seed 46: training → runs/multiseed_v_det/seed46  (log: runs/multiseed_v_det/seed46/train.log)
+
+metric                                   mean         sd        min        max
+path_a.false_alarms                   22.0000     9.1378    13.0000    36.0000
+path_a.fpr                             0.0188     0.0078     0.0111     0.0308
+path_a.pr_auc                          1.0000     0.0000     1.0000     1.0000
+path_a.recall                          1.0000     0.0000     1.0000     1.0000
+
+[+] summary → runs/multiseed_v_det/summary.json
+===== v3 =====
+[*] label provenance: {'provenance': 218334}
+[*] seed 42: training → runs/multiseed_v3/seed42  (log: runs/multiseed_v3/seed42/train.log)
+[*] seed 43: training → runs/multiseed_v3/seed43  (log: runs/multiseed_v3/seed43/train.log)
+[*] seed 44: training → runs/multiseed_v3/seed44  (log: runs/multiseed_v3/seed44/train.log)
+[*] seed 45: training → runs/multiseed_v3/seed45  (log: runs/multiseed_v3/seed45/train.log)
+[*] seed 46: training → runs/multiseed_v3/seed46  (log: runs/multiseed_v3/seed46/train.log)
+
+metric                                   mean         sd        min        max
+path_a.false_alarms                    8.6000     0.5477     8.0000     9.0000
+path_a.fpr                             0.0074     0.0005     0.0068     0.0077
+path_a.pr_auc                          0.9974     0.0024     0.9950     1.0000
+path_a.recall                          1.0000     0.0000     1.0000     1.0000
+
+[+] summary → runs/multiseed_v3/summary.json
+===== ALL DONE =====

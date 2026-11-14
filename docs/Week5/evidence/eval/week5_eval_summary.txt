@@ -1,0 +1,39 @@
+== Task 0: files ==
+ok       runs/baseline
+ok       runs/v_dnsshell
+ok       runs/v_det
+ok       runs/v3
+ok       runs/v3_iforest
+ok       runs/v3/evaluation_metrics.json
+ok       runs/v3/split_manifest.json
+ok       runs/v3/merged_labeled.json
+ok       logs/training_20261107_220017.log
+ok       data/external/cic/cic_benign_test.json
+tu2023 json files: 9
+v3 merged_labeled rows: 218334 (expected 218334)
+    [8/12] Labeled 100000 attack / 118334 benign · files 218334 (families: cobaltstrike,det,dns2tcp,dns_shell,dnscat2,dnsexfiltrator,iodine,ozymandns)
+    [9/12] Split: extended time_seed42.json with 199985 new rows (train/val only, test frozen) · train 183203 / val 32563 / test 2568 → runs/v3/split_manifest.json
+    [10/12] Path A trained (F1 0.9972, PR-AUC 1)
+    Autoencoder: recall=0.000  FPR=6.227%  PR-AUC=0.7869499434400382  | attack median error / benign p99 error = 0.5731161940188516
+    Isolation Forest: recall=1.000  FPR=9.341%  PR-AUC=1.0
+    ✅ Training complete.
+    [11/12] Path B trained (window 20, anomaly threshold 0.01741)
+    [*] fusion weights: {'ml_score_A': 12.850202580607585, 'ml_score_B': 3.0414153242355013, 'has_score_B': -3.5038012146591204, 'rule_hits': 0.6759991830578199}  intercept=-5.385  threshold=0.486541
+    [12/12] Fusion trained (test: recall 1, false alarms 7 vs OR rule 87)
+    Training complete in 26243s
+
+== Task 1: frozen test set ==
+run            PathB         A recall  A FA A PR-AUC B recall   B fpr  OR FA fus recall fus FA
+baseline       trafficformer   1.0000    23   0.9957   1.0000  0.0879    116     1.0000     23
+v_det          trafficformer   1.0000    36   1.0000   1.0000  0.0824    119     1.0000     38
+v_dnsshell     trafficformer   1.0000     7   1.0000   1.0000  0.0888    113     1.0000      7
+v3             trafficformer   1.0000     8   1.0000   0.0000  0.0623     87     1.0000      7
+v3_iforest     iforest         1.0000     8   1.0000   1.0000  0.0934    110     1.0000      7
+
+== Task 2: CIC capture 3 (Path A, budget 25) ==
+v3: 1 / 25222 flagged = 0.004%  (within budget)
+v3_iforest: 1 / 25222 flagged = 0.004%  (within budget)
+reference: baseline 1, v_dnsshell 0, v_det 1
+
+== Task 3: leave-one-tool-out (feature set step3, threshold at 0.1% benign FPR) ==
+skipped (--skip-lofo)

@@ -1,0 +1,73 @@
+{
+  "data": "runs/v_dnsshell/merged_labeled.json",
+  "manifest": "runs/v_dnsshell/split_manifest.json",
+  "seeds": [
+    42,
+    43,
+    44,
+    45,
+    46
+  ],
+  "per_seed": {
+    "42": {
+      "path_a.recall": 1.0,
+      "path_a.fpr": 0.0059931506849315065,
+      "path_a.false_alarms": 7.0,
+      "path_a.pr_auc": 1.0
+    },
+    "43": {
+      "path_a.recall": 1.0,
+      "path_a.fpr": 0.0059931506849315065,
+      "path_a.false_alarms": 7.0,
+      "path_a.pr_auc": 1.0
+    },
+    "44": {
+      "path_a.recall": 1.0,
+      "path_a.fpr": 0.007705479452054794,
+      "path_a.false_alarms": 9.0,
+      "path_a.pr_auc": 1.0
+    },
+    "45": {
+      "path_a.recall": 1.0,
+      "path_a.fpr": 0.009417808219178082,
+      "path_a.false_alarms": 11.0,
+      "path_a.pr_auc": 1.0
+    },
+    "46": {
+      "path_a.recall": 1.0,
+      "path_a.fpr": 0.0059931506849315065,
+      "path_a.false_alarms": 7.0,
+      "path_a.pr_auc": 1.0
+    }
+  },
+  "summary": {
+    "path_a.false_alarms": {
+      "mean": 8.2,
+      "sd": 1.7888543819998317,
+      "min": 7.0,
+      "max": 11.0,
+      "n": 5
+    },
+    "path_a.fpr": {
+      "mean": 0.00702054794520548,
+      "sd": 0.0015315534092464312,
+      "min": 0.0059931506849315065,
+      "max": 0.009417808219178082,
+      "n": 5
+    },
+    "path_a.pr_auc": {
+      "mean": 1.0,
+      "sd": 0.0,
+      "min": 1.0,
+      "max": 1.0,
+      "n": 5
+    },
+    "path_a.recall": {
+      "mean": 1.0,
+      "sd": 0.0,
+      "min": 1.0,
+      "max": 1.0,
+      "n": 5
+    }
+  }
+}

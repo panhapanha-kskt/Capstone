@@ -1,0 +1,9 @@
+{
+  "threshold": 0.04162900149822235,
+  "method": "percentile_99",
+  "window_size": 20,
+  "n_features": 11,
+  "latent_dim": 8,
+  "error_mean": 0.013389965519309044,
+  "error_std": 0.009722942486405373
+}

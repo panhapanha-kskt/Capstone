@@ -1,0 +1,11 @@
+{
+  "model_type": "iforest",
+  "threshold": 0.4907428131961453,
+  "method": "percentile_99",
+  "window_size": 20,
+  "n_features": 11,
+  "latent_dim": null,
+  "n_estimators": 200,
+  "error_mean": 0.40563454124480114,
+  "error_std": 0.02687376854207595
+}

@@ -48,6 +48,8 @@ The time estimates are guesses, not measurements. Only Path A is trained in task
 
 **Order matters.** Do tasks 0 to 5 in order, then task 10, then task 6. Task 5 depends on task 4. Task 6 depends on tasks 1, 2, 3, 5 and 10: its decision is now between two candidates, `runs/v3` (autoencoder Path B) and `runs/v3_iforest` (Isolation Forest Path B).
 
+**Shortcut for tasks 0–3:** `bash scripts/week5_eval.sh` runs all four in order and saves one log in `logs/week5_eval_<time>.log`. It ends with a SUMMARY block: paste that block to fill in tables 6.2, 6.3 and 6.4. `--skip-lofo` stops after task 2 (minutes); task 3 is the slow part. It also includes `runs/v3_iforest` once task 10 has created it. The sections below explain each step and what the numbers mean.
+
 ---
 
 ## 2. Setup (every new terminal)

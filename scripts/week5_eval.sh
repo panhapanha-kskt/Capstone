@@ -26,6 +26,7 @@ cd "$PROJECT_ROOT" || exit 1
 export PYTHONPATH="$PROJECT_ROOT/src${PYTHONPATH:+:$PYTHONPATH}"
 export TF_CPP_MIN_LOG_LEVEL=2
 export PYTHONIOENCODING=utf-8
+export PYTHONUNBUFFERED=1   # print progress as it happens, even through the pipes below
 unset DNS_DETECT_MODELS_DIR
 
 SKIP_LOFO=false
@@ -144,7 +145,7 @@ else
     echo "  running (one Random Forest per tool; this is the slow part)..."
     python3 scripts/run_cv.py --labeled runs/v3/merged_labeled.json --strategies lofo \
         --lofo-feature-sets step3 --splits-dir runs/v3/cv_splits --out "$LOFO_OUT" 2>&1 \
-      | grep -vE 'Invalid DH parameters|^I0000|oneDNN' || true
+      | grep --line-buffered -vE 'Invalid DH parameters|^I0000|oneDNN' || true
   fi
   if [[ -f "$LOFO_OUT" ]]; then
     python3 - "$LOFO_OUT" <<'EOF' | tee -a "$SUMMARY"

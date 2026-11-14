@@ -173,5 +173,5 @@ In order (commands in [next task.md](next%20task.md)):
 2. ~~Unit tests (Task 10.1)~~ done: 47 passed. Still to do: the pipeline with `runs/v3_iforest` (Task 10.5).
 3. ~~Multi-seed check (Tasks 4–5)~~ done: v3 8–9 vs baseline 9–25 false alarms; no difference proven by the non-overlap rule, v3 far more stable. Optional: the full check including Path B and the fusion, now practical with the Isolation Forest.
 4. ~~Conclusion and decision (Task 6)~~ done: candidate `runs/v3_iforest` (same final results as v3, a Path B that works); `models/` stays unchanged until the mentor approves the Isolation Forest Path B.
-5. Save the result files in git (Task 7), test the dashboard (Task 8), fix stale documentation (Task 9).
+5. ~~Save the result files in git (Task 7)~~ done: 46 files in [docs/Week5/evidence/](../Week5/evidence/README.md), including the det and dns_shell unseen-tool results (both 5,000 / 5,000). Still to do: test the dashboard (Task 8), fix stale documentation (Task 9).
 6. Ask the mentor to agree that Path B may be a classical machine-learning model.

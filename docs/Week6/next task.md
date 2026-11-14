@@ -757,7 +757,7 @@ Not needed to close Week 5 or Week 6. Listed so they are not forgotten.
 | **Other Path B fixes** | Task 10 replaces the autoencoder. If the autoencoder must stay, the remaining options from the Week 5 report are: check feature scaling, or train per benign source. | Medium |
 | **Full multi-seed with Path B and fusion (5.4.3)** | Only if task 5 leaves a question open. With the Isolation Forest it is practical for v3 too: add `--path-b-model iforest` to the 5.4.3 command in V3_BALANCED_TRAINING.md. With the autoencoder, do it only for a Week 4 run overnight. | minutes per seed (iforest) · 1.5–2 h per small run (autoencoder) |
 | **Test v3 on a Tu daily capture** | About 280,000 unseen benign queries, 11 times larger than CIC capture 3. Needs a daily-only JSON, because `benign_tu2023.json` also contains ALEXA, which is in training. | Low |
-| **Re-run the unseen-tool tests and keep the CSVs** | Only det and dns_shell have result CSVs left on Kali (task 7 saves them). ozymandns, cobaltstrike, dnscat2 and iodine's 4,996 / 5,000 have no saved evidence. Needs 5,000-row files for those tools in `cap5000/`, then `--infer` with `runs/baseline`. | Low |
+| **Re-run the unseen-tool tests and keep the CSVs** | det and dns_shell are saved in `docs/Week5/evidence/unseen_tool/` (both 5,000 / 5,000). ozymandns, cobaltstrike, dnscat2 and iodine's 4,996 / 5,000 still have no saved evidence. Needs 5,000-row files for those tools in `cap5000/`, then `--infer` with `runs/baseline`. | Low |
 | **Look at iodine's 4 misses** | Comes for free with the task above: find which queries were missed. | Low |
 | **Week 7 dashboard features** | Roadmap P0 items in WEEK6_AUDIT_AND_FORTINET_ROADMAP.md section 3.1. | Large |
 
@@ -779,7 +779,7 @@ Not needed to close Week 5 or Week 6. Listed so they are not forgotten.
 
 **Protect the results**
 
-- [ ] Task 7: evidence files copied to `docs/Week5/evidence/` (including `v3_iforest` and the two unseen-tool CSVs) and committed
+- [x] Task 7: evidence files copied to `docs/Week5/evidence/` (including `v3_iforest` and the two unseen-tool CSVs) and committed (46 files, commit `596bff0`; both CSVs 5,000 / 5,000; 2026-11-14)
 - [x] Task 7: decided whether `runs/` goes into `.gitignore` (no: nothing is hidden; results are published in `docs/Week5/evidence/`; do not `git add runs/` itself, its model and training files can exceed GitHub's 100 MB limit)
 
 **Close Week 6**

@@ -423,7 +423,7 @@ Today every Week 5 result exists only on the Kali VM. `logs/` is gitignored and 
 
 Copy the **small** result files into the docs folder and commit them. Do not commit model binaries or `merged_labeled.json`.
 
-**Shortcut:** `bash scripts/save_evidence.sh` does all of this section in one step. It copies the result files of every run (baseline, v_dnsshell, v_det, v3, v3_iforest), the multi-seed summaries, leave-one-tool-out, the CIC capture 3 scores, the Path B-only test, the key log lines and the two unseen-tool CSVs (checking they show 5,000 / 5,000). It skips anything over 5 MB and writes an index, `docs/Week5/evidence/README.md`. It ends by printing the `git add` / `commit` / `push` commands. `runs/` is now in `.gitignore`, so model folders cannot be committed by accident. The manual commands below do the same by hand.
+**Shortcut:** `bash scripts/save_evidence.sh` does all of this section in one step. It copies the result files of every run (baseline, v_dnsshell, v_det, v3, v3_iforest), the multi-seed summaries, leave-one-tool-out, the CIC capture 3 scores, the Path B-only test, the key log lines and the two unseen-tool CSVs (checking they show 5,000 / 5,000). It skips only files over 50 MB (GitHub warns above 50 MB and rejects above 100 MB) and writes an index, `docs/Week5/evidence/README.md`. It ends by printing the `git add` / `commit` / `push` commands and the GitHub link where the evidence is visible once pushed. Model files and the `merged_labeled.json` training copies stay in `runs/`: they are not results, and they can exceed GitHub's file limit. The manual commands below do the same by hand.
 
 ```bash
 mkdir -p docs/Week5/evidence
@@ -780,7 +780,7 @@ Not needed to close Week 5 or Week 6. Listed so they are not forgotten.
 **Protect the results**
 
 - [ ] Task 7: evidence files copied to `docs/Week5/evidence/` (including `v3_iforest` and the two unseen-tool CSVs) and committed
-- [x] Task 7: decided whether `runs/` goes into `.gitignore` (yes: added; small result files go to `docs/Week5/evidence/`)
+- [x] Task 7: decided whether `runs/` goes into `.gitignore` (no: nothing is hidden; results are published in `docs/Week5/evidence/`; do not `git add runs/` itself, its model and training files can exceed GitHub's 100 MB limit)
 
 **Close Week 6**
 

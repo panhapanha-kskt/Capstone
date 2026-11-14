@@ -3,9 +3,10 @@
 #  save_evidence.sh — Task 7 of docs/Week6/next task.md: save the small result files in git
 #
 #  Every Week 5/6 result lives only in runs/ and logs/ on this machine, and neither is in git.
-#  This copies the SMALL files that back the numbers in the reports into docs/Week5/evidence/,
-#  checks them, and writes an index (docs/Week5/evidence/README.md). Model binaries and the
-#  large merged_labeled.json files are never copied.
+#  This copies the result files that back the numbers in the reports into docs/Week5/evidence/,
+#  checks them, and writes an index (docs/Week5/evidence/README.md). Once committed, all of it
+#  is visible on GitHub. Model binaries and the large merged_labeled.json training copies are
+#  not copied: they are not results, and they can exceed GitHub's 100 MB file limit.
 #
 #  Usage (run where runs/ and logs/ exist, i.e. on Kali):
 #    bash scripts/save_evidence.sh
@@ -17,7 +18,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 cd "$(dirname "$SCRIPT_DIR")" || exit 1
 
 EV=docs/Week5/evidence
-MAX_KB=5120          # files above 5 MB are skipped (kept out of git)
+MAX_KB=51200         # 50 MB: GitHub warns above 50 MB and rejects files above 100 MB
 mkdir -p "$EV"
 COPIED=(); SKIPPED=(); MISSING=()
 
@@ -108,7 +109,7 @@ done
   echo "## Files"
   echo
   for c in "${COPIED[@]}"; do echo "- $c"; done
-  if (( ${#SKIPPED[@]} )); then echo; echo "## Skipped (too large for git)"; echo; for s in "${SKIPPED[@]}"; do echo "- $s"; done; fi
+  if (( ${#SKIPPED[@]} )); then echo; echo "## Skipped (over 50 MB, too large for GitHub)"; echo; for s in "${SKIPPED[@]}"; do echo "- $s"; done; fi
   if (( ${#MISSING[@]} )); then echo; echo "## Not found when saved"; echo; for m in "${MISSING[@]}"; do echo "- $m"; done; fi
 } > "$EV/README.md"
 
@@ -121,7 +122,9 @@ if (( ${#MISSING[@]} )); then echo; echo "Not found (fine if that run or file ne
 echo
 echo "Total size: $(du -sh "$EV" | cut -f1)   ·   index: $EV/README.md"
 echo
-echo "Next, commit it:"
+echo "Next, commit it so it shows on GitHub:"
 echo "  git add $EV"
 echo "  git commit -m \"Task 7: save Week 5/6 evidence files\""
 echo "  git push origin main"
+REMOTE=$(git remote get-url origin 2>/dev/null | sed -E 's#^git@github.com:#https://github.com/#; s#\.git$##')
+[[ -n "$REMOTE" ]] && echo "Then view it at: $REMOTE/tree/main/$EV"

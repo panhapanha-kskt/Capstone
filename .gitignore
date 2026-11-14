@@ -52,7 +52,4 @@ data/processed/*
 
 # Experiment model folders (DNS_DETECT_MODELS_DIR)
 models_*/
-# Training runs (model binaries, large labeled copies). Their small result files are saved in
-# docs/Week5/evidence/ by scripts/save_evidence.sh.
-runs/
 .venv/

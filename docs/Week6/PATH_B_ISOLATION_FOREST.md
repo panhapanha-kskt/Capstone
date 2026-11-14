@@ -179,16 +179,20 @@ The numbers are identical to the Isolation Forest baseline line in the v3 traini
 
 | | `runs/v3` | `runs/v3_iforest` |
 |---|---|---|
-| Path A | F1 0.9972, PR-AUC 1 | identical |
+| Path A | F1 0.9972, PR-AUC 1, 8 false alarms | identical |
+| Path B recall / FPR (test windows) | 0.0 / 6.23% | **1.0** / 9.34% |
 | Fusion recall / false alarms (frozen test) | 1.0 / 7 | **1.0 / 7** |
 | OR rule false alarms | 87 | 110 |
+| CIC capture 3 (unseen benign, Path A) | 1 / 25,222 | 1 / 25,222 |
 | Training time | 7 h 17 min | **39 min 5 s** |
+
+Read from each run's saved `evaluation_metrics.json` with `scripts/week5_eval.sh` (2026-11-14).
 
 - The final decision is unchanged: the fusion catches every attack with 7 false alarms.
 - The OR rule rose because the Isolation Forest flags more benign windows by itself; the system decides with the fusion, not the OR rule.
 - Roughly 20–25 of the 39 minutes are step 10's comparison Transformer (Path A, not used in any decision), estimated from progress checks during the run. Path B took about a minute.
 
-**Not yet measured:** v3_iforest on CIC capture 3 (expected to equal v3's 1 / 25,222, because Path A is identical), the fusion weights of v3_iforest, and the multi-seed spread.
+**Not yet measured:** the fusion weights of v3_iforest, and the multi-seed spread.
 
 ---
 

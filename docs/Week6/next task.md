@@ -802,6 +802,6 @@ Not needed to close Week 5 or Week 6. Listed so they are not forgotten.
 - [ ] Task 10: unit tests pass
 - [x] Task 10: Path B-only run reproduces recall 1.000 / FPR 9.341% / PR-AUC 1.0 (65.8 s, 2026-11-14)
 - [x] Task 10: full run `runs/v3_iforest` trained, training time recorded (39 min 5 s; fusion 1.0 recall / 7 false alarms, same as v3)
-- [ ] Task 10: compared with v3 (fusion recall and false alarms), CIC capture 3 checked
+- [x] Task 10: compared with v3 (fusion recall 1.0 / 7 false alarms, same as v3; Path B recall 1.0), CIC capture 3 checked (1 / 25,222)
 - [ ] Task 10: pipeline runs with `DNS_DETECT_MODELS_DIR=runs/v3_iforest`
 - [ ] Task 10: mentor agrees; result and reasoning written into the report

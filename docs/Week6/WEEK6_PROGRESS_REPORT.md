@@ -74,7 +74,7 @@ All numbers below were produced on the Kali VM and are recorded with their comma
 | v_dnsshell | 1.0 | 7 | 7 | 113 |
 | v_det | 1.0 | 38 | 36 | 119 |
 | v3 | 1.0 | 7 | 8 | 87 |
-| **v3_iforest** | **1.0** | **7** | (same Path A as v3) | 110 |
+| **v3_iforest** | **1.0** | **7** | 8 | 110 |
 
 ### 4.2 Unseen benign traffic (CIC capture 3, 25,222 queries, budget 25)
 
@@ -84,6 +84,7 @@ All numbers below were produced on the Kali VM and are recorded with their comma
 | v_dnsshell | 0 | 0.000% |
 | v_det | 1 | 0.004% |
 | **v3** | **1** | **0.004%** |
+| **v3_iforest** | **1** | **0.004%** |
 
 ### 4.3 Leave-one-tool-out (v3's training data)
 
@@ -142,7 +143,7 @@ The autoencoder remains the default, so earlier runs and saved models are unchan
 | Path B Isolation Forest implemented and pushed | ✅ |
 | Path B-only test on v3 data | ✅ 65.8 s, identical numbers |
 | Full run `runs/v3_iforest` | ✅ fusion 1.0 / 7 false alarms, 39 min 5 s |
-| v3_iforest on CIC capture 3; Path B metrics confirmed from the saved file | ❌ next (`bash scripts/week5_eval.sh --skip-lofo`) |
+| v3_iforest on CIC capture 3; Path B metrics confirmed from the saved file | ✅ 1 / 25,222; Path B recall 1.0, fusion 7 false alarms |
 | Unit tests (`test_path_b_iforest.py` and existing tests) | ❌ not run |
 | Pipeline run with `runs/v3_iforest` | ❌ |
 | Multi-seed check (Week 5 Tasks 4–5) | ❌ |
@@ -156,7 +157,7 @@ The autoencoder remains the default, so earlier runs and saved models are unchan
 
 In order (commands in [next task.md](next%20task.md)):
 
-1. `bash scripts/week5_eval.sh --skip-lofo` on Kali: adds v3_iforest to the comparison and to CIC capture 3.
+1. ~~`bash scripts/week5_eval.sh --skip-lofo`~~ done: v3_iforest confirmed (Path B recall 1.0, fusion 7 false alarms, CIC capture 3 1 / 25,222).
 2. Run the unit tests (Task 10.1) and the pipeline with `runs/v3_iforest` (Task 10.5).
 3. Multi-seed check (Tasks 4–5). With the Isolation Forest, the full check including Path B and the fusion is now practical.
 4. Conclusion and decision (Task 6): `runs/v3`, `runs/v3_iforest`, or keep `models/`. The current evidence favours `runs/v3_iforest`: same final results as v3, with a Path B that works.

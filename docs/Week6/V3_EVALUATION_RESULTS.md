@@ -45,6 +45,7 @@ Read from each run's saved `evaluation_metrics.json`. The frozen test set has 2,
 | v_dnsshell | 1.0 | 7 | 1.0 | 1.0 | 8.88% | 113 | 1.0 | **7** |
 | v_det | 1.0 | 36 | 1.0 | 1.0 | 8.24% | 119 | 1.0 | **38** |
 | v3 | 1.0 | 8 | 1.0 | **0.0** | 6.23% | 87 | 1.0 | **7** |
+| v3_iforest | 1.0 | 8 | 1.0 | **1.0** | 9.34% | 110 | 1.0 | **7** |
 
 - **The Week 5 table (V3_BALANCED_TRAINING.md 6.2) is confirmed** from the saved metrics, number for number.
 - **Two Path B calculations exist.** The "Path B FPR (windows)" column is Path B's own rate per 20-query window (its `path_b` metrics block). The Week 5 table lists Path B false alarms per row inside the fusion step (baseline 112 of 1,168). Both are correct; they are not the same measurement.
@@ -61,8 +62,9 @@ CIC-Bell-DNS-EXF-2021 capture 3: 25,222 benign queries from another network, nev
 | v_dnsshell | 0 | 0.000% | ✅ |
 | v_det | 1 | 0.004% | ✅ |
 | **v3** | **1** | **0.004%** | ✅ |
+| **v3_iforest** | **1** | **0.004%** | ✅ |
 
-v3's 12-times-larger training set did not raise false alarms on unseen benign traffic. The per-query scores are saved in `runs/v3/cic_test_results.csv`.
+v3's 12-times-larger training set did not raise false alarms on unseen benign traffic. v3_iforest gives the same count, as expected: this check uses Path A, which is identical in both runs. The per-query scores are saved in `runs/<run>/cic_test_results.csv`.
 
 ---
 
@@ -101,12 +103,13 @@ Output file: `runs/v3/cv_lofo.json`.
 | `[8/12]` data | 100,000 attack / 118,334 benign, 8 tools | identical |
 | `[9/12]` split | train 183,203 / val 32,563 / test 2,568 | identical |
 | `[10/12]` Path A | F1 0.9972, PR-AUC 1 | identical |
-| `[11/12]` Path B | autoencoder, threshold 0.01741, recall 0.0 | **Isolation Forest**, threshold 0.4907, recall 1.000 in the Path B-only test |
+| `[11/12]` Path B | autoencoder, threshold 0.01741, recall 0.0, FPR 6.23% | **Isolation Forest**, threshold 0.4907, **recall 1.0**, FPR 9.34% |
 | **`[12/12]` Fusion recall / false alarms** | 1.0 / 7 | **1.0 / 7** |
 | OR rule false alarms | 87 | 110 |
+| CIC capture 3 | 1 / 25,222 | 1 / 25,222 |
 | Training time | 7 h 17 min | **39 min 5 s** |
 
-The Path B recall of 1.000 (FPR 9.341%, PR-AUC 1.0) comes from the Path B-only run on the same data, split and seed (65.8 s). The full run's saved metrics are still to be read back (section 7).
+All v3_iforest numbers are read from `runs/v3_iforest/evaluation_metrics.json` by `week5_eval.sh` (2026-11-14). They match the Path B-only test on the same data, split and seed (recall 1.000, FPR 9.341%, 65.8 s).
 
 ---
 
@@ -124,7 +127,6 @@ The Path B recall of 1.000 (FPR 9.341%, PR-AUC 1.0) comes from the Path B-only r
 
 | Measurement | How | Where it goes |
 |---|---|---|
-| v3_iforest on CIC capture 3, and its Path B metrics from the saved file | `bash scripts/week5_eval.sh --skip-lofo` | sections 2, 3 and 5 here; next task.md 13.4 |
 | Multi-seed check (5 seeds) for baseline, v_dnsshell, v_det, v3 (and v3_iforest) | next task.md Tasks 4–5 | V3_BALANCED_TRAINING.md table 6.6 |
 | Pipeline run with `runs/v3_iforest` | next task.md 13.5 | next task.md checklist |
 | Conclusion and the replace-`models/` decision | next task.md Task 6 | V3_BALANCED_TRAINING.md section 6.5 |

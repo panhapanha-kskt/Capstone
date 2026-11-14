@@ -362,7 +362,9 @@ Fill in [table 6.6](#66-multi-seed-check-path-a-5-seeds):
 | baseline | 1 | 0.004% | ✅ |
 | v_dnsshell | 0 | 0.000% | ✅ |
 | v_det | 1 | 0.004% | ✅ |
-| **v3** | | | |
+| **v3** | **1** | **0.004%** | ✅ |
+
+v3 recorded 2026-11-14 with `scripts/week5_eval.sh` (Path A `--infer` on `data/external/cic/cic_benign_test.json`). The 218K-row training did not raise false alarms on unseen benign traffic: v3 flags the same single query as the baseline.
 
 ### 6.4 Leave-one-tool-out (v3)
 
@@ -407,8 +409,8 @@ Verdict (5.4.4): dns_shell helps — … · det hurts — … · v3 better than 
 - [x] Step 1: tools reconverted at 15,000 each (domains re-checked)
 - [x] Step 2: `benign_alexa.json` built (68,710 rows)
 - [x] Step 3: `runs/v3` trained (log checks passed, 7 h 17 min) · `merged_labeled.json` copied
-- [ ] 5.1 comparison table run and copied into 6.2
-- [ ] 5.2 CIC capture 3 false alarms recorded in 6.3
+- [x] 5.1 comparison table run and copied into 6.2 (confirmed from each run's `evaluation_metrics.json`, 2026-11-14)
+- [x] 5.2 CIC capture 3 false alarms recorded in 6.3 (v3: 1 / 25,222)
 - [ ] 5.3 leave-one-tool-out → table 6.4
 - [ ] 5.4.1 training files rebuilt for baseline, v_dnsshell, v_det (5,000-row dns_shell/det files recreated in `cap5000/`)
 - [ ] 5.4.2 Path A multi-seed (5 seeds) for baseline, v_dnsshell, v_det, v3 → table 6.6

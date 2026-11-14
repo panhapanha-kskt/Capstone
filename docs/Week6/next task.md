@@ -167,6 +167,10 @@ The second line restores the committed CSV, which `--infer` overwrites.
 
 For reference: baseline 1, v_dnsshell 0, v_det 1.
 
+**Result (2026-11-14):** v3 flags **1 / 25,222 (0.004%)**, within budget and the same as the baseline.
+
+**Note on Path B numbers:** `week5_eval.sh` prints Path B's FPR per 20-query window (from the `path_b` block, e.g. baseline 0.0879). Table 6.2 lists Path B false alarms per row, measured in the fusion step (baseline 112 of 1,168). Both are correct; they are different calculations.
+
 **If N is above 25:** before `git checkout`, copy the CSV (`cp cic_benign_test_model_results.csv runs/v3/cic_test_results.csv`), then sort it by `ml_score_A` to see which domains were flagged. That goes into the conclusion as a reason not to replace `models/`.
 
 ---
@@ -735,9 +739,9 @@ Not needed to close Week 5 or Week 6. Listed so they are not forgotten.
 
 **Close Week 5**
 
-- [ ] Task 0: `runs/`, Tu data and training log confirmed on Kali
-- [ ] Task 1: comparison script run, table 6.2 confirmed
-- [ ] Task 2: v3 on CIC capture 3 recorded in table 6.3
+- [x] Task 0: `runs/`, Tu data and training log confirmed on Kali (2026-11-14, all present, v3 218,334 rows)
+- [x] Task 1: comparison script run, table 6.2 confirmed (fusion FA 23 / 7 / 38 / 7, recall 1.0)
+- [x] Task 2: v3 on CIC capture 3 recorded in table 6.3 (1 / 25,222 = 0.004%)
 - [ ] Task 3: leave-one-tool-out run, table 6.4 filled
 - [ ] Task 4: training files rebuilt (18349 / 23349 / 23349 rows), `cap5000/` created
 - [ ] Task 5: multi-seed run for all four, both checks passed, table 6.6 filled, verdicts written

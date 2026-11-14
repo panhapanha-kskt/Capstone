@@ -364,7 +364,9 @@ None of these changes are committed to git yet.
 | Tools reconverted at 15,000 · ALEXA file built | ✅ |
 | `runs/v3` training | ✅ done in 7 h 17 min 23 s (26,243 s; Path B about 6 h 37 min of it) · fusion 7 false alarms, recall 1.0 · `merged_labeled.json` copied |
 | v3 on the frozen test set | ✅ recorded (section 3.7) |
-| v3 on CIC capture 3, leave-one-tool-out, comparison table | ❌ next |
+| v3 comparison table | ✅ confirmed from saved metrics (2026-11-14) |
+| v3 on CIC capture 3 | ✅ 1 / 25,222 (0.004%), same as the baseline (2026-11-14) |
+| v3 leave-one-tool-out | ❌ next |
 | Multi-seed check (baseline, v_dnsshell, v_det, v3) | ❌ not started |
 | Decision: does v3 replace `models/`? | ❌ |
 
@@ -377,7 +379,7 @@ None of these changes are committed to git yet.
 1. ~~**Finish v3.**~~ Done: all log checks passed, and `merged_labeled.json` is copied (section 3.7).
 2. **Evaluate v3 further** (V3_BALANCED_TRAINING.md, sections 5.1–5.3):
    - frozen test set: ✅ fusion 7 false alarms (baseline 23), recall 1.0;
-   - **CIC capture 3:** false alarms should stay near 0, within the 0.1% budget (about 25);
+   - **CIC capture 3:** ✅ 1 / 25,222 false alarms (0.004%), within the 0.1% budget (2026-11-14);
    - **leave-one-tool-out:** recall on each tool when that tool is left out of training. Run it before any `git checkout data/processed/`. This is now the main recall test, since the frozen test set only contains dnsexfiltrator.
 3. **Multi-seed check** (section 5.4): Path A with 5 seeds for baseline, v_dnsshell, v_det and v3. A difference counts as real only when the min–max ranges across seeds do not overlap.
 4. **Write the conclusion** and decide whether `runs/v3` replaces `models/`.

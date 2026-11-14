@@ -97,7 +97,7 @@ tests/           - Smoke tests
 
 ### Remaining Work
 
-1. Evaluate v3 on CIC capture 3 (unseen benign, ~25K queries) — false alarms should stay within 0.1% budget
+1. ~~Evaluate v3 on CIC capture 3~~ — done 2026-11-14: 1 / 25,222 false alarms (0.004%), within the 0.1% budget
 2. Leave-one-tool-out test — main recall test since the frozen test set only contains dnsexfiltrator
 3. Multi-seed check (5 seeds) for baseline, v_dnsshell, v_det, and v3
 4. Fix Path B autoencoder — recall dropped to 0.0 after training on larger benign set (fusion compensates via Path A, but Path B needs repair)

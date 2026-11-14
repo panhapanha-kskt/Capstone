@@ -112,7 +112,7 @@ Pushed to `main` in commit `9598ca4`.
 | `scripts/run_pipeline.sh` | reads `"model_type"` from the threshold file to find the model file |
 | `dashboard/server.py` | accepts `<name>_iforest.pkl` as a trained Path B model |
 | `scripts/run_multiseed.py` | `--path-b-model` pass-through |
-| `tests/test_path_b_iforest.py` | 5 tests: abnormal windows score above the threshold, one score per window, same seed gives same scores, the loader reads the `.pkl` from the threshold file, a missing `.pkl` is an error |
+| `tests/test_path_b_iforest.py` | 5 tests: abnormal windows score above the threshold, one score per window, same seed gives same scores, the loader reads the `.pkl` from the threshold file, a missing `.pkl` is an error. Run on Kali with `test_path_b_load.py` and `test_bridge.py`: 47 passed (2026-11-14) |
 
 When the autoencoder is used, the Isolation Forest baseline is computed exactly as before (same 200 trees, same seed, same threshold rule), so baseline numbers in older logs stay comparable.
 

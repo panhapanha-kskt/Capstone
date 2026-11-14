@@ -113,7 +113,7 @@ Recall **1.0 for all 8 tools** (cobaltstrike, det, dns2tcp, dns_shell, dnscat2, 
 | `scripts/run_multiseed.py` | `--path-b-model` pass-through |
 | `scripts/week5_eval.sh` (new) | Week 5 Tasks 0–3 in one command, one log, one summary block |
 | `scripts/run_cv.py` | leave-one-tool-out now holds out attack families only |
-| `tests/test_path_b_iforest.py` (new) | 5 unit tests for the Isolation Forest path (not yet run) |
+| `tests/test_path_b_iforest.py` (new) | 5 unit tests for the Isolation Forest path; with the existing Path B and bridge tests, 47 passed on Kali (2026-11-14) |
 
 The autoencoder remains the default, so earlier runs and saved models are unchanged. Details: [PATH_B_ISOLATION_FOREST.md](PATH_B_ISOLATION_FOREST.md).
 
@@ -144,7 +144,7 @@ The autoencoder remains the default, so earlier runs and saved models are unchan
 | Path B-only test on v3 data | ✅ 65.8 s, identical numbers |
 | Full run `runs/v3_iforest` | ✅ fusion 1.0 / 7 false alarms, 39 min 5 s |
 | v3_iforest on CIC capture 3; Path B metrics confirmed from the saved file | ✅ 1 / 25,222; Path B recall 1.0, fusion 7 false alarms |
-| Unit tests (`test_path_b_iforest.py` and existing tests) | ❌ not run |
+| Unit tests (`test_path_b_iforest.py`, `test_path_b_load.py`, `test_bridge.py`) | ✅ 47 passed |
 | Pipeline run with `runs/v3_iforest` | ❌ |
 | Multi-seed check (Week 5 Tasks 4–5) | ❌ |
 | Conclusion and the replace-`models/` decision (Task 6) | ❌ |
@@ -158,7 +158,7 @@ The autoencoder remains the default, so earlier runs and saved models are unchan
 In order (commands in [next task.md](next%20task.md)):
 
 1. ~~`bash scripts/week5_eval.sh --skip-lofo`~~ done: v3_iforest confirmed (Path B recall 1.0, fusion 7 false alarms, CIC capture 3 1 / 25,222).
-2. Run the unit tests (Task 10.1) and the pipeline with `runs/v3_iforest` (Task 10.5).
+2. ~~Unit tests (Task 10.1)~~ done: 47 passed. Still to do: the pipeline with `runs/v3_iforest` (Task 10.5).
 3. Multi-seed check (Tasks 4–5). With the Isolation Forest, the full check including Path B and the fusion is now practical.
 4. Conclusion and decision (Task 6): `runs/v3`, `runs/v3_iforest`, or keep `models/`. The current evidence favours `runs/v3_iforest`: same final results as v3, with a Path B that works.
 5. Save the result files in git (Task 7), test the dashboard (Task 8), fix stale documentation (Task 9).

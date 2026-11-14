@@ -799,7 +799,7 @@ Not needed to close Week 5 or Week 6. Listed so they are not forgotten.
 **Path B with Isolation Forest**
 
 - [x] Task 10: code pulled onto Kali (`main`, commit `9598ca4`)
-- [ ] Task 10: unit tests pass
+- [x] Task 10: unit tests pass (47 passed: test_path_b_iforest, test_path_b_load, test_bridge; 2026-11-14)
 - [x] Task 10: Path B-only run reproduces recall 1.000 / FPR 9.341% / PR-AUC 1.0 (65.8 s, 2026-11-14)
 - [x] Task 10: full run `runs/v3_iforest` trained, training time recorded (39 min 5 s; fusion 1.0 recall / 7 false alarms, same as v3)
 - [x] Task 10: compared with v3 (fusion recall 1.0 / 7 false alarms, same as v3; Path B recall 1.0), CIC capture 3 checked (1 / 25,222)

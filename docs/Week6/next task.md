@@ -1,6 +1,6 @@
 # Week 6: Next Tasks
 
-**DNS Traffic Anomaly Detection · what is left to do, in order, with the commands · 2026-11-12**
+**DNS Traffic Anomaly Detection · what is left to do, in order, with the commands · 2026-11-12, updated 2026-11-14**
 
 Week 5 trained the combined model (`runs/v3`) but stopped before evaluating it. The Week 6 dashboard was built but not tested end to end. This file lists every open task, the exact command for each, what the output should look like, and where to write the result.
 
@@ -42,11 +42,11 @@ Sources: the Week 5 checklist in [V3_BALANCED_TRAINING.md](../Week5/V3_BALANCED_
 | 7 | Save the small result files in git | `docs/Week5/evidence/` | 10 min | no, but do it |
 | 8 | Test the Week 6 dashboard end to end | `dashboard/docs/TESTING_REPORT.md` | 30–45 min | no (Week 6) |
 | 9 | Fix stale text in the docs | several files | 20 min | no |
-| 10 | Train and compare Path B with Isolation Forest | new run `runs/v3_iforest` | about 1 h | no (fixes Path B) |
+| 10 | Train and compare Path B with Isolation Forest | new run `runs/v3_iforest` | about 1 h | yes: do it before task 6, because it adds a second candidate model |
 
 The time estimates are guesses, not measurements. Only Path A is trained in tasks 3 and 5, so none of them should come close to the 7 hours v3 took.
 
-**Order matters.** Do tasks 0 to 6 in order. Task 5 depends on task 4. Task 6 depends on tasks 1, 2, 3 and 5.
+**Order matters.** Do tasks 0 to 5 in order, then task 10, then task 6. Task 5 depends on task 4. Task 6 depends on tasks 1, 2, 3, 5 and 10: its decision is now between two candidates, `runs/v3` (autoencoder Path B) and `runs/v3_iforest` (Isolation Forest Path B).
 
 ---
 
@@ -358,31 +358,38 @@ Section 6.5 of V3_BALANCED_TRAINING.md has four questions. Answer each with the 
 | Question | Answer from |
 |---|---|
 | Did the 12× data increase move the frozen-test numbers beyond the seed spread? | table 6.6: is v3's max below the baseline's min? |
-| Did Path B improve with 110K extra benign rows? | Already known: no. Its false alarms fell (112 → 79) but its recall fell to 0.0 (Week 5 report, Finding 1). |
+| Did Path B improve with 110K extra benign rows? | Already known: the autoencoder did not. Its false alarms fell (112 → 79) but its recall fell to 0.0 (Week 5 report, Finding 1). Task 10's Isolation Forest is the answer to this: recall 1.000 on the same data. |
 | Does v3 keep recall 1.0 on the frozen test set and about 0 false alarms on CIC capture 3? | table 6.2 and table 6.3 |
-| Does `runs/v3` replace `models/`? | the decision below |
+| Which run replaces `models/`, if any: `runs/v3` or `runs/v3_iforest`? | the decision below |
 
 ### 9.1 A decision rule
 
-Replace `models/` with v3 only if **all** of these hold:
+There are now two candidates on the same data and split. They share Path A (same seed, same data) and differ only in Path B and therefore the fusion:
 
-- [ ] fusion recall on the frozen test set is 1.0 (task 1);
-- [ ] fusion false alarms on the frozen test set are at or below the baseline's 23 (task 1);
+| | `runs/v3` | `runs/v3_iforest` |
+|---|---|---|
+| Path B | autoencoder, recall 0.0 | Isolation Forest, recall 1.0 |
+| Fusion false alarms (frozen test) | 7 | from task 10.4 |
+
+Replace `models/` with a candidate only if **all** of these hold for it:
+
+- [ ] fusion recall on the frozen test set is 1.0 (task 1 / task 10.4);
+- [ ] fusion false alarms on the frozen test set are at or below the baseline's 23 (task 1 / task 10.4);
 - [ ] false alarms on CIC capture 3 are within the 0.1% budget, 25 or fewer (task 2);
-- [ ] leave-one-tool-out recall shows no tool that v3's data fails to cover badly (task 3);
-- [ ] v3's improvement over the baseline is larger than the seed spread (task 5).
+- [ ] leave-one-tool-out recall shows no tool that v3's data fails to cover badly (task 3; same data for both candidates);
+- [ ] the improvement over the baseline is larger than the seed spread (task 5).
 
-**One thing to weigh even if all five hold:** v3's Path B autoencoder catches nothing (recall 0.0). The fusion ignores it and follows Path A, so the final output is fine on the test set, but replacing `models/` also replaces the old Path B, which still had recall 1.0. State this trade-off in the conclusion whichever way you decide.
+**Choosing between them, if both pass:** prefer `runs/v3_iforest` unless its fusion false alarms are clearly worse than v3's 7. v3's Path B detects nothing, so replacing `models/` with v3 would swap the old Path B (recall 1.0) for one with recall 0.0. `runs/v3_iforest` does not have that problem. State the reasoning in the conclusion either way.
 
 ### 9.2 Carrying out the decision
 
-**Lower-risk option (recommended until Path B is fixed):** keep `models/` as it is and run the pipeline on v3 by setting the folder:
+**Lower-risk option:** keep `models/` as it is and run the pipeline on the chosen run by setting the folder:
 
 ```bash
-DNS_DETECT_MODELS_DIR=runs/v3 ./scripts/run_pipeline.sh
+DNS_DETECT_MODELS_DIR=runs/v3_iforest ./scripts/run_pipeline.sh
 ```
 
-Record "v3 is the candidate; `models/` not replaced until Path B is repaired" as the decision.
+Record "`runs/v3_iforest` is the candidate; `models/` not replaced yet" as the decision. Note that the dashboard (`dashboard/server.py` line 47) always checks `models/` for trained models, so the dashboard's real mode shows a new model only after `models/` is replaced.
 
 **If you decide to replace `models/`:** back it up first. `models_*/` is already gitignored, so the backup stays out of git.
 
@@ -390,7 +397,9 @@ Record "v3 is the candidate; `models/` not replaced until Path B is repaired" as
 cp -r models models_backup_before_v3
 ```
 
-Copying v3's files into `models/` has not been tried in this project. `runs/v3` also holds files that don't belong in `models/` (`merged_labeled.json`, `cv_lofo.json`, `cv_splits/`). Copy only the model files, then run `./scripts/run_pipeline.sh` once and check it loads without errors before committing anything.
+Copying a run's files into `models/` has not been tried in this project. The run folders also hold files that don't belong in `models/` (`merged_labeled.json`, `cv_lofo.json`, `cv_splits/`). Copy only the model files, then run `./scripts/run_pipeline.sh` once and check it loads without errors before committing anything.
+
+For `runs/v3_iforest`, Path B is `dns_trafficformer_iforest.pkl` plus its `_threshold.json` and `_norm.json`. If the old `dns_trafficformer.h5` stays in `models/` it is ignored, because the threshold file says `"model_type": "iforest"`. Remove it anyway to avoid confusion.
 
 ### 9.3 Update the other documents
 
@@ -416,10 +425,33 @@ done
 cp runs/v3/cv_lofo.json runs/v3/fusion_lr_tiers.json docs/Week5/evidence/v3/ 2>/dev/null
 grep -E '^\[[0-9]+/12\]|Training complete|Autoencoder:|Isolation Forest:|fusion weights' \
     logs/training_20261107_220017.log > docs/Week5/evidence/v3/training_log_summary.txt
+
+# Task 10 (Isolation Forest Path B)
+mkdir -p docs/Week5/evidence/v3_iforest
+cp runs/v3_iforest/evaluation_metrics.json runs/v3_iforest/fusion_lr.json \
+   runs/v3_iforest/dns_trafficformer_threshold.json docs/Week5/evidence/v3_iforest/ 2>/dev/null
+grep -E '^\[[0-9]+/12\]|Training complete|Isolation Forest:|fusion weights' \
+    logs/train_v3_iforest.log > docs/Week5/evidence/v3_iforest/training_log_summary.txt 2>/dev/null
+
+# Week 4 unseen-tool results that survived on Kali (the only saved evidence for them)
+mkdir -p docs/Week5/evidence/unseen_tool
+cp tunnels_det_model_results.csv tunnels_dns_shell_model_results.csv docs/Week5/evidence/unseen_tool/ 2>/dev/null
 du -sh docs/Week5/evidence
 ```
 
-Check the size printed by `du` before committing. If `evaluation_metrics.json` is large (several MB), keep it out and commit only the other files.
+Check the size printed by `du` before committing. If `evaluation_metrics.json` or the two CSVs are large (several MB), keep them out and commit only the other files.
+
+**About the two CSVs:** they are in the Kali project folder, not in git. Before relying on them, confirm they are the baseline's unseen-tool results: each should have 5,000 rows and a `ml_label_A` column with 5,000 ones:
+
+```bash
+python3 -c "
+import csv
+for f in ('tunnels_det_model_results.csv', 'tunnels_dns_shell_model_results.csv'):
+    rows = list(csv.DictReader(open(f)))
+    print(f, len(rows), 'rows,', sum(r.get('ml_label_A') == '1' for r in rows), 'flagged')"
+```
+
+If the counts are not 5,000 / 5,000, they come from a different run; keep them, but do not cite them as the Week 4 result.
 
 Also decide what to do about `runs/` showing up as untracked in `git status`. If you never want it committed, add `runs/` to `.gitignore`.
 
@@ -504,6 +536,7 @@ Found in the Week 5 audit. None of these change a result; they stop the docs con
 | `docs/Week5/DASHBOARD_PROGRESS.md` | 11 | says every page polls every 3 seconds | the classic page `/` polls every 2 seconds |
 | `docs/Week5/DASHBOARD_PROGRESS.md` | 42–45 | mapping table does not match `/soc` | see below |
 | `README.md` | 74–76 | three documentation links are broken | the files are in `docs/week0/` |
+| `README.md` | 11, 26, 103 | Path B described only as the Trafficformer; "Fix Path B" listed as remaining work | after task 6: mention the Isolation Forest option (`--path-b-model iforest`) and its result, and update item 4 of "Remaining Work" |
 
 **The `/soc` mapping differences.** The mapping table in DASHBOARD_PROGRESS.md describes the Alerts page. The Monitoring Overview uses different rules:
 
@@ -536,6 +569,25 @@ Without the option nothing changes, so every earlier run still works. The model 
 - `dns_trafficformer_threshold.json` (contains `"model_type": "iforest"`)
 - `dns_trafficformer_norm.json`
 
+### 13.0 Get the code onto Kali
+
+The Isolation Forest code is on `main` (commit `9598ca4`). Kali must pull it first.
+
+```bash
+cd /home/ounnha/Documents/Capstone
+git status --short
+python3 -c "import json; print(len(json.load(open('runs/v3/merged_labeled.json'))))"   # must print 218334
+git stash push -m "v3 training outputs" -- data/processed/
+git pull origin main
+grep -c "iforest" src/dns_detect/models/path_b_train.py   # must print more than 0
+export PYTHONPATH=src
+```
+
+- **Why the stash:** every training run rewrites four tracked files in `data/processed/`, and `git pull` refuses to run over them. `git stash` sets them aside without deleting them (`git stash list` / `git stash pop` brings them back).
+- **Why the row count first:** it confirms the v3 copy in `runs/v3/` is complete before the originals are set aside. Task 3 reads that copy.
+- **If `grep` prints 0,** the pull did not happen; the commands below will fail.
+- **`export PYTHONPATH=src` is needed in every new terminal.** Without it Python exits in a fraction of a second with "No module named dns_detect".
+
 ### 13.1 Unit tests
 
 ```bash
@@ -552,9 +604,11 @@ Writes into a scratch folder; `runs/v3` and `models/` are not touched.
 time DNS_DETECT_MODELS_DIR=runs/v3_pathb_iforest python3 -m dns_detect.models.path_b_train \
     --filename merged_labeled.json --data_dir runs/v3 --n_days 20 --save_name dns_trafficformer \
     --split-manifest runs/v3/split_manifest.json --seed 42 --model iforest \
-    2>/dev/null | grep -E 'Benign-only|Path B model|Isolation Forest|isolation forest|Anomaly threshold'
+    2>&1 | grep -E 'Error|error|Path B model|Isolation Forest|isolation forest|Benign-only'
 ls runs/v3_pathb_iforest/
 ```
+
+Use `2>&1`, not `2>/dev/null`: if something goes wrong, the error must be visible. A run that ends in well under a second has failed before training started (usually `PYTHONPATH` unset or old code; see 13.0).
 
 **Expected:**
 
@@ -563,6 +617,29 @@ ls runs/v3_pathb_iforest/
 - the folder holds the three files listed above and no `.keras` file.
 
 If the numbers differ from the v3 log, stop and compare before going on.
+
+**Result (run on Kali, 2026-11-14):**
+
+```
+[*] Benign-only training windows: 99408 (dropped 83510 attack windows)
+[*] Path B model: Isolation Forest (200 trees) on 99408 benign windows
+   Error stats → mean=0.4056  std=0.0269
+Isolation Forest: recall=1.000  FPR=9.341%  PR-AUC=1.0  | attack median score / benign p99 score = 1.3502598219271262
+   dnsexfiltrator   isolation forest recall=1.000
+real    65.81s
+```
+
+| | Autoencoder (v3) | Isolation Forest |
+|---|---|---|
+| Path B time | about 6 h 37 min | **65.8 s** (whole command, including loading the data) |
+| Recall / FPR / PR-AUC | 0.000 / 6.227% / 0.787 | **1.000 / 9.341% / 1.0** (identical to the v3 baseline line) |
+| Attack median score ÷ benign p99 score | 0.573 | **1.35** |
+
+How to read the output:
+
+- **`ValueError: Invalid DH parameters`** lines are harmless: scapy fails to load optional crypto modules. They appear only because the `grep` matches "Error".
+- **`Error stats → mean=… std=…`** is the threshold calibration on benign validation windows. For the Isolation Forest these are isolation scores; the label is shared with the autoencoder code.
+- **The score ratio** is the key sign: above 1 means the typical attack window scores higher than 99% of benign windows. The autoencoder's 0.573 (below 1) is why it caught nothing.
 
 ### 13.3 Full run (Path A + Isolation Forest Path B + fusion)
 
@@ -575,11 +652,24 @@ nohup env DNS_DETECT_MODELS_DIR=runs/v3_iforest ./scripts/train_models.sh --forc
 sleep 5; tail -f logs/train_v3_iforest.log
 ```
 
-**Expected:** `[11/12] Path B trained (iforest, window 20, ...)` and `[12/12] Fusion trained`, in well under an hour (v3 took 7 h 17 min). Afterwards:
+Ctrl+C stops `tail`, not the training. **Expected**, in well under an hour (v3 took 7 h 17 min):
+
+| Line | Expected |
+|---|---|
+| `[8/12] Labeled ...` | `100000 attack / 118334 benign`, all 8 tools: the same data as v3 |
+| `[9/12] Split: ...` | `train 183203 / val 32563 / test 2568`, the same as v3 |
+| `[10/12] Path A trained ...` | `F1 0.9972, PR-AUC 1`: Path A is retrained with the same data and seed, so it should match v3. If it differs, the runs are not comparable; stop and check |
+| `[11/12] Path B trained ...` | `(iforest, window 20, anomaly threshold ...)` |
+| `[12/12] Fusion trained ...` | `recall 1, false alarms N vs OR rule M`: **N is the number to compare with v3's 7** |
+
+Afterwards:
 
 ```bash
 cp data/processed/merged_features_labeled.json runs/v3_iforest/merged_labeled.json
+grep -E '^\[(8|9|10|11|12)/12\]|Training complete' logs/train_v3_iforest.log
 ```
+
+Training rewrites the four `data/processed/` files again; `git checkout data/processed/` restores them once the copy above is made.
 
 ### 13.4 Compare with v3
 
@@ -605,7 +695,7 @@ EOF
 | Path B recall | 0.0 | 1.0 |
 | Total training time | 7 h 17 min | well under 1 hour |
 
-Then repeat [task 2](#5-task-2-v3-on-unseen-benign-traffic-52) with `DNS_DETECT_MODELS_DIR=runs/v3_iforest`; it must stay within the 0.1% budget (25 of 25,222).
+Then repeat [task 2](#5-task-2-v3-on-unseen-benign-traffic-52) with `DNS_DETECT_MODELS_DIR=runs/v3_iforest`; it must stay within the 0.1% budget (25 of 25,222). That check uses Path A only (`path_a --infer`), and Path A is the same as v3's, so expect the same count as v3. It confirms nothing broke; it does not test the new Path B. The fusion false alarms above are what test it.
 
 ### 13.5 The pipeline loads it
 
@@ -633,7 +723,7 @@ Not needed to close Week 5 or Week 6. Listed so they are not forgotten.
 | **Other Path B fixes** | Task 10 replaces the autoencoder. If the autoencoder must stay, the remaining options from the Week 5 report are: check feature scaling, or train per benign source. | Medium |
 | **Full multi-seed with Path B and fusion (5.4.3)** | Only if task 5 leaves a question open. With the Isolation Forest it is practical for v3 too: add `--path-b-model iforest` to the 5.4.3 command in V3_BALANCED_TRAINING.md. With the autoencoder, do it only for a Week 4 run overnight. | minutes per seed (iforest) · 1.5–2 h per small run (autoencoder) |
 | **Test v3 on a Tu daily capture** | About 280,000 unseen benign queries, 11 times larger than CIC capture 3. Needs a daily-only JSON, because `benign_tu2023.json` also contains ALEXA, which is in training. | Low |
-| **Re-run the unseen-tool tests and keep the CSVs** | The Week 4 result files were deleted, so 5,000 / 5,000 and iodine's 4,996 have no saved evidence. Needs 5,000-row files for all six tools in `cap5000/`, then `--infer` with `runs/baseline`. | Low |
+| **Re-run the unseen-tool tests and keep the CSVs** | Only det and dns_shell have result CSVs left on Kali (task 7 saves them). ozymandns, cobaltstrike, dnscat2 and iodine's 4,996 / 5,000 have no saved evidence. Needs 5,000-row files for those tools in `cap5000/`, then `--infer` with `runs/baseline`. | Low |
 | **Look at iodine's 4 misses** | Comes for free with the task above: find which queries were missed. | Low |
 | **Week 7 dashboard features** | Roadmap P0 items in WEEK6_AUDIT_AND_FORTINET_ROADMAP.md section 3.1. | Large |
 
@@ -649,12 +739,13 @@ Not needed to close Week 5 or Week 6. Listed so they are not forgotten.
 - [ ] Task 3: leave-one-tool-out run, table 6.4 filled
 - [ ] Task 4: training files rebuilt (18349 / 23349 / 23349 rows), `cap5000/` created
 - [ ] Task 5: multi-seed run for all four, both checks passed, table 6.6 filled, verdicts written
-- [ ] Task 6: conclusion 6.5 written, replace-`models/` decision made and recorded
+- [ ] Task 10 done first (see the Path B section below): `runs/v3_iforest` is the second candidate
+- [ ] Task 6: conclusion 6.5 written, decision between `runs/v3`, `runs/v3_iforest` or keeping `models/` made and recorded
 - [ ] Task 6: Week 5 report section 8 and README "Remaining Work" updated
 
 **Protect the results**
 
-- [ ] Task 7: evidence files copied to `docs/Week5/evidence/` and committed
+- [ ] Task 7: evidence files copied to `docs/Week5/evidence/` (including `v3_iforest` and the two unseen-tool CSVs) and committed
 - [ ] Task 7: decided whether `runs/` goes into `.gitignore`
 
 **Close Week 6**
@@ -671,12 +762,13 @@ Not needed to close Week 5 or Week 6. Listed so they are not forgotten.
 - [ ] Task 9: RESULTS_COMPARISON.md updated
 - [ ] Task 9: stale sentences fixed in the two Week 5 docs
 - [ ] Task 9: dashboard mapping differences documented or fixed
-- [ ] Task 9: README links fixed
+- [ ] Task 9: README links fixed, Path B description updated after task 6
 
 **Path B with Isolation Forest**
 
+- [x] Task 10: code pulled onto Kali (`main`, commit `9598ca4`)
 - [ ] Task 10: unit tests pass
-- [ ] Task 10: Path B-only run reproduces recall 1.000 / FPR 9.341% / PR-AUC 1.0
+- [x] Task 10: Path B-only run reproduces recall 1.000 / FPR 9.341% / PR-AUC 1.0 (65.8 s, 2026-11-14)
 - [ ] Task 10: full run `runs/v3_iforest` trained, training time recorded
 - [ ] Task 10: compared with v3 (fusion recall and false alarms), CIC capture 3 checked
 - [ ] Task 10: pipeline runs with `DNS_DETECT_MODELS_DIR=runs/v3_iforest`

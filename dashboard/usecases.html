@@ -298,6 +298,20 @@ async function loadPrefs(){
   }
 }
 
+function prefNotice(msg){
+  let el = document.getElementById("pref-notice");
+  if (!el){
+    el = document.createElement("div");
+    el.id = "pref-notice"; el.setAttribute("role", "status");
+    el.style.cssText = "position:fixed;right:18px;bottom:18px;background:#262b3d;border:1px solid #2a2f42;border-left:3px solid #e0564a;padding:10px 14px;border-radius:4px;font-size:12.5px;max-width:420px;z-index:50;color:#d6dae6";
+    document.body.appendChild(el);
+  }
+  el.textContent = msg;
+  el.hidden = false;
+  clearTimeout(prefNotice._t);
+  prefNotice._t = setTimeout(()=>{ el.hidden = true; }, 6000);
+}
+
 let prefQueue = {};
 let prefTimer = null;
 function savePref(rule, patch){
@@ -307,11 +321,16 @@ function savePref(rule, patch){
     const q = prefQueue; prefQueue = {}; prefTimer = null;
     for (const [rule_name, p] of Object.entries(q)){
       try {
-        await fetch("/api/usecases/preferences", {
+        const r = await fetch("/api/usecases/preferences", {
           method:"POST", cache:"no-store",
-          headers:{"Content-Type":"application/json"},
+          headers:{"Content-Type":"application/json", "X-SOC-Request":"1"},
           body: JSON.stringify(Object.assign({rule_name, actor: actorName()}, p)),
         });
+        if (!r.ok){
+          const d = await r.json().catch(()=>({}));
+          prefNotice(d.error || ("Saving failed (HTTP " + r.status + ")"));
+          await loadPrefs(); renderTable();          // revert the optimistic change
+        }
       } catch(e){ /* best-effort; keep local optimistic state */ }
     }
   }, 300);
@@ -465,10 +484,14 @@ function openRuleDetail(rule){
 }
 
 /* ── data loop (same /api/state as every page) ── */
+let stateEtag = null;
 async function tick(force){
+  if (!force && document.hidden) return;
   try {
-    const r = await fetch("/api/state", {cache:"no-store"});
-    if (!r.ok) return;
+    const r = await fetch("/api/state", {cache:"no-store",
+      headers: (!force && stateEtag) ? {"If-None-Match": stateEtag} : {}});
+    if (r.status === 304 || !r.ok) return;
+    stateEtag = r.headers.get("ETag");
     const s = await r.json();
     if (!force && s.version === lastVersion) return;
     lastVersion = s.version;

@@ -1,0 +1,84 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Triage (Tier 1)</title>
+<link rel="stylesheet" href="/static/css/soc.css">
+<style>
+  .tri-head{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+  .tri-head .right{margin-left:auto;display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+  .tri-head select{background:#262b3d;color:var(--text);border:1px solid var(--border);border-radius:3px;padding:4px 6px;font:inherit}
+  .me-strip{display:flex;gap:8px;flex-wrap:wrap;padding:0 18px 8px}
+  .me-strip .m{background:var(--panel);border:1px solid var(--border);border-radius:4px;padding:6px 10px;font-size:12px}
+  .me-strip .m b{color:#fff;font-size:15px;margin-right:4px}
+  .tri-grid{display:grid;grid-template-columns:minmax(340px,430px) 1fr;gap:12px;padding:0 18px 14px;flex:1;min-height:0}
+  .tri-col{background:var(--panel);border:1px solid var(--border);border-radius:5px;display:flex;flex-direction:column;min-height:0}
+  .counts{display:flex;flex-wrap:wrap;gap:6px;padding:10px;border-bottom:1px solid var(--border)}
+  .cnt{background:#262b3d;border:1px solid var(--border);color:#cfd4e2;border-radius:3px;padding:4px 8px;font:inherit;font-size:11.5px;cursor:pointer}
+  .cnt b{color:#fff;margin-left:4px}
+  .cnt.on{border-color:var(--green);color:#fff}
+  .cnt.bad b{color:var(--red)}
+  .qfilters{display:flex;gap:6px;flex-wrap:wrap;padding:8px 10px;border-bottom:1px solid var(--border)}
+  .qfilters select,.qfilters input{background:#262b3d;color:var(--text);border:1px solid var(--border);border-radius:3px;padding:4px 6px;font:inherit;font-size:12px}
+  .qfilters input{flex:1;min-width:120px}
+  .qlist{flex:1;overflow:auto}
+  .qrow{padding:9px 12px;border-bottom:1px solid var(--border);cursor:pointer;display:grid;grid-template-columns:auto 1fr auto;gap:4px 8px;align-items:center}
+  .qrow:hover{background:#1f2436}
+  .qrow.sel{background:#222842;box-shadow:inset 3px 0 0 var(--green)}
+  .qrow:focus-visible{outline:2px solid var(--blue);outline-offset:-2px}
+  .qrow .t{color:#e7eaf2;font-weight:600;font-size:12.5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .qrow .meta{grid-column:2/4;color:var(--muted);font-size:11px;display:flex;gap:8px;flex-wrap:wrap}
+  .sla{font-size:11px;font-variant-numeric:tabular-nums;white-space:nowrap}
+  .sla.ok{color:var(--green)} .sla.warn{color:var(--orange)} .sla.bad{color:var(--red);font-weight:700} .sla.stop{color:var(--muted)}
+  .pager{display:flex;gap:6px;align-items:center;justify-content:center;padding:6px;border-top:1px solid var(--border);font-size:11.5px}
+  .pager button{background:#262b3d;color:var(--text);border:1px solid var(--border);border-radius:3px;padding:2px 8px;cursor:pointer}
+  .case{flex:1;overflow:auto;padding:14px 16px}
+  .case h2{color:#fff;font-size:15px;margin-bottom:4px}
+  .case h3{color:#e7eaf2;font-size:13px;margin:16px 0 6px;border-bottom:1px solid var(--border);padding-bottom:4px}
+  .chead{display:flex;gap:10px;align-items:flex-start;flex-wrap:wrap}
+  .chead .acts{margin-left:auto;display:flex;gap:6px;flex-wrap:wrap}
+  .btn[disabled]{opacity:.45;cursor:not-allowed}
+  .btn.dng{background:#b23c33}
+  .kbd{display:inline-block;border:1px solid #4a5066;border-radius:3px;padding:0 4px;font-size:10px;color:var(--muted);margin-left:4px}
+  .sugg{margin-top:10px;padding:8px 12px;border-radius:4px;font-size:12.5px;border-left:3px solid var(--blue);background:#1e2231}
+  .sugg.escalate{border-left-color:var(--orange)} .sugg.close{border-left-color:var(--green)}
+  .chk{display:grid;grid-template-columns:22px 1fr;gap:2px 8px;padding:6px 0;border-bottom:1px dashed #262b3d;font-size:12.5px}
+  .chk .ic{font-weight:700;text-align:center}
+  .chk .ic.yes{color:var(--orange)} .chk .ic.no{color:var(--green)} .chk .ic.na{color:var(--dim)} .chk .ic.ben{color:var(--cyan)}
+  .chk .d{grid-column:2;color:var(--muted);font-size:11.5px}
+  .chk label{cursor:pointer}
+  .req{color:var(--red);font-size:10.5px;margin-left:4px}
+  table.mini{border-collapse:collapse;width:100%;font-size:12px}
+  table.mini th,table.mini td{text-align:left;padding:4px 6px;border-bottom:1px solid #262b3d;vertical-align:top}
+  table.mini th{color:var(--muted);font-weight:600}
+  .samples{font-family:ui-monospace,Consolas,monospace;font-size:11.5px;color:#cfd4e2;word-break:break-all}
+  .samples div{padding:2px 0}
+  .pill2{display:inline-block;background:#262b3d;border-radius:10px;padding:1px 8px;font-size:11px;margin:2px 4px 2px 0}
+  .link{color:var(--cyan);cursor:pointer;text-decoration:underline}
+  .banner{padding:8px 12px;border-radius:4px;font-size:12.5px;margin-top:10px;background:#2a2412;border-left:3px solid var(--yellow)}
+  .warnip{color:var(--orange);font-weight:600}
+  dialog{background:var(--panel);color:var(--text);border:1px solid var(--border);border-radius:6px;padding:0;width:min(620px,94vw)}
+  dialog::backdrop{background:rgba(0,0,0,.55)}
+  dialog .dh{padding:12px 16px;border-bottom:1px solid var(--border);color:#fff;font-weight:600}
+  dialog .db{padding:12px 16px;display:flex;flex-direction:column;gap:10px;max-height:70vh;overflow:auto}
+  dialog .df{padding:10px 16px;border-top:1px solid var(--border);display:flex;gap:8px;justify-content:flex-end}
+  dialog label{font-size:12px;color:var(--muted);display:flex;flex-direction:column;gap:4px}
+  dialog textarea,dialog select,dialog input{background:#262b3d;color:var(--text);border:1px solid var(--border);border-radius:3px;padding:6px;font:inherit;font-size:12.5px}
+  dialog textarea{min-height:64px;resize:vertical}
+  .err{color:var(--red);font-size:12px}
+  #toast{position:fixed;right:18px;bottom:18px;background:#262b3d;border:1px solid var(--border);border-left:3px solid var(--green);
+    padding:10px 14px;border-radius:4px;font-size:12.5px;max-width:420px;display:none;z-index:50}
+  #toast.bad{border-left-color:var(--red)}
+  .tl{display:flex;align-items:flex-end;gap:1px;height:40px}
+  .tl span{flex:1;background:var(--blue);min-width:2px}
+  @media (max-width:900px){.tri-grid{grid-template-columns:1fr}.tri-col{min-height:50vh}}
+</style>
+</head>
+<body>
+<div id="app-chrome"></div>
+<div id="toast" role="status" aria-live="polite"></div>
+<script src="/static/js/chrome.js"></script>
+<script src="/static/js/triage.js"></script>
+</body>
+</html>

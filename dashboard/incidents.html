@@ -70,19 +70,22 @@ function sevCls(s){
 
 function renderList(){
   const el = document.getElementById("inc-list");
-  if (!incidents.length){
-    el.innerHTML = '<div class="empty">No incidents yet. Create one from the Alerts page bulk menu, or use <b>+ New incident</b> above.</div>';
-    return;
-  }
-  el.innerHTML = incidents.sort((a,b)=>b.created_at.localeCompare(a.created_at)).map(inc=>`
+  const sorted = incidents.slice().sort((a,b)=>b.created_at.localeCompare(a.created_at));
+  SOC.patchList(el, sorted, inc=>inc.id, inc=>`
     <div class="inc-row ${inc.id===selectedId?"sel":""}" data-id="${SOC.esc(inc.id)}">
       <h3>${SOC.esc(inc.title)}<span class="chip ${sevCls(inc.severity)}">${SOC.esc(inc.severity)}</span></h3>
       <div class="meta">${SOC.esc(inc.id)} · ${SOC.esc(inc.status)} · ${(inc.alert_fps||[]).length} alerts · created ${SOC.esc(SOC.fmtDate(inc.created_at))}</div>
-    </div>`).join("");
-  for (const row of el.querySelectorAll("[data-id]")){
-    row.addEventListener("click", ()=>{ selectedId = row.dataset.id; renderList(); renderDetail(incidents.find(i=>i.id===selectedId)); });
-  }
+    </div>`,
+    '<div class="empty">No incidents yet. Create one from the Alerts page bulk menu, or use <b>+ New incident</b> above.</div>');
 }
+
+document.getElementById("inc-list").addEventListener("click", ev=>{
+  const row = ev.target.closest("[data-id]");
+  if (!row) return;
+  selectedId = row.dataset.id;
+  renderList();
+  renderDetail(incidents.find(i=>i.id===selectedId));
+});
 
 const RESPONSE_ACTIONS = [
   {key:"watchlist_ip",            label:"Add source IP to investigation watchlist", integ:null},
@@ -149,9 +152,8 @@ document.getElementById("new-inc").addEventListener("click", async ()=>{
   } catch(e){ alert("Create failed: " + e.message); }
 });
 
-load();
-setInterval(load, 5000);
-SOC.pollState(()=>{}, 5000);   // keep the chrome's pipeline pill live
+// incident writes bump the server state version, so one poller covers both the pill and the list
+SOC.pollState(()=>load().catch(()=>{}), 5000);
 </script>
 </body>
 </html>

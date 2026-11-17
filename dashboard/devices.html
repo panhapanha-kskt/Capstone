@@ -74,7 +74,7 @@ async function load(){
     const data = await SOC.apiGET("/api/devices");
     const ipBody = document.getElementById("ip-body");
     const clients = data.clients || [];
-    ipBody.innerHTML = clients.length ? clients.map(c=>{
+    SOC.patchList(ipBody, clients, c=>c.ip, c=>{
       const sev = c.severity || {};
       const statusCls = c.status === "Active" ? "ok" : c.status === "Quiet" ? "warn" : "unk";
       return `<tr>
@@ -88,19 +88,21 @@ async function load(){
         <td>${c.enriched_dns ? SOC.esc(c.enriched_dns) : '<span style="color:var(--dim)">MDTI disabled</span>'}</td>
         <td>${c.enriched_reputation ? SOC.esc(c.enriched_reputation) : '<span style="color:var(--dim)">—</span>'}</td>
       </tr>`;
-    }).join("") : '<tr><td colspan="9" class="empty">No client IPs observed yet.</td></tr>';
+    }, '<tr><td colspan="9" class="empty">No client IPs observed yet.</td></tr>');
 
     const srcBody = document.getElementById("src-body");
     const sources = data.sources || [];
-    srcBody.innerHTML = sources.length ? sources.map(s=>`<tr>
+    SOC.patchList(srcBody, sources, s=>s.kind + "|" + s.name, s=>`<tr>
       <td>${SOC.esc(s.name)}</td>
       <td>${SOC.esc(s.kind)}</td>
       <td class="num">${fmtSize(s.size_bytes)}</td>
       <td class="num">${fmtMtime(s.mtime)}</td>
       <td class="num">${SOC.esc(s.event_count||0)}</td>
-    </tr>`).join("") : '<tr><td colspan="5" class="empty">No collection sources available.</td></tr>';
+    </tr>`, '<tr><td colspan="5" class="empty">No collection sources available.</td></tr>');
   } catch(e){
-    document.getElementById("ip-body").innerHTML = `<tr><td colspan="9" class="empty">Error: ${SOC.esc(e.message)}</td></tr>`;
+    const ipBody = document.getElementById("ip-body");
+    ipBody.innerHTML = `<tr><td colspan="9" class="empty">Error: ${SOC.esc(e.message)}</td></tr>`;
+    ipBody.dataset.empty = "1";
   }
 }
 

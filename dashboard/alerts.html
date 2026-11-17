@@ -5,9 +5,9 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Alerts</title>
 <!-- React 18 + htm: component-based SPA, no build step needed -->
-<script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.3.1/umd/react.production.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.3.1/umd/react-dom.production.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/htm/3.1.1/htm.min.js"></script>
+<script src="/static/vendor/react.production.min.js"></script>
+<script src="/static/vendor/react-dom.production.min.js"></script>
+<script src="/static/vendor/htm.min.js"></script>
 <style>
   :root{
     --bg:#101320; --panel:#1b1f2e; --panel2:#171a27; --sidebar:#161926; --topbar:#1e2231;
@@ -203,6 +203,25 @@
   .nag{background:#1e2231;border:1px solid var(--border);border-left:3px solid var(--orange);
     padding:8px 12px;border-radius:3px;font-size:11.5px;color:var(--muted)}
   .nag b{color:#e7eaf2}
+  .nag.info{border-left-color:#2f6fb2}
+
+  /* ── triage additions ── */
+  .dim{color:var(--muted)} .small{font-size:11px}
+  .tgl{display:inline-flex;align-items:center;gap:5px;font-size:11.5px;color:var(--muted);cursor:pointer;margin-left:10px}
+  .drawer-tabs{flex-wrap:wrap}
+  .drawer-tab:focus-visible{outline:2px solid #4a90d9;outline-offset:-2px}
+  .score{display:flex;flex-direction:column;gap:4px;font-size:12px}
+  .score-h{display:flex;justify-content:space-between;gap:8px;color:#e8ebf4}
+  .score-track{position:relative;height:8px;background:#262b3d;border-radius:4px;overflow:visible}
+  .score-fill{height:100%;border-radius:4px}
+  .score-thr{position:absolute;top:-3px;width:2px;height:14px;background:#e7eaf2}
+  .chip.conf-HIGH{background:#d9822b} .chip.conf-MEDIUM{background:#c9a227}
+  .chip.conf-LOW{background:#2f6fb2} .chip.conf-CLEAN{background:var(--green2)}
+  .chip.conf-UNSCORED,.chip.conf-—{background:#4a5066}
+  .rel-row{display:flex;gap:10px;align-items:center;padding:7px 4px;border-bottom:1px dashed #262b3d;cursor:pointer;font-size:12px}
+  .rel-row:hover{background:#1f2436}
+  .rel-main{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis}
+  .playbook{padding-left:18px;display:flex;flex-direction:column;gap:7px;font-size:12.5px;color:#e8ebf4}
 </style>
 </head>
 <body>
@@ -258,7 +277,7 @@ const html = htm.bind(React.createElement);
 /* ── simple API wrappers ──────────────────────── */
 async function apiPOST(url, body){
   const r = await fetch(url, {method:"POST", cache:"no-store",
-    headers:{"Content-Type":"application/json"}, body:JSON.stringify(body||{})});
+    headers:{"Content-Type":"application/json", "X-SOC-Request":"1"}, body:JSON.stringify(body||{})});
   const data = await r.json().catch(()=>({}));
   if (!r.ok) throw Object.assign(new Error(data.error||("HTTP "+r.status)), {code:r.status, data});
   return data;
@@ -275,11 +294,49 @@ function setActor(a){ try { localStorage.setItem(ACTOR_KEY, a); } catch(e){} }
 const COLORS = { green:"#4caf50", yellow:"#c9a227", orange:"#d9822b", blue:"#4a90d9", red:"#e0564a" };
 const SEV_ORDER = ["Low","Medium","High","Critical"];
 const SEV_COLOR = { Low:COLORS.green, Medium:COLORS.yellow, High:COLORS.orange, Critical:COLORS.red };
+const SEV_RANK = { Critical:4, High:3, Medium:2, Low:1 };
 const COLUMNS = [
   ["id","ID"],["weight","Priority Weight"],["severity","Severity"],["assigned","Assigned To"],
   ["name","Name"],["source","Source"],["type","Type"],["status","Status"],["escalated","Escalated"],
+  ["verdict","Verdict"],
   ["adate","Assigned Date"],["ack","Ack SLA"],["resp","Response SLA"],["cdate","Created On"],
 ];
+const VERDICTS = [
+  ["true_positive","True positive"],["benign_positive","Benign positive (expected activity)"],
+  ["fp_model_logic","False positive: detection / model logic"],["fp_bad_data","False positive: bad or incomplete data"],
+  ["duplicate","Duplicate"],["undetermined","Undetermined"],
+];
+const VERDICT_LABEL = Object.assign(Object.fromEntries(VERDICTS), {false_positive: "False positive (legacy)"});
+function actorTier(analysts){
+  const me = (analysts || []).find(a => a.id === currentActor());
+  const m = /\d/.exec(me ? me.role : "");
+  return m ? Number(m[0]) : 0;
+}
+const OPEN_STATUSES = ["Open","Acknowledged","Investigating","Escalated"];
+
+/* Suggested triage steps: guidance text only. Response actions stay SIMULATED (see /incidents). */
+function playbookFor(a){
+  const d = a.details || {};
+  const conf = String(d.ml_confidence || "").toUpperCase();
+  const steps = [];
+  if (/tunnel|subdomain/i.test(a.name) || a.type === "ML Detection"){
+    steps.push("Check the query names for long encoded labels (base32/base64/hex) and a single parent domain.");
+    steps.push("Look at the Related tab: many alerts from one client to one registered domain is the tunnel pattern (T1572 / T1048).");
+    steps.push("Look up the parent domain's age and reputation (WHOIS, passive DNS) before blocking.");
+  }
+  if (/nxdomain/i.test(a.name)){
+    steps.push("A burst of NXDOMAIN for random names suggests a DGA (T1568.002): compare the names for shared length/charset.");
+    steps.push("Identify the process on the client host making the lookups.");
+  }
+  if (/z-score|statistical/i.test(a.name)){
+    steps.push("Statistical outlier only: confirm against the client's normal behaviour before escalating.");
+  }
+  if (conf === "HIGH") steps.unshift("ML confidence HIGH: both paths agree. Prioritise; escalate if the domain is not known-good.");
+  else if (conf === "MEDIUM") steps.unshift("ML confidence MEDIUM: one model is confident. Corroborate with a second signal before escalating.");
+  else if (conf === "LOW") steps.unshift("ML confidence LOW: treat as a lead, not a finding. A false-positive verdict here is useful training data.");
+  steps.push("Record a verdict before closing. Verdicts are exported as labels for the next model retraining.");
+  return steps;
+}
 
 /* ── domain logic: map a pipeline alert to a FortiSOAR-style record ── */
 function alertType(rule){
@@ -335,31 +392,13 @@ function enrich(f){
     client: f.client, domain: f.domain, description: f.description,
     tactics: f.tactics || [], techniques: f.techniques || [],
     details: f.details || {},
+    verdict: mgmt && mgmt.verdict ? VERDICT_LABEL[mgmt.verdict] || mgmt.verdict : "—",
+    suppressed: f.suppressed || null,
+    is_open: OPEN_STATUSES.includes(status),
+    assigned_id: mgmt && mgmt.assigned_to ? mgmt.assigned_to : null,
     is_new: f.is_new, mgmt,
     _raw: f,
   };
-}
-
-/* ── data hook: poll /api/state every 3 s ───── */
-function useApiState(){
-  const [state, setState] = useState(null);
-  useEffect(()=>{
-    let version = -1, alive = true;
-    async function tick(force){
-      try {
-        const r = await fetch("/api/state", {cache:"no-store"});
-        if (!r.ok || !alive) return;
-        const s = await r.json();
-        if (!force && s.version === version) return;
-        version = s.version;
-        setState(s);
-      } catch(e){ /* server restarting; keep polling */ }
-    }
-    tick(true);
-    const t = setInterval(()=>tick(false), 3000);
-    return ()=>{ alive = false; clearInterval(t); };
-  }, []);
-  return state;
 }
 
 /* ── widgets ────────────────────────────────── */
@@ -369,8 +408,17 @@ function AssignedTo({scope, setScope}){
     <a class=${scope==="all"?"on":""} onClick=${()=>setScope("all")}>All</a></div>`;
 }
 
-function SeverityPie({bySeverity}){
+function scoped(alerts, scope){
+  return scope === "me" ? alerts.filter(a => a.assigned_id === currentActor()) : alerts;
+}
+
+function SeverityPie({alerts}){
   const [scope, setScope] = useState("all");
+  const bySeverity = useMemo(()=>{
+    const c = {};
+    for (const a of scoped(alerts, scope)) if (a.is_open && !a.suppressed) c[a.severity] = (c[a.severity]||0) + 1;
+    return c;
+  }, [alerts, scope]);
   const parts = SEV_ORDER.map(k=>({k, c:SEV_COLOR[k], v:bySeverity[k]||0})).filter(p=>p.v);
   const total = parts.reduce((s,p)=>s+p.v,0);
   const cx=160, cy=160, r=125;
@@ -398,7 +446,8 @@ function SeverityPie({bySeverity}){
       </svg>
     </div>
     <div class="w-legend">
-      ${parts.map(p=>html`<span key=${p.k} class="li"><span class="sw" style=${{background:p.c}}/>${p.k}</span>`)}
+      ${parts.map(p=>html`<span key=${p.k} class="li"><span class="sw" style=${{background:p.c}}/>${p.k} (${p.v})</span>`)}
+      ${parts.length ? null : html`<span class="li">No open alerts${scope==="me" ? " assigned to you" : ""}</span>`}
     </div>
   </div>`;
 }
@@ -407,13 +456,13 @@ function TypeBars({alerts}){
   const [scope, setScope] = useState("all");
   const entries = useMemo(()=>{
     const types = {};
-    for (const a of alerts){
+    for (const a of scoped(alerts, scope)){
       const t = types[a.type] ??= {open:0, inv:0};
       if (a.status === "Open") t.open++;
       else if (a.status === "Investigating") t.inv++;
     }
     return Object.entries(types).sort((x,y)=>(y[1].open+y[1].inv)-(x[1].open+x[1].inv));
-  }, [alerts]);
+  }, [alerts, scope]);
   const w = 640, h = 300, padL = 170, padB = 28, padT = 10, bw = 13, gap = 3;
   const max = Math.max(...entries.flatMap(([,v])=>[v.open,v.inv]), 1);
   const xmax = Math.max(Math.ceil(max*1.15), 4);
@@ -453,13 +502,86 @@ function SlaChip({v}){
   return html`<${Chip} val=${v} cls=${v==="Met" ? "sla-met" : v==="In Progress" ? "sla-prog" : "sla-wait"}/>`;
 }
 
-function Drawer({alert, analysts, onClose, onAction, bump, error}){
+function ScoreBar({label, value, threshold, hint}){
+  const has = typeof value === "number" && isFinite(value);
+  const pct = has ? Math.max(0, Math.min(1, value)) * 100 : 0;
+  const over = has && typeof threshold === "number" && value >= threshold;
+  return html`<div class="score">
+    <div class="score-h"><b>${label}</b>
+      <span>${has ? value.toFixed(3) : "N/A"}${typeof threshold === "number" ? html` <span class="dim">/ threshold ${threshold.toFixed(3)}</span>` : null}
+        ${has && typeof threshold === "number" ? html` <span class=${"chip " + (over ? "sev-High" : "sla-met")}>${over ? "above" : "below"}</span>` : null}</span></div>
+    <div class="score-track"><div class="score-fill" style=${{width: pct + "%", background: over ? COLORS.orange : COLORS.blue}}></div>
+      ${typeof threshold === "number" ? html`<div class="score-thr" style=${{left: Math.min(100, threshold * 100) + "%"}}></div>` : null}</div>
+    ${hint ? html`<div class="dim small">${hint}</div>` : null}
+  </div>`;
+}
+
+function MlTab({alert, model}){
+  const d = alert.details || {};
+  const num = v => (typeof v === "number" && isFinite(v)) ? v : (v != null && v !== "" && isFinite(Number(v)) ? Number(v) : null);
+  const thrA = model?.path_a?.threshold, thrB = null;
+  const conf = d.ml_confidence || "—";
+  const anyMl = ["ml_score_A","ml_score_B","ml_combined_score","ml_threat_score"].some(k => num(d[k]) !== null);
+  return html`<${React.Fragment}>
+    ${d.demo ? html`<div class="nag">Demo mode: these scores are synthetic so the layout can be checked. They do not come from a model.</div>` : null}
+    ${anyMl ? null : html`<div class="nag">This alert carries no ML scores (rule-based detection, or Path B had no 20-query window for it).</div>`}
+    <div class="kv"><span class="k">ML confidence</span><span class="v"><span class=${"chip conf-" + String(conf).toUpperCase()}>${conf}</span></span></div>
+    <div class="kv"><span class="k">Fused label</span><span class="v">${d.ml_combined_label ?? "—"}</span></div>
+    <${ScoreBar} label="Path A (Random Forest)" value=${num(d.ml_score_A)} threshold=${typeof thrA === "number" ? thrA : null}
+      hint="Supervised: probability that this query is tunnel traffic."/>
+    <${ScoreBar} label=${"Path B (" + (model?.path_b?.model_type || "anomaly model") + ")"} value=${num(d.ml_score_B)} threshold=${thrB}
+      hint="Unsupervised: how unusual this client's 20-query window is compared with benign training traffic."/>
+    <${ScoreBar} label="Fusion (combined)" value=${num(d.ml_combined_score)}
+      threshold=${typeof model?.fusion?.threshold === "number" ? model.fusion.threshold : null}
+      hint=${"Fusion method: " + (d.fusion_method || model?.fusion?.method || "—")}/>
+    ${model?.path_b?.threshold != null ? html`<div class="dim small">Path B raw threshold (${model.path_b.threshold_method || "—"}): ${Number(model.path_b.threshold).toPrecision(4)}. Path B scores are not on a fixed 0–1 scale, so no marker is drawn.</div>` : null}
+    <${ScoreBar} label="Threat score" value=${num(d.ml_threat_score)} threshold=${null}/>
+    <div class="kvtable" style=${{marginTop:10}}>
+      <span class="k">Model version</span><span class="v">${model?.model_version || "—"}</span>
+      <span class="k">Last trained</span><span class="v">${model?.training?.last_trained || "—"}</span>
+      <span class="k">Drift (max PSI)</span><span class="v">${model?.drift?.max_psi ?? "—"}${model?.drift?.retrain_recommended ? " · retraining recommended" : ""}</span>
+    </div>
+  <//>`;
+}
+
+function RelatedTab({alert, onOpen}){
+  const [data, setData] = useState(null);
+  const [err, setErr] = useState("");
+  const [win, setWin] = useState(900);
+  useEffect(()=>{
+    setData(null); setErr("");
+    apiGET(`/api/alerts/${encodeURIComponent(alert.fp)}/related?window=${win}`)
+      .then(setData).catch(e=>setErr(e.message));
+  }, [alert.fp, win]);
+  return html`<${React.Fragment}>
+    <div class="field"><label>Time window</label>
+      <select value=${win} onChange=${e=>setWin(Number(e.target.value))}>
+        ${[[300,"± 5 min"],[900,"± 15 min"],[3600,"± 1 hour"],[86400,"± 24 hours"]].map(([v,l])=>html`<option key=${v} value=${v}>${l}</option>`)}
+      </select></div>
+    ${err ? html`<div class="nag">${err === "HTTP 404" ? "This alert has aged out of the live feed." : err}</div>` : null}
+    ${!data && !err ? html`<div class="nag">Loading…</div>` : null}
+    ${data ? html`<div class="dim small" style=${{marginBottom:6}}>${data.total} related · client ${data.client_ip || "—"} · domain ${data.registered_domain || "—"}</div>` : null}
+    ${data && !data.records.length ? html`<div class="nag">No other alerts share this client IP or registered domain in the window.</div>` : null}
+    ${(data?.records || []).map(r=>html`<div class="rel-row" key=${r.fp} onClick=${()=>onOpen(r.fp)}>
+      <span class=${"chip sev-" + (r.severity || "Medium")}>${r.severity || "—"}</span>
+      <span class="rel-main"><b>${r.rule}</b><br/><span class="dim">${r.client} → ${r.domain}</span></span>
+      <span class="dim small">${r.delta_seconds == null ? "" : (r.delta_seconds >= 0 ? "+" : "") + Math.round(r.delta_seconds) + " s"}<br/>${r.reasons.join(", ")}</span>
+    </div>`)}
+    ${data ? html`<div class="dim small" style=${{marginTop:6}}>${data.note}</div>` : null}
+  <//>`;
+}
+
+function Drawer({alert, analysts, model, onClose, onAction, onOpen, onSuppress, bump, error}){
   const [tab, setTab] = useState("overview");
   const [note, setNote] = useState("");
   const [audit, setAudit] = useState([]);
+  const [verdict, setVerdict] = useState("");
+  const [vReason, setVReason] = useState("");
+  // reset the view only when a different alert is opened, not after each action
+  useEffect(()=>{ setTab("overview"); setNote(""); setVReason(""); }, [alert?.fp]);
+  useEffect(()=>{ setVerdict(alert?.mgmt?.verdict || ""); }, [alert?.fp, alert?.mgmt?.verdict]);
   useEffect(()=>{
     if (!alert) return;
-    setTab("overview"); setNote(""); setAudit([]);
     apiGET(`/api/audit?alert_fp=${encodeURIComponent(alert.fp)}&limit=50`)
       .then(r=>setAudit(r.records||[])).catch(()=>{});
   }, [alert?.fp, bump]);
@@ -479,9 +601,15 @@ function Drawer({alert, analysts, onClose, onAction, bump, error}){
     ["MITRE Tactics", alert.tactics.join(", ") || "—"],
     ["MITRE Techniques", alert.techniques.join(", ") || "—"],
     ["Ack SLA", alert.ack], ["Response SLA", alert.resp],
+    ["Verdict", alert.verdict + (alert.mgmt?.verdict_reason ? " — " + alert.mgmt.verdict_reason : "")
+      + (alert.mgmt?.verdict_approved_by ? " (approved by " + alert.mgmt.verdict_approved_by + ")" : "")],
+    ["Triage case", alert.mgmt?.case_key ? html`<a href="/triage" style=${{color:"var(--cyan)"}}>${alert.mgmt.case_key}</a>` : "—"],
+    ["Suppressed", alert.suppressed ? "Yes (" + alert.suppressed + "), hidden from the default view" : "No"],
     ["Created On", alert.cdate],
     ["Description", alert.description || "—"],
   ];
+  const TABS = [["overview","Overview"],["invest","Investigation"],["ml","ML"],["related","Related"],
+                ["playbook","Playbook"],["details","Details"],["audit","Audit"]];
 
   async function submitNote(){
     if (!note.trim()) return;
@@ -493,11 +621,10 @@ function Drawer({alert, analysts, onClose, onAction, bump, error}){
   return html`<div class="drawer">
     <div class="d-head">⚠ Alert ${alert.id}
       <span class="x" onClick=${onClose}>✕</span></div>
-    <div class="drawer-tabs">
-      <div class=${"drawer-tab "+(tab==="overview"?"active":"")} onClick=${()=>setTab("overview")}>Overview</div>
-      <div class=${"drawer-tab "+(tab==="invest"?"active":"")} onClick=${()=>setTab("invest")}>Investigation</div>
-      <div class=${"drawer-tab "+(tab==="details"?"active":"")} onClick=${()=>setTab("details")}>Details</div>
-      <div class=${"drawer-tab "+(tab==="audit"?"active":"")} onClick=${()=>setTab("audit")}>Audit</div>
+    <div class="drawer-tabs" role="tablist">
+      ${TABS.map(([k,l])=>html`<div key=${k} role="tab" tabIndex="0" aria-selected=${tab===k}
+        class=${"drawer-tab "+(tab===k?"active":"")} onClick=${()=>setTab(k)}
+        onKeyDown=${e=>{ if (e.key==="Enter"||e.key===" "){ e.preventDefault(); setTab(k); } }}>${l}</div>`)}
     </div>
     <div class="d-body">
       ${error ? html`<div class="nag"><b>Last action failed:</b> ${error}</div>` : null}
@@ -527,6 +654,25 @@ function Drawer({alert, analysts, onClose, onAction, bump, error}){
           ${(alert.status==="Resolved"||alert.status==="Closed") ?
             html`<button class="btn btn-sec" onClick=${()=>onAction("status",{status:"Open"}).catch(()=>{})}>Reopen</button>` : null}
         </div>
+        <div class="field"><label>Verdict (exported as a training label)</label>
+          <div style=${{display:"flex", gap:6, flexWrap:"wrap"}}>
+            <select value=${verdict} onChange=${e=>setVerdict(e.target.value)} style=${{flex:"1 1 180px"}}>
+              <option value="">— choose —</option>
+              ${VERDICTS.map(([v,l])=>html`<option key=${v} value=${v}>${l}</option>`)}
+            </select>
+            <input type="text" placeholder="Reason (optional)" value=${vReason} onInput=${e=>setVReason(e.target.value)} style=${{flex:"2 1 180px"}}/>
+            <button class="btn" disabled=${!verdict} onClick=${()=>onAction("verdict",{verdict, reason:vReason}).then(()=>setVReason("")).catch(()=>{})}>Save verdict</button>
+          </div>
+          ${alert.mgmt?.verdict ? html`<div class="dim small">Current: ${VERDICT_LABEL[alert.mgmt.verdict] || alert.mgmt.verdict} by ${alert.mgmt.verdict_by || "—"} · ${fmtDate(alert.mgmt.verdict_at)}</div>` : null}
+        </div>
+        <div class="field"><label>Known false positive?</label>
+          <div style=${{display:"flex", gap:6, flexWrap:"wrap"}}>
+            <button class="btn btn-sec" disabled=${!alert.domain || !!alert.suppressed || actorTier(analysts) < 2} onClick=${()=>onSuppress(alert, "domain")}>Suppress domain…</button>
+            <button class="btn btn-sec" disabled=${!alert.client || !!alert.suppressed || actorTier(analysts) < 2} onClick=${()=>onSuppress(alert, "client_ip")}>Suppress client IP…</button>
+          </div>
+          <div class="dim small">Hides matching alerts in this UI only; the detection rules still fire and still export.
+            ${actorTier(analysts) < 2 ? " Suppression needs Tier 2+ (a shared resolver IP can hide an infected host)." : ""}</div>
+        </div>
         <div class="field"><label>Add investigation note</label>
           <textarea value=${note} onInput=${e=>setNote(e.target.value)} placeholder="Observations, evidence, false-positive reasoning, threat-intel findings…"/>
           <div><button class="btn add" disabled=${!note.trim()} onClick=${submitNote}>Add note</button></div>
@@ -537,6 +683,13 @@ function Drawer({alert, analysts, onClose, onAction, bump, error}){
             <div class="txt">${n.text}</div></div>`)}
           ${(!alert.mgmt?.notes?.length) ? html`<div class="nag">No notes yet.</div>` : null}
         </div>
+      <//>` : null}
+
+      ${tab==="ml" ? html`<${MlTab} alert=${alert} model=${model}/>` : null}
+      ${tab==="related" ? html`<${RelatedTab} alert=${alert} onOpen=${onOpen}/>` : null}
+      ${tab==="playbook" ? html`<${React.Fragment}>
+        <div class="nag info">Suggested triage steps for this alert type and ML confidence. Guidance only; nothing here runs automatically.</div>
+        <ol class="playbook">${playbookFor(alert).map((s,i)=>html`<li key=${i}>${s}</li>`)}</ol>
       <//>` : null}
 
       ${tab==="details" ? html`<${React.Fragment}>
@@ -570,13 +723,14 @@ function BulkMenu({selected, analysts, onClose, onConfirm}){
   const [status, setStatus] = useState("Investigating");
   const [analyst, setAnalyst] = useState(analysts[0]?.id || "");
   const [reason, setReason] = useState("");
-  // count how many are eligible
+  const [verdict, setVerdict] = useState("undetermined");
+  // count how many are eligible (mirrors server rules)
   const eligible = useMemo(()=>{
-    if (action === "acknowledge") return selected.filter(a => a.status === "Open" || !a.persisted).length;
+    if (action === "acknowledge") return selected.filter(a => !a.persisted || !["Resolved","Closed"].includes(a.status)).length;
     if (action === "escalate")   return selected.filter(a => a.status !== "Closed").length;
     if (action === "close")      return selected.filter(a => canTransition(a.status, "Closed")).length;
     if (action === "status")     return selected.filter(a => canTransition(a.status, status)).length;
-    if (action === "assign")     return selected.length;
+    if (action === "assign" || action === "verdict") return selected.length;
     return 0;
   }, [action, status, selected]);
   return html`<div class="modal-back" onClick=${e=>{ if (e.target.classList.contains("modal-back")) onClose(); }}>
@@ -590,8 +744,13 @@ function BulkMenu({selected, analysts, onClose, onConfirm}){
             <option value="status">Set status</option>
             <option value="escalate">Escalate</option>
             <option value="close">Close (where valid)</option>
+            <option value="verdict">Set verdict</option>
           </select>
         </div>
+        ${action==="verdict" ? html`<div class="field"><label>Verdict</label>
+          <select value=${verdict} onChange=${e=>setVerdict(e.target.value)}>
+            ${VERDICTS.map(([v,l])=>html`<option key=${v} value=${v}>${l}</option>`)}
+          </select></div>` : null}
         ${action==="status" ? html`<div class="field"><label>Target status</label>
           <select value=${status} onChange=${e=>setStatus(e.target.value)}>
             ${["Acknowledged","Investigating","Escalated","Resolved","Closed"].map(s=>html`<option key=${s} value=${s}>${s}</option>`)}
@@ -607,14 +766,54 @@ function BulkMenu({selected, analysts, onClose, onConfirm}){
       </div>
       <div class="foot">
         <button class="btn btn-sec" onClick=${onClose}>Cancel</button>
-        <button class="btn add" onClick=${()=>onConfirm({action, payload:{status, analyst_id: analyst||null, reason}})}>Apply to ${eligible}</button>
+        <button class="btn add" onClick=${()=>onConfirm({action, payload:{status, analyst_id: analyst||null, reason, verdict}})}>Apply to ${eligible}</button>
       </div>
     </div></div>`;
 }
 
-function AlertsGrid({alerts, analysts, doAction, refresh}){
+function SuppressModal({req, onClose, onDone}){
+  const [reason, setReason] = useState("");
+  const [days, setDays] = useState("7");
+  const [err, setErr] = useState("");
+  const value = req.field === "domain" ? (req.alert.domain || "") : (req.alert.client || "");
+  const [val, setVal] = useState(value);
+  async function save(){
+    setErr("");
+    const until = days === "0" ? null : new Date(Date.now() + Number(days)*86400000).toISOString();
+    try {
+      await apiPOST("/api/suppressions", {field:req.field, value:val, reason, until, actor: currentActor()});
+      onDone();
+    } catch(e){ setErr(e.message); }
+  }
+  return html`<div class="modal-back" onClick=${e=>{ if (e.target.classList.contains("modal-back")) onClose(); }}>
+    <div class="modal"><h3>Suppress ${req.field === "domain" ? "domain" : "client IP"}</h3>
+      <div class="body">
+        <div class="field"><label>${req.field === "domain" ? "Domain (sub-domains match too)" : "Client IP"}</label>
+          <input type="text" value=${val} onInput=${e=>setVal(e.target.value)}/></div>
+        <div class="field"><label>Expires</label>
+          <select value=${days} onChange=${e=>setDays(e.target.value)}>
+            <option value="1">in 1 day</option><option value="7">in 7 days</option>
+            <option value="30">in 30 days</option><option value="0">never (review regularly)</option>
+          </select></div>
+        <div class="field"><label>Reason (required, recorded in the audit log)</label>
+          <input type="text" value=${reason} onInput=${e=>setReason(e.target.value)} placeholder="e.g. internal update service, confirmed benign"/></div>
+        ${err ? html`<div class="nag"><b>Error:</b> ${err}</div>` : null}
+        <div class="nag">Suppression only hides alerts in this dashboard. The pipeline still detects and exports them.</div>
+      </div>
+      <div class="foot">
+        <button class="btn btn-sec" onClick=${onClose}>Cancel</button>
+        <button class="btn add" disabled=${!reason.trim() || !val.trim()} onClick=${save}>Suppress</button>
+      </div>
+    </div></div>`;
+}
+
+function AlertsGrid({alerts, analysts, model, doAction, refresh}){
   const [filters, setFilters] = useState({});
   const [sort, setSort] = useState({key:"severity", dir:-1});
+  const [mineOnly, setMineOnly] = useState(false);
+  const [showSuppressed, setShowSuppressed] = useState(false);
+  const [openOnly, setOpenOnly] = useState(false);
+  const [supReq, setSupReq] = useState(null);
   const [page, setPage] = useState(1);
   const [checked, setChecked] = useState(()=>new Set());
   const [detail, setDetail] = useState(null);     // active alert fp
@@ -634,15 +833,22 @@ function AlertsGrid({alerts, analysts, doAction, refresh}){
     return ()=>{ document.removeEventListener("click", close); document.removeEventListener("keydown", onKey); };
   }, [menu]);
 
+  const suppressedCount = useMemo(()=>alerts.filter(a=>a.suppressed).length, [alerts]);
   const list = useMemo(()=>{
-    let l = alerts.filter(a => Object.entries(filters).every(([k,q]) =>
-      !q || String(a[k]).toLowerCase().includes(q)));
+    const me = currentActor();
+    let l = alerts.filter(a =>
+      (showSuppressed || !a.suppressed) &&
+      (!mineOnly || a.assigned_id === me) &&
+      (!openOnly || a.is_open) &&
+      Object.entries(filters).every(([k,q]) => !q || String(a[k]).toLowerCase().includes(q)));
+    const val = (a, k) => k === "severity" ? (SEV_RANK[a.severity] || 0) : a[k];
     l.sort((a,b)=>{
-      const x = a[sort.key], y = b[sort.key];
-      return (typeof x === "number" ? x - y : String(x).localeCompare(String(y))) * sort.dir;
+      const x = val(a, sort.key), y = val(b, sort.key);
+      const primary = (typeof x === "number" ? x - y : String(x).localeCompare(String(y))) * sort.dir;
+      return primary || (b.weight - a.weight) || String(b._raw.time||"").localeCompare(String(a._raw.time||""));
     });
     return l;
-  }, [alerts, filters, sort]);
+  }, [alerts, filters, sort, mineOnly, showSuppressed, openOnly]);
 
   const pages = Math.max(Math.ceil(list.length/PAGE_SIZE), 1);
   const cur = Math.min(page, pages);
@@ -697,6 +903,9 @@ function AlertsGrid({alerts, analysts, doAction, refresh}){
       <span class="iconbtn" title="Refresh" onClick=${refresh}>⟳</span>
       <button class="btn exec" type="button" disabled=${!checked.size} onClick=${()=>setBulkOpen(true)}>⚙ Execute ▾</button>
       ${checked.size ? html`<span class="selinfo">${checked.size} selected</span>` : null}
+      <label class="tgl"><input type="checkbox" checked=${mineOnly} onChange=${e=>{ setMineOnly(e.target.checked); setPage(1); }}/> Assigned to me</label>
+      <label class="tgl"><input type="checkbox" checked=${openOnly} onChange=${e=>{ setOpenOnly(e.target.checked); setPage(1); }}/> Open only</label>
+      <label class="tgl"><input type="checkbox" checked=${showSuppressed} onChange=${e=>{ setShowSuppressed(e.target.checked); setPage(1); }}/> Show suppressed (${suppressedCount})</label>
       <div class="rtools">
         <span style=${{color:"var(--muted)", fontSize:"11.5px"}}>Actor:</span>
         <select class="colq" style=${{width:"auto", minWidth:120}} value=${currentActor()}
@@ -736,6 +945,7 @@ function AlertsGrid({alerts, analysts, doAction, refresh}){
             <td>${a.type}</td>
             <td><${Chip} val=${a.status} cls=${(a.persisted?"persisted ":"derived ")+"st-"+a.status}/></td>
             <td><${Chip} val=${a.escalated} cls=${a.escalated==="Yes"?"yes":"no"}/></td>
+            <td>${a.verdict}${a.suppressed ? html` <span class="chip no" title=${a.suppressed}>suppressed</span>` : null}</td>
             <td class="num">${a.adate}</td>
             <td><${SlaChip} v=${a.ack}/></td>
             <td><${SlaChip} v=${a.resp}/></td>
@@ -785,8 +995,13 @@ function AlertsGrid({alerts, analysts, doAction, refresh}){
         <div class="foot"><button class="btn btn-sec" onClick=${()=>setBulkResult(null)}>Close</button></div>
       </div></div>` : null}
 
-    <${Drawer} alert=${detailObj} analysts=${analysts}
+    ${supReq ? html`<${SuppressModal} req=${supReq} onClose=${()=>setSupReq(null)}
+      onDone=${()=>{ setSupReq(null); setDrawerBump(x=>x+1); refresh(); }}/>` : null}
+
+    <${Drawer} alert=${detailObj} analysts=${analysts} model=${model}
       onClose=${()=>{ setDetail(null); setDrawerErr(""); }}
+      onOpen=${fp=>{ setDetail(fp); setDrawerErr(""); }}
+      onSuppress=${(alert, field)=>setSupReq({alert, field})}
       onAction=${onDrawerAction} bump=${drawerBump} error=${drawerErr}/>
   <//>`;
 }
@@ -799,11 +1014,14 @@ function useApiStateWithRefresh(){
   const forceRef = useRef(null);
   function forceTick(){ if (forceRef.current) forceRef.current(); }
   useEffect(()=>{
-    let version = -1, alive = true;
+    let version = -1, alive = true, etag = null;
     async function tick(force){
+      if (!force && document.hidden) return;
       try {
-        const r = await fetch("/api/state", {cache:"no-store"});
-        if (!r.ok || !alive) return;
+        const r = await fetch("/api/state", {cache:"no-store",
+          headers: (!force && etag) ? {"If-None-Match": etag} : {}});
+        if (r.status === 304 || !r.ok || !alive) return;
+        etag = r.headers.get("ETag");
         const s = await r.json();
         if (!force && s.version === version) return;
         version = s.version; setState(s);
@@ -812,7 +1030,9 @@ function useApiStateWithRefresh(){
     forceRef.current = ()=>tick(true);
     tick(true);
     const t = setInterval(()=>tick(false), 3000);
-    return ()=>{ alive = false; clearInterval(t); };
+    const onVis = ()=>{ if (!document.hidden) tick(false); };
+    document.addEventListener("visibilitychange", onVis);
+    return ()=>{ alive = false; clearInterval(t); document.removeEventListener("visibilitychange", onVis); };
   }, []);
   return [state, refresh];
 }
@@ -821,9 +1041,13 @@ function App(){
   const [state, refresh] = useApiStateWithRefresh();
   const [analysts, setAnalysts] = useState([]);
 
+  const [model, setModel] = useState(null);
   useEffect(()=>{
     apiGET("/api/analysts").then(r=>setAnalysts(r.records||[])).catch(()=>{});
   }, []);
+  useEffect(()=>{   // model info changes only after retraining; refresh it with the pipeline run counter
+    apiGET("/api/model").then(setModel).catch(()=>setModel(null));
+  }, [state?.pipeline?.runs]);
 
   useEffect(()=>{
     if (!state) return;
@@ -848,14 +1072,16 @@ function App(){
   return html`<${React.Fragment}>
     <div class="page-head"><h1>Alerts</h1>
       <span style=${{marginLeft:12, color:"var(--muted)", fontSize:"12px"}}>
-        ${state.mode==="demo" ? "Demo mode — alerts have no pipeline details, so ML/anomaly fields will show empty." : ""}
+        ${state.mode==="demo" ? "Demo mode — alerts and their ML scores are synthetic (marked demo=true), not model output." : ""}
+        ${state.model_version ? html` · model ${state.model_version}` : null}
       </span>
+      <a href="/triage" style=${{marginLeft:"auto", color:"var(--cyan)", fontSize:"12.5px"}}>Tier 1? Use the Triage workbench →</a>
       <span class="edit">✎</span></div>
     <div class="widgets">
-      <${SeverityPie} bySeverity=${(state.totals||{}).by_severity || {}}/>
+      <${SeverityPie} alerts=${alerts}/>
       <${TypeBars} alerts=${alerts}/>
     </div>
-    <${AlertsGrid} alerts=${alerts} analysts=${analysts} doAction=${doAction} refresh=${refresh}/>
+    <${AlertsGrid} alerts=${alerts} analysts=${analysts} model=${model} doAction=${doAction} refresh=${refresh}/>
   <//>`;
 }
 

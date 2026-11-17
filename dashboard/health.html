@@ -33,8 +33,20 @@ main.innerHTML = `
   <div class="panel">
     <h2>Recent pipeline run history</h2>
     <div class="sub">Last 30 runs from in-memory <code>STATE.history</code>; resets on server restart.</div>
-    <svg id="spark" class="spark" viewBox="0 0 400 60" preserveAspectRatio="none"></svg>
+    <svg id="spark" class="spark" viewBox="0 0 400 60" preserveAspectRatio="none" role="img" aria-label="Alerts per pipeline run"></svg>
     <div id="hist-summary" style="color:var(--muted);font-size:11.5px;margin-top:6px"></div>
+    <div class="sub" style="margin-top:10px">Max feature drift (PSI) per run. PSI above 0.25 is major drift.</div>
+    <svg id="psi-spark" class="spark" viewBox="0 0 400 60" preserveAspectRatio="none" role="img" aria-label="Maximum PSI per pipeline run"></svg>
+    <div id="psi-summary" style="color:var(--muted);font-size:11.5px;margin-top:6px"></div>
+  </div>
+  <div class="panel">
+    <h2>Deployed model (<code>/api/model</code>)</h2>
+    <div id="model-body"><div class="nag">Loading…</div></div>
+  </div>
+  <div class="panel">
+    <h2>SOC tool exports</h2>
+    <div class="sub">Configured in <code>dashboard/data/response_integrations.json</code> (<code>elasticsearch</code>, <code>syslog_cef</code>, <code>webhook</code>). Off by default.</div>
+    <div id="integ-body"></div>
   </div>
 `;
 
@@ -128,11 +140,64 @@ function renderSparkline(history){
     `Latest: ${pts[pts.length-1].total} alerts · peak in window: ${maxT}`;
 }
 
+function renderPsi(history){
+  const svg = document.getElementById("psi-spark");
+  const pts = (history||[]).slice(-30).filter(p=>typeof p.max_psi === "number");
+  if (!pts.length){ svg.innerHTML = ""; document.getElementById("psi-summary").textContent = "no drift measurements yet (the monitoring step runs after each live pipeline run)"; return; }
+  const maxV = Math.max(...pts.map(p=>p.max_psi), 0.3);
+  const W = 400, H = 60;
+  const xs = i => pts.length===1 ? W/2 : (i/(pts.length-1))*W;
+  const ys = v => H - (v/maxV)*(H-6) - 3;
+  const line = pts.map((p,i)=>`${i===0?"M":"L"}${xs(i).toFixed(1)},${ys(p.max_psi).toFixed(1)}`).join(" ");
+  const yThr = ys(0.25).toFixed(1);
+  svg.innerHTML = `<line x1="0" x2="${W}" y1="${yThr}" y2="${yThr}" stroke="#d9822b" stroke-dasharray="4 3"/><path d="${line}"/>`;
+  const last = pts[pts.length-1];
+  document.getElementById("psi-summary").textContent =
+    `Latest max PSI ${last.max_psi.toFixed(3)}${last.max_psi > 0.25 ? " (major drift)" : ""} · dashed line = 0.25`;
+}
+
+let lastRuns = -1;
+async function renderModel(runs){
+  if (runs === lastRuns) return;
+  lastRuns = runs;
+  const el = document.getElementById("model-body");
+  try {
+    const m = await SOC.apiGET("/api/model");
+    const kv = [
+      ["Model version", m.model_version || "—"],
+      ["Path A", `${m.path_a.model_type} · threshold ${m.path_a.threshold ?? "—"} · decision ${m.path_a.decision ?? "—"} · FPR budget ${m.path_a.fpr_budget ?? "—"}`],
+      ["Path B", `${m.path_b.model_type || "not deployed"} · threshold ${m.path_b.threshold != null ? Number(m.path_b.threshold).toPrecision(4) : "—"} (${m.path_b.threshold_method || "—"}) · window ${m.path_b.window_size ?? "—"}`],
+      ["Fusion", `${m.fusion.method || "OR fallback"} · threshold ${m.fusion.threshold != null ? Number(m.fusion.threshold).toFixed(4) : "—"}`],
+      ["Last trained", m.training.last_trained || "—"],
+      ["Training samples", `${m.training.total_samples ?? "—"} (${m.training.attack_samples ?? "—"} attack / ${m.training.benign_samples ?? "—"} benign)`],
+      ["Drift", m.drift.max_psi == null ? "no report" : `max PSI ${m.drift.max_psi}${m.drift.retrain_recommended ? " · retraining recommended" : ""}`],
+      ["Models folder", m.models_dir],
+    ];
+    el.innerHTML = `<div class="kvtable">${kv.map(([k,v])=>`<span class="k">${SOC.esc(k)}</span><span class="v">${SOC.esc(v)}</span>`).join("")}</div>`
+      + (m.note ? `<div class="nag" style="margin-top:8px">${SOC.esc(m.note)}</div>` : "");
+  } catch(e){ el.innerHTML = `<div class="nag bad">Model info unavailable: ${SOC.esc(e.message)}</div>`; }
+}
+
+function renderIntegrations(st){
+  const rows = Object.entries(st||{});
+  document.getElementById("integ-body").innerHTML = rows.length ? `<table class="data" style="min-width:auto"><thead><tr>
+      <th>Target</th><th>Enabled</th><th>Last success</th><th>Sent</th><th>Pending</th><th>Last error</th></tr></thead><tbody>${
+    rows.map(([name, s])=>`<tr><td>${SOC.esc(name)}</td>
+      <td><span class="chip ${s.configured ? "ok" : "unk"}">${s.configured ? "Yes" : "No"}</span></td>
+      <td class="num">${SOC.esc(s.last_success ? SOC.fmtDate(s.last_success) : "—")}</td>
+      <td class="num">${SOC.esc(s.sent_total)}</td><td class="num">${SOC.esc(s.pending)}</td>
+      <td>${s.last_error ? `<span class="chip warn">error</span> ${SOC.esc(s.last_error)}` : "—"}</td></tr>`).join("")
+  }</tbody></table>` : '<div class="nag">No exporters available.</div>';
+}
+
 SOC.pollState(async s => {
   renderTiles(s.health||{}, s.mode);
   renderFreshness(s.health||{}, s.pipeline||{});
   renderDrift(s.monitoring);
   renderSparkline(s.history);
+  renderPsi(s.history);
+  renderIntegrations(s.integrations);
+  renderModel((s.pipeline||{}).runs);
 }, 4000);
 </script>
 </body>

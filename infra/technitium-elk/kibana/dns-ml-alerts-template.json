@@ -1,0 +1,44 @@
+{
+  "index_patterns": ["dns-ml-alerts-*"],
+  "priority": 200,
+  "_meta": {"description": "Capstone DNS tunnel ML alerts (ECS). Installed by dashboard/exporters.py."},
+  "template": {
+    "settings": {"number_of_shards": 1, "number_of_replicas": 0},
+    "mappings": {
+      "dynamic": true,
+      "properties": {
+        "@timestamp": {"type": "date"},
+        "event": {"properties": {
+          "kind": {"type": "keyword"}, "category": {"type": "keyword"}, "type": {"type": "keyword"},
+          "id": {"type": "keyword"}, "severity": {"type": "long"}, "dataset": {"type": "keyword"},
+          "module": {"type": "keyword"}, "created": {"type": "date"}
+        }},
+        "rule": {"properties": {
+          "name": {"type": "keyword"}, "ruleset": {"type": "keyword"}, "description": {"type": "text"}
+        }},
+        "source": {"properties": {"ip": {"type": "ip"}}},
+        "dns": {"properties": {"question": {"properties": {
+          "name": {"type": "keyword"}, "type": {"type": "keyword"}, "registered_domain": {"type": "keyword"}
+        }}}},
+        "threat": {"properties": {
+          "framework": {"type": "keyword"},
+          "tactic": {"properties": {"name": {"type": "keyword"}}},
+          "technique": {"properties": {"id": {"type": "keyword"}}}
+        }},
+        "dns_ml": {"properties": {
+          "severity_label": {"type": "keyword"}, "score_a": {"type": "float"}, "score_b": {"type": "float"},
+          "combined": {"type": "float"}, "threat_score": {"type": "float"}, "label": {"type": "keyword"},
+          "confidence": {"type": "keyword"}, "fusion_method": {"type": "keyword"},
+          "model_version": {"type": "keyword"}, "investigation_priority": {"type": "keyword"},
+          "demo": {"type": "boolean"}, "client": {"type": "keyword"}
+        }},
+        "soc": {"properties": {
+          "status": {"type": "keyword"}, "assigned_to": {"type": "keyword"}, "escalated": {"type": "boolean"},
+          "verdict": {"type": "keyword"}, "verdict_reason": {"type": "text"}, "updated_at": {"type": "date"}
+        }},
+        "observer": {"properties": {"product": {"type": "keyword"}, "type": {"type": "keyword"}}},
+        "tags": {"type": "keyword"}
+      }
+    }
+  }
+}

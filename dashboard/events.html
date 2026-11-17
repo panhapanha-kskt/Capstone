@@ -120,10 +120,14 @@ async function load(){
   for (const r of data.records||[]){
     if (r.source) sources.add(r.source);
   }
-  const preserved = srcEl.value;
-  srcEl.innerHTML = '<option value="">Any source</option>' + [...sources].map(s=>`<option ${s===preserved?"selected":""}>${SOC.esc(s)}</option>`).join("");
-  tbody.innerHTML = (data.records||[]).length ? data.records.map(row).join("") :
-    '<tr><td class="empty" colspan="12">No events match these filters.</td></tr>';
+  const srcKey = [...sources].sort().join("\n");
+  if (srcEl.dataset.key !== srcKey){   // rebuilding an open <select> closes it, so only on change
+    const preserved = srcEl.value;
+    srcEl.innerHTML = '<option value="">Any source</option>' + [...sources].map(s=>`<option ${s===preserved?"selected":""}>${SOC.esc(s)}</option>`).join("");
+    srcEl.dataset.key = srcKey;
+  }
+  SOC.patchList(tbody, data.records||[], r=>r.fp, row,
+    '<tr><td class="empty" colspan="12">No events match these filters.</td></tr>');
   document.getElementById("count").textContent = total;
   document.getElementById("p-cur").textContent = Math.floor(offset/limit) + 1;
   document.getElementById("p-total").textContent = Math.max(Math.ceil(total/limit), 1);
@@ -131,11 +135,12 @@ async function load(){
   document.getElementById("p-first").disabled = offset <= 0;
   document.getElementById("p-next").disabled = offset + limit >= total;
   document.getElementById("p-last").disabled = offset + limit >= total;
-  // click rows -> detail
-  for (const tr of tbody.querySelectorAll("tr[data-fp]")){
-    tr.addEventListener("click", ()=>openDetail(tr.dataset.fp));
-  }
 }
+
+document.getElementById("tbody").addEventListener("click", ev=>{
+  const tr = ev.target.closest("tr[data-fp]");
+  if (tr) openDetail(tr.dataset.fp);
+});
 
 async function openDetail(fp){
   const host = document.getElementById("detail-host");
@@ -187,8 +192,8 @@ document.getElementById("p-next").addEventListener("click", ()=>{ offset=offset+
 document.getElementById("p-last").addEventListener("click", ()=>{ offset=Math.max(0,(Math.ceil(total/limit)-1)*limit); load(); });
 
 SOC.pollState(s => {
-  document.getElementById("mode-note").textContent = s.mode === "demo" ? "Demo mode: ML/anomaly fields will be empty (pipeline details not generated)." : "";
-  document.getElementById("demo-nag").textContent = s.mode === "demo" ? "demo mode — ML/anomaly fields not generated" : "";
+  document.getElementById("mode-note").textContent = s.mode === "demo" ? "Demo mode: ML scores are synthetic (details.demo = true); anomaly z-scores are not generated." : "";
+  document.getElementById("demo-nag").textContent = s.mode === "demo" ? "demo mode — synthetic ML scores" : "";
   load();
 }, 5000);
 </script>

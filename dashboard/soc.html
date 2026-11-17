@@ -588,6 +588,17 @@
         opacity: .35
       }
     }
+
+    .attack { display: flex; gap: 10px; overflow-x: auto; padding: 4px 2px 8px }
+    .att-col { min-width: 150px; flex: 1 0 150px; display: flex; flex-direction: column; gap: 4px }
+    .att-tac { font-size: 11.5px; font-weight: 700; color: #e7eaf2; padding: 6px 8px; background: #262b3d; border-radius: 3px;
+      display: flex; justify-content: space-between }
+    .att-tac span { color: var(--muted, #8a90a5); font-weight: 600 }
+    .att-cell { display: flex; justify-content: space-between; padding: 6px 8px; border-radius: 3px; font-size: 11.5px; color: #fff }
+    .att-empty { color: #8a90a5; font-size: 12px; padding: 8px }
+    .fp-tbl { border-collapse: collapse; width: 100%; font-size: 12px }
+    .fp-tbl th, .fp-tbl td { text-align: left; padding: 5px 8px; border-bottom: 1px solid #2a2f42 }
+    .fp-tbl th { color: #8a90a5; font-weight: 600 }
   </style>
 </head>
 
@@ -642,6 +653,21 @@
         <section class="panel summary">
           <div class="p-head">OPERATIONAL METRICS <span class="info" title="Derived from persisted alert management + /api/health. 'Derived' statuses on the Alerts page are counted as Open unless the analyst has touched them.">ⓘ</span></div>
           <div class="sum-row" id="opRow"></div>
+        </section>
+
+        <section class="panel summary">
+          <div class="p-head">SOC PERFORMANCE · LAST 24 H <span class="info" title="From /api/metrics. MTTD = alert time − DNS query time (pipeline latency). MTTA / MTTR = analyst acknowledge / resolve time − alert time. Ack SLA: High 15 min, Medium 60 min, Low 4 h.">ⓘ</span></div>
+          <div class="sum-row" id="perfRow"></div>
+        </section>
+
+        <section class="panel summary">
+          <div class="p-head">MITRE ATT&amp;CK COVERAGE · ALERTS PER TACTIC / TECHNIQUE <span class="info" title="Counts of alerts in the last 24 h by the tactics and techniques the detection rules tag them with.">ⓘ</span></div>
+          <div class="p-body"><div class="attack" id="attackMatrix"></div></div>
+        </section>
+
+        <section class="panel summary">
+          <div class="p-head">FALSE POSITIVES BY DETECTION RULE · LAST 24 H <span class="info" title="From analyst verdicts. FP = false positive (model logic), false positive (bad data) and legacy false_positive.">ⓘ</span></div>
+          <div class="p-body" id="fpRules"></div>
         </section>
 
         <!-- row of donuts + categories -->
@@ -879,6 +905,58 @@
      <div class="sum-val">${i.val}</div><div class="sum-lab">${esc(i.label)}</div></div>`).join("");
     }
 
+    /* ── SOC KPIs + ATT&CK matrix from /api/metrics ── */
+    function dur(sec) {
+      if (sec == null) return "—";
+      if (sec < 60) return Math.round(sec) + " s";
+      if (sec < 3600) return (sec / 60).toFixed(1) + " min";
+      return (sec / 3600).toFixed(1) + " h";
+    }
+    let metricsBusy = false;
+    async function loadMetrics() {
+      if (metricsBusy) return;
+      metricsBusy = true;
+      try {
+        const r = await fetch("/api/metrics?hours=24", { cache: "no-store" });
+        if (!r.ok) return;
+        const m = await r.json();
+        const fpr = m.false_positive_rate;
+        const judged = Object.values(m.verdicts || {}).reduce((a, b) => a + b, 0);
+        $("perfRow").innerHTML = [
+          { icon: "⏱", val: dur(m.mttd_seconds.median), label: "MTTD (median)", hint: `n=${m.mttd_seconds.n}, p90 ${dur(m.mttd_seconds.p90)}` },
+          { icon: "✋", val: dur(m.mtta_seconds.median), label: "MTTA (median)", hint: `n=${m.mtta_seconds.n}, p90 ${dur(m.mtta_seconds.p90)}` },
+          { icon: "✓", val: dur(m.mttr_seconds.median), label: "MTTR (median)", hint: `n=${m.mttr_seconds.n}, p90 ${dur(m.mttr_seconds.p90)}` },
+          { icon: "⚑", val: m.ack_sla_breached, cls: m.ack_sla_breached ? "bad" : "", label: "Ack SLA breaches" },
+          { icon: "⚖", val: judged, label: "Alerts with verdict" },
+          { icon: "✗", val: fpr == null ? "—" : (fpr * 100).toFixed(1) + "%", cls: fpr > 0.5 ? "warn" : "", label: "False-positive rate", hint: "false_positive / all verdicts" },
+          { icon: "⮝", val: m.escalation_rate == null ? "—" : (m.escalation_rate * 100).toFixed(1) + "%", label: "Escalation rate", hint: "escalated / alerts with a disposition" },
+          { icon: "⏳", val: m.pending_close_approvals, cls: m.pending_close_approvals ? "warn" : "", label: "Close requests awaiting Tier 2" },
+          { icon: "🔇", val: m.suppressed_in_window, label: "Suppressed (UI)" },
+        ].map(i => `<div class="sum-item ${i.cls || ""}" title="${esc(i.hint || "")}"><div class="sum-ic">${i.icon}</div>
+          <div class="sum-val">${esc(i.val)}</div><div class="sum-lab">${esc(i.label)}</div></div>`).join("");
+
+        const rr = m.verdicts_by_rule || [];
+        $("fpRules").innerHTML = rr.length ? `<table class="fp-tbl"><thead><tr><th>Detection rule</th><th>Judged</th><th>True positive</th><th>False positive</th><th>FP rate</th></tr></thead><tbody>${
+          rr.map(r => `<tr><td>${esc(r.rule)}</td><td>${r.judged}</td><td>${r.true_positive}</td><td>${r.false_positive}</td>
+            <td>${(r.fp_rate * 100).toFixed(0)}%</td></tr>`).join("")}</tbody></table>`
+          : `<div class="att-empty">No verdicts yet. Verdicts from /triage and /alerts appear here per detection rule (tuning input for Tier 2/3).</div>`;
+
+        const tactics = Object.entries(m.attack_matrix || {}).sort((a, b) =>
+          Object.values(b[1]).reduce((x, y) => x + y, 0) - Object.values(a[1]).reduce((x, y) => x + y, 0));
+        const max = Math.max(1, ...tactics.flatMap(([, t]) => Object.values(t)));
+        $("attackMatrix").innerHTML = tactics.length ? tactics.map(([tac, techs]) => {
+          const total = Object.values(techs).reduce((x, y) => x + y, 0);
+          const cells = Object.entries(techs).sort((a, b) => b[1] - a[1]).map(([tech, n]) => {
+            const a = 0.18 + 0.82 * (n / max);
+            return `<div class="att-cell" style="background:rgba(217,130,43,${a.toFixed(2)})" title="${esc(tac)} · ${esc(tech)}: ${n} alerts">
+              <b>${esc(tech)}</b><span>${n}</span></div>`;
+          }).join("");
+          return `<div class="att-col"><div class="att-tac">${esc(tac)} <span>${total}</span></div>${cells}</div>`;
+        }).join("") : `<div class="att-empty">No alerts in the last 24 h.</div>`;
+      } catch (e) { /* keep last values */ }
+      finally { metricsBusy = false; }
+    }
+
     /* ── render from /api/state ────────────────── */
     let lastVersion = -1;
     function render(s) {
@@ -903,8 +981,9 @@
         { icon: "≣", val: fmt(t.queries || 0), label: "Processed Queries" },
         { icon: "🛡", val: fmt(total), label: "Security Events" },
         { icon: "⚠", val: high, cls: "warn", label: "High Severity" },
-        { icon: "⮝", val: t.new_alerts || 0, cls: "bad", label: "Escalated Alerts" },
+        { icon: "⮝", val: t.new_alerts || 0, cls: "bad", label: "New Alerts (last 45 s)" },
       ]);
+      loadMetrics();
 
       // Week 6 operational row — grounded in persisted alert management + /api/health
       const mgmt = feed.map(f => f.management).filter(Boolean);
@@ -990,15 +1069,24 @@
       miniLegend("trendLegend", trendSeries);
     }
 
+    let etag = null;
     async function tick() {
+      if (document.hidden) return;
       try {
-        const r = await fetch("/api/state", { cache: "no-store" });
-        if (r.ok) render(await r.json());
+        const r = await fetch("/api/state", { cache: "no-store", headers: etag ? { "If-None-Match": etag } : {} });
+        if (r.status === 304 || !r.ok) return;
+        etag = r.headers.get("ETag");
+        render(await r.json());
       } catch (e) { /* server restarting; keep polling */ }
     }
     tick();
     setInterval(tick, 3000);
-    window.addEventListener("resize", () => { lastVersion = -1; tick(); });
+    document.addEventListener("visibilitychange", tick);
+    let resizeTimer = null;
+    window.addEventListener("resize", () => {
+      clearTimeout(resizeTimer);
+      resizeTimer = setTimeout(() => { lastVersion = -1; etag = null; tick(); }, 150);
+    });
   </script>
 </body>
 

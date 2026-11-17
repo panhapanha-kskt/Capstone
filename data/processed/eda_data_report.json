@@ -1,0 +1,494 @@
+{
+  "generated_at": "2026-11-17 10:42",
+  "files": [
+    {
+      "file": "2026-11-15.log",
+      "path": "/home/shed/CADT/Capstone/dns-anomaly-detection-lab/Capstone/data/raw/2026-11-15.log",
+      "group": "unlabeled",
+      "status": "unlabeled",
+      "kind": "log",
+      "queries": 53,
+      "error": null
+    },
+    {
+      "file": "2026-11-14.log",
+      "path": "/home/shed/CADT/Capstone/dns-anomaly-detection-lab/Capstone/data/raw/2026-11-14.log",
+      "group": "unlabeled",
+      "status": "unlabeled",
+      "kind": "log",
+      "queries": 7,
+      "error": null
+    },
+    {
+      "file": "2026-03-20.log",
+      "path": "/home/shed/CADT/Capstone/dns-anomaly-detection-lab/Capstone/data/raw/2026-03-20.log",
+      "group": "unlabeled",
+      "status": "unlabeled",
+      "kind": "log",
+      "queries": 0,
+      "error": null
+    },
+    {
+      "file": "2026-03-19.log",
+      "path": "/home/shed/CADT/Capstone/dns-anomaly-detection-lab/Capstone/data/raw/2026-03-19.log",
+      "group": "unlabeled",
+      "status": "unlabeled",
+      "kind": "log",
+      "queries": 0,
+      "error": null
+    }
+  ],
+  "totals": {
+    "rows": 60,
+    "labeled_rows": 0,
+    "unlabeled_rows": 60
+  },
+  "all": {
+    "rows": 60,
+    "files": 2,
+    "clients": 3,
+    "top_clients": [
+      {
+        "value": "172.20.0.1",
+        "count": 58,
+        "share": 0.9667
+      },
+      {
+        "value": "1.2.3.4",
+        "count": 1,
+        "share": 0.0167
+      },
+      {
+        "value": "127.0.0.1",
+        "count": 1,
+        "share": 0.0167
+      }
+    ],
+    "first_seen": "2026-11-14T17:27:18",
+    "last_seen": "2026-11-15T16:48:26",
+    "duration_min": 1401.1,
+    "query_types": [
+      {
+        "value": "A",
+        "count": 60,
+        "share": 1.0
+      }
+    ],
+    "tunnel_qtype_share": 0.0,
+    "response_codes": [
+      {
+        "value": "NoError",
+        "count": 54,
+        "share": 0.9
+      },
+      {
+        "value": "NxDomain",
+        "count": 6,
+        "share": 0.1
+      }
+    ],
+    "nxdomain_rate": 0.1,
+    "top_parent_domains": [
+      {
+        "value": "com.org",
+        "count": 50,
+        "share": 0.8333
+      },
+      {
+        "value": "com.kh",
+        "count": 3,
+        "share": 0.05
+      },
+      {
+        "value": "example.com",
+        "count": 3,
+        "share": 0.05
+      },
+      {
+        "value": "edu.kh",
+        "count": 1,
+        "share": 0.0167
+      },
+      {
+        "value": "concsd.sdfa",
+        "count": 1,
+        "share": 0.0167
+      }
+    ],
+    "max_subdomains_per_parent": {
+      "parent": "com.org",
+      "unique_subdomains": 50
+    },
+    "unique_domains": 59,
+    "duplicate_rows": 0,
+    "missing": {
+      "client_ip": 0.0,
+      "timestamp": 0.0,
+      "response_code": 0.0,
+      "domain": 0.0
+    },
+    "answers_recorded": 1.0,
+    "long_labels": 0,
+    "longest_names": [
+      "pushtest-inside-container.example.com",
+      "verify-after-fix.example.com",
+      "dlpfsgor41li.vsd.com.org",
+      "0fohnr0g5h5c.vsd.com.org",
+      "679wklxx7h5q.vsd.com.org"
+    ],
+    "measures": {
+      "query_length": {
+        "mean": 23.2167,
+        "median": 24.0,
+        "p95": 24.0,
+        "min": 9.0,
+        "max": 37.0,
+        "std": 3.655,
+        "skew": -1.1534,
+        "iqr_fence": 24.0,
+        "outliers_1_5_iqr": 10,
+        "outliers_3_iqr": 10
+      },
+      "longest_label": {
+        "mean": 11.3667,
+        "median": 12.0,
+        "p95": 12.0,
+        "min": 3.0,
+        "max": 25.0,
+        "std": 3.1189,
+        "skew": 0.0831,
+        "iqr_fence": 12.0,
+        "outliers_1_5_iqr": 10,
+        "outliers_3_iqr": 10
+      },
+      "subdomain_count": {
+        "mean": 2.9333,
+        "median": 3.0,
+        "p95": 3.0,
+        "min": 1.0,
+        "max": 5.0,
+        "std": 0.4825,
+        "skew": -0.1929,
+        "iqr_fence": 3.0,
+        "outliers_1_5_iqr": 8,
+        "outliers_3_iqr": 8
+      },
+      "entropy": {
+        "mean": 3.8154,
+        "median": 3.8971,
+        "p95": 4.1368,
+        "min": 2.4194,
+        "max": 4.3035,
+        "std": 0.3575,
+        "skew": -2.0224,
+        "iqr_fence": 4.3971,
+        "outliers_1_5_iqr": 7,
+        "outliers_3_iqr": 2
+      },
+      "digit_ratio": {
+        "mean": 0.1294,
+        "median": 0.1191,
+        "p95": 0.2857,
+        "min": 0.0,
+        "max": 0.2857,
+        "std": 0.0949,
+        "skew": 0.1006,
+        "iqr_fence": 0.4346,
+        "outliers_1_5_iqr": 0,
+        "outliers_3_iqr": 0
+      }
+    }
+  },
+  "labeled": {
+    "rows": 0,
+    "note": "No labeled data in this run."
+  },
+  "unlabeled": {
+    "rows": 60,
+    "per_file": [
+      {
+        "file": "2026-11-15.log",
+        "kind": "log",
+        "queries": 53,
+        "lines": 53,
+        "non_query_lines": 0,
+        "clients": 1,
+        "top_client_share": 1.0,
+        "nxdomain_rate": 0.0377,
+        "duration_min": 23.2,
+        "timeline_per_min": [
+          2,
+          51
+        ]
+      },
+      {
+        "file": "2026-11-14.log",
+        "kind": "log",
+        "queries": 7,
+        "lines": 7,
+        "non_query_lines": 0,
+        "clients": 3,
+        "top_client_share": 0.7143,
+        "nxdomain_rate": 0.5714,
+        "duration_min": 391.7,
+        "timeline_per_min": [
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1
+        ]
+      },
+      {
+        "file": "2026-03-20.log",
+        "kind": "log",
+        "queries": 0,
+        "lines": 9,
+        "non_query_lines": 9
+      },
+      {
+        "file": "2026-03-19.log",
+        "kind": "log",
+        "queries": 0,
+        "lines": 50,
+        "non_query_lines": 50
+      }
+    ],
+    "profile": {
+      "rows": 60,
+      "files": 2,
+      "clients": 3,
+      "top_clients": [
+        {
+          "value": "172.20.0.1",
+          "count": 58,
+          "share": 0.9667
+        },
+        {
+          "value": "1.2.3.4",
+          "count": 1,
+          "share": 0.0167
+        },
+        {
+          "value": "127.0.0.1",
+          "count": 1,
+          "share": 0.0167
+        }
+      ],
+      "first_seen": "2026-11-14T17:27:18",
+      "last_seen": "2026-11-15T16:48:26",
+      "duration_min": 1401.1,
+      "query_types": [
+        {
+          "value": "A",
+          "count": 60,
+          "share": 1.0
+        }
+      ],
+      "tunnel_qtype_share": 0.0,
+      "response_codes": [
+        {
+          "value": "NoError",
+          "count": 54,
+          "share": 0.9
+        },
+        {
+          "value": "NxDomain",
+          "count": 6,
+          "share": 0.1
+        }
+      ],
+      "nxdomain_rate": 0.1,
+      "top_parent_domains": [
+        {
+          "value": "com.org",
+          "count": 50,
+          "share": 0.8333
+        },
+        {
+          "value": "com.kh",
+          "count": 3,
+          "share": 0.05
+        },
+        {
+          "value": "example.com",
+          "count": 3,
+          "share": 0.05
+        },
+        {
+          "value": "edu.kh",
+          "count": 1,
+          "share": 0.0167
+        },
+        {
+          "value": "concsd.sdfa",
+          "count": 1,
+          "share": 0.0167
+        }
+      ],
+      "max_subdomains_per_parent": {
+        "parent": "com.org",
+        "unique_subdomains": 50
+      },
+      "unique_domains": 59,
+      "duplicate_rows": 0,
+      "missing": {
+        "client_ip": 0.0,
+        "timestamp": 0.0,
+        "response_code": 0.0,
+        "domain": 0.0
+      },
+      "answers_recorded": 1.0,
+      "long_labels": 0,
+      "longest_names": [
+        "pushtest-inside-container.example.com",
+        "verify-after-fix.example.com",
+        "dlpfsgor41li.vsd.com.org",
+        "0fohnr0g5h5c.vsd.com.org",
+        "679wklxx7h5q.vsd.com.org"
+      ],
+      "measures": {
+        "query_length": {
+          "mean": 23.2167,
+          "median": 24.0,
+          "p95": 24.0,
+          "min": 9.0,
+          "max": 37.0,
+          "std": 3.655,
+          "skew": -1.1534,
+          "iqr_fence": 24.0,
+          "outliers_1_5_iqr": 10,
+          "outliers_3_iqr": 10
+        },
+        "longest_label": {
+          "mean": 11.3667,
+          "median": 12.0,
+          "p95": 12.0,
+          "min": 3.0,
+          "max": 25.0,
+          "std": 3.1189,
+          "skew": 0.0831,
+          "iqr_fence": 12.0,
+          "outliers_1_5_iqr": 10,
+          "outliers_3_iqr": 10
+        },
+        "subdomain_count": {
+          "mean": 2.9333,
+          "median": 3.0,
+          "p95": 3.0,
+          "min": 1.0,
+          "max": 5.0,
+          "std": 0.4825,
+          "skew": -0.1929,
+          "iqr_fence": 3.0,
+          "outliers_1_5_iqr": 8,
+          "outliers_3_iqr": 8
+        },
+        "entropy": {
+          "mean": 3.8154,
+          "median": 3.8971,
+          "p95": 4.1368,
+          "min": 2.4194,
+          "max": 4.3035,
+          "std": 0.3575,
+          "skew": -2.0224,
+          "iqr_fence": 4.3971,
+          "outliers_1_5_iqr": 7,
+          "outliers_3_iqr": 2
+        },
+        "digit_ratio": {
+          "mean": 0.1294,
+          "median": 0.1191,
+          "p95": 0.2857,
+          "min": 0.0,
+          "max": 0.2857,
+          "std": 0.0949,
+          "skew": 0.1006,
+          "iqr_fence": 0.4346,
+          "outliers_1_5_iqr": 0,
+          "outliers_3_iqr": 0
+        }
+      }
+    },
+    "nxdomain_rate_per_client": [
+      {
+        "client": "172.20.0.1",
+        "queries": 58,
+        "nxdomain_rate": 0.1034
+      },
+      {
+        "client": "1.2.3.4",
+        "queries": 1,
+        "nxdomain_rate": 0.0
+      },
+      {
+        "client": "127.0.0.1",
+        "queries": 1,
+        "nxdomain_rate": 0.0
+      }
+    ],
+    "query_length_per_qtype": [
+      {
+        "qtype": "A",
+        "count": 60,
+        "median": 24.0,
+        "p95": 24.0
+      }
+    ],
+    "unique_subdomains_per_parent": [
+      {
+        "value": "com.org",
+        "count": 50,
+        "share": 0.8475
+      },
+      {
+        "value": "example.com",
+        "count": 3,
+        "share": 0.0508
+      },
+      {
+        "value": "com.kh",
+        "count": 2,
+        "share": 0.0339
+      },
+      {
+        "value": "com.khr",
+        "count": 1,
+        "share": 0.0169
+      },
+      {
+        "value": "concsd.sdfa",
+        "count": 1,
+        "share": 0.0169
+      },
+      {
+        "value": "edu.kh",
+        "count": 1,
+        "share": 0.0169
+      },
+      {
+        "value": "lab.local",
+        "count": 1,
+        "share": 0.0169
+      }
+    ],
+    "labeling_plan": {
+      "method": "heuristic attack_count (circular)",
+      "share_of_all_rows": 1.0
+    }
+  },
+  "comparison": {
+    "note": "Needs both labeled and unlabeled data."
+  },
+  "warnings": [
+    "2026-11-15.log: one client (172.20.0.1) sends 100.0% of the queries.",
+    "2026-03-20.log has 0 DNS queries (only server/status lines) \u2014 it adds nothing to training.",
+    "2026-03-19.log has 0 DNS queries (only server/status lines) \u2014 it adds nothing to training.",
+    "100% of the data is unlabeled and there is no attack manifest \u2014 most training labels would come from heuristics."
+  ],
+  "implications": [
+    "Garbage in: unlabeled rows will get heuristic labels from the same features the model learns. Add data/attack_manifest.csv for independent labels."
+  ]
+}

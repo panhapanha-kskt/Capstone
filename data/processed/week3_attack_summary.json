@@ -1,22 +1,22 @@
 {
-  "total_queries": 8152,
-  "total_attacks": 1980,
-  "attack_percentage": 24.29,
+  "total_queries": 8212,
+  "total_attacks": 1982,
+  "attack_percentage": 24.14,
   "attack_breakdown": {
     "NXDOMAIN_FLOOD": 351,
     "RANDOM_SUBDOMAIN": 2,
     "AMPLIFICATION": 0,
     "CACHE_POISONING": 0,
-    "HIGH_ENTROPY": 38,
-    "ENCODING": 1589
+    "HIGH_ENTROPY": 39,
+    "ENCODING": 1590
   },
   "attack_patterns_detected": {
     "nxdomain_flood": 351,
     "random_subdomains": 2,
     "amplification": 0,
     "cache_poisoning": 0,
-    "high_entropy": 38,
-    "encoding_patterns": 1694
+    "high_entropy": 39,
+    "encoding_patterns": 1695
   },
   "top_attackers": [
     {
@@ -27,6 +27,20 @@
         "NXDOMAIN_FLOOD": 351,
         "HIGH_ENTROPY": 38,
         "RANDOM_SUBDOMAIN": 2
+      }
+    },
+    {
+      "ip": "1.2.3.4",
+      "total_attacks": 1,
+      "breakdown": {
+        "ENCODING": 1
+      }
+    },
+    {
+      "ip": "127.0.0.1",
+      "total_attacks": 1,
+      "breakdown": {
+        "HIGH_ENTROPY": 1
       }
     }
   ]

@@ -1,24 +1,44 @@
 {
-  "merged_at": "2026-10-24T09:16:53Z",
-  "total_records": 18353,
+  "merged_at": "2026-11-17T03:42:02Z",
+  "total_records": 60,
   "source_files": [
     {
-      "path": "data/processed/labeled_tunnels.json",
+      "path": "/home/shed/CADT/Capstone/dns-anomaly-detection-lab/Capstone/data/processed/extracted_2026-11-15_1794886920.json",
+      "original": "/home/shed/CADT/Capstone/dns-anomaly-detection-lab/Capstone/data/raw/2026-11-15.log",
       "type": "json",
-      "records": 10000,
-      "checksum": "831aab545e62e154"
+      "records": 53,
+      "checksum": "5c5f856721b63c30"
     },
     {
-      "path": "data/processed/labeled_benign.json",
+      "path": "/home/shed/CADT/Capstone/dns-anomaly-detection-lab/Capstone/data/processed/extracted_2026-11-14_1794886920.json",
+      "original": "/home/shed/CADT/Capstone/dns-anomaly-detection-lab/Capstone/data/raw/2026-11-14.log",
       "type": "json",
-      "records": 8353,
-      "checksum": "d3ebd6cfe9d53494"
+      "records": 7,
+      "checksum": "b0b1f1bf252fc523"
     }
   ],
   "source_counts": {
     "json_files": 2,
-    "csv_files": 1,
+    "csv_files": 0,
     "pcap_converted": 0,
-    "log_converted": 0
-  }
+    "log_converted": 2
+  },
+  "per_source": [
+    {
+      "source_file": "2026-11-14.log",
+      "source_type": "log",
+      "rows": 7,
+      "labeled_rows": 0,
+      "attack": 0,
+      "benign": 0
+    },
+    {
+      "source_file": "2026-11-15.log",
+      "source_type": "log",
+      "rows": 53,
+      "labeled_rows": 0,
+      "attack": 0,
+      "benign": 0
+    }
+  ]
 }

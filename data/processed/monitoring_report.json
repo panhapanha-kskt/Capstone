@@ -1,0 +1,25 @@
+{
+  "live_input": "/home/shed/CADT/Capstone/dns-anomaly-detection-lab/Capstone/data/processed/week3_features_with_ml.json",
+  "trained_on": "2026-10-24T09:29:28Z",
+  "drift": {
+    "query_length": {
+      "psi": 6.9633,
+      "band": "major"
+    }
+  },
+  "alert_volume": {
+    "n_alerts": 2410,
+    "alert_rate": 0.2955
+  },
+  "score_health": {
+    "column": "ml_combined_score",
+    "mean": 0.9851,
+    "frac_saturated_high": 0.9966,
+    "frac_saturated_low": 0.0026
+  },
+  "retrain_recommended": true,
+  "reasons": [
+    "Major drift in 'query_length' (PSI=6.96).",
+    "ML scores are saturated \u2014 model is no longer discriminating; recalibrate/retrain."
+  ]
+}

@@ -1,0 +1,37 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+	<PropertyGroup>
+		<!-- Must match the live Technitium server's own TargetFramework exactly (assembly
+		identity, not just API shape - see ../README.md "Gotchas"). build.sh detects it and
+		passes -p:TechnitiumTargetFramework=netX.0; net10.0 here is just the fallback default. -->
+		<TechnitiumTargetFramework Condition="'$(TechnitiumTargetFramework)' == ''">net10.0</TechnitiumTargetFramework>
+		<TargetFramework>$(TechnitiumTargetFramework)</TargetFramework>
+		<Nullable>disable</Nullable>
+		<AssemblyName>PushLogger</AssemblyName>
+		<RootNamespace>PushLogger</RootNamespace>
+	</PropertyGroup>
+
+	<!--
+	Technitium DNS Apps are built against the exact DnsServerCore.ApplicationCommon and
+	TechnitiumLibrary.Net assemblies of the running server (no NuGet package is published -
+	see ../README.md for how build.sh builds these two reference DLLs for your server's version).
+	Both are Private=false: Technitium's own host process already has them loaded, so they
+	must NOT be copied into this app's output/zip - only this project's own PushLogger.dll goes
+	into the app package.
+	-->
+	<ItemGroup>
+		<Reference Include="DnsServerCore.ApplicationCommon">
+			<HintPath>$(TechnitiumRefDir)/DnsServerCore.ApplicationCommon.dll</HintPath>
+			<Private>false</Private>
+		</Reference>
+		<Reference Include="TechnitiumLibrary.Net">
+			<HintPath>$(TechnitiumRefDir)/TechnitiumLibrary.Net.dll</HintPath>
+			<Private>false</Private>
+		</Reference>
+		<Reference Include="TechnitiumLibrary">
+			<HintPath>$(TechnitiumRefDir)/TechnitiumLibrary.dll</HintPath>
+			<Private>false</Private>
+		</Reference>
+	</ItemGroup>
+
+</Project>

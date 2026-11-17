@@ -1,0 +1,203 @@
+{
+  "input": "/home/shed/CADT/Capstone/dns-anomaly-detection-lab/Capstone/data/processed/merged_features_all.json",
+  "n_records": 60,
+  "n_columns": 41,
+  "features": {
+    "query_length": {
+      "mean": 23.2167,
+      "std": 3.655,
+      "min": 9.0,
+      "max": 37.0,
+      "p25": 24.0,
+      "p50": 24.0,
+      "p75": 24.0
+    },
+    "query_entropy": {
+      "mean": 3.8154,
+      "std": 0.3575,
+      "min": 2.4194,
+      "max": 4.3035,
+      "p25": 3.7721,
+      "p50": 3.8971,
+      "p75": 4.0221
+    },
+    "has_digits": {
+      "mean": 0.8167,
+      "std": 0.3902,
+      "min": 0.0,
+      "max": 1.0,
+      "p25": 1.0,
+      "p50": 1.0,
+      "p75": 1.0
+    },
+    "answer_count": {
+      "mean": 0.05,
+      "std": 0.2867,
+      "min": 0.0,
+      "max": 2.0,
+      "p25": 0.0,
+      "p50": 0.0,
+      "p75": 0.0
+    },
+    "subdomain_count": {
+      "mean": 2.9333,
+      "std": 0.4825,
+      "min": 1.0,
+      "max": 5.0,
+      "p25": 3.0,
+      "p50": 3.0,
+      "p75": 3.0
+    },
+    "longest_label": {
+      "mean": 11.3667,
+      "std": 3.1189,
+      "min": 3.0,
+      "max": 25.0,
+      "p25": 12.0,
+      "p50": 12.0,
+      "p75": 12.0
+    },
+    "digit_ratio": {
+      "mean": 0.1294,
+      "std": 0.0949,
+      "min": 0.0,
+      "max": 0.2857,
+      "p25": 0.0476,
+      "p50": 0.1191,
+      "p75": 0.2024
+    },
+    "unique_char_ratio": {
+      "mean": 0.6854,
+      "std": 0.0833,
+      "min": 0.4706,
+      "max": 0.875,
+      "p25": 0.625,
+      "p50": 0.7083,
+      "p75": 0.75
+    }
+  },
+  "missing": {
+    "query_length": {
+      "present": true,
+      "missing_rate": 0.0
+    },
+    "query_entropy": {
+      "present": true,
+      "missing_rate": 0.0
+    },
+    "has_digits": {
+      "present": true,
+      "missing_rate": 0.0
+    },
+    "answer_count": {
+      "present": true,
+      "missing_rate": 0.0
+    },
+    "subdomain_count": {
+      "present": true,
+      "missing_rate": 0.0
+    },
+    "longest_label": {
+      "present": true,
+      "missing_rate": 0.0
+    },
+    "digit_ratio": {
+      "present": true,
+      "missing_rate": 0.0
+    },
+    "unique_char_ratio": {
+      "present": true,
+      "missing_rate": 0.0
+    }
+  },
+  "class_balance": {
+    "attack": 2,
+    "benign": 58,
+    "attack_rate": 0.0333
+  },
+  "correlation": {
+    "query_length": {
+      "query_length": 1.0,
+      "query_entropy": 0.783,
+      "has_digits": 0.456,
+      "answer_count": -0.415,
+      "subdomain_count": 0.162,
+      "longest_label": 0.924,
+      "digit_ratio": 0.297,
+      "unique_char_ratio": 0.011
+    },
+    "query_entropy": {
+      "query_length": 0.783,
+      "query_entropy": 1.0,
+      "has_digits": 0.745,
+      "answer_count": -0.284,
+      "subdomain_count": 0.291,
+      "longest_label": 0.712,
+      "digit_ratio": 0.589,
+      "unique_char_ratio": 0.597
+    },
+    "has_digits": {
+      "query_length": 0.456,
+      "query_entropy": 0.745,
+      "has_digits": 1.0,
+      "answer_count": -0.371,
+      "subdomain_count": 0.294,
+      "longest_label": 0.432,
+      "digit_ratio": 0.651,
+      "unique_char_ratio": 0.52
+    },
+    "answer_count": {
+      "query_length": -0.415,
+      "query_entropy": -0.284,
+      "has_digits": -0.371,
+      "answer_count": 1.0,
+      "subdomain_count": -0.343,
+      "longest_label": -0.305,
+      "digit_ratio": -0.242,
+      "unique_char_ratio": 0.121
+    },
+    "subdomain_count": {
+      "query_length": 0.162,
+      "query_entropy": 0.291,
+      "has_digits": 0.294,
+      "answer_count": -0.343,
+      "subdomain_count": 1.0,
+      "longest_label": -0.186,
+      "digit_ratio": 0.192,
+      "unique_char_ratio": 0.109
+    },
+    "longest_label": {
+      "query_length": 0.924,
+      "query_entropy": 0.712,
+      "has_digits": 0.432,
+      "answer_count": -0.305,
+      "subdomain_count": -0.186,
+      "longest_label": 1.0,
+      "digit_ratio": 0.282,
+      "unique_char_ratio": 0.057
+    },
+    "digit_ratio": {
+      "query_length": 0.297,
+      "query_entropy": 0.589,
+      "has_digits": 0.651,
+      "answer_count": -0.242,
+      "subdomain_count": 0.192,
+      "longest_label": 0.282,
+      "digit_ratio": 1.0,
+      "unique_char_ratio": 0.534
+    },
+    "unique_char_ratio": {
+      "query_length": 0.011,
+      "query_entropy": 0.597,
+      "has_digits": 0.52,
+      "answer_count": 0.121,
+      "subdomain_count": 0.109,
+      "longest_label": 0.057,
+      "digit_ratio": 0.534,
+      "unique_char_ratio": 1.0
+    }
+  },
+  "warnings": [
+    "'query_length' and 'longest_label' highly correlated (r=0.92)."
+  ]
+}

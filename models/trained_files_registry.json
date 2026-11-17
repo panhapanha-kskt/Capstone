@@ -104,6 +104,34 @@
       "type": "json",
       "records": 8353,
       "trained_at": "2026-10-24T09:16:53Z"
+    },
+    {
+      "path": "/home/shed/CADT/Capstone/dns-anomaly-detection-lab/Capstone/data/raw/2026-11-15.log",
+      "checksum": "e1d53344e9cec8021b030deb1c2275dc782b19fcf848ea1c95e9ec044353d4b9",
+      "type": "log",
+      "records": "53",
+      "trained_at": "2026-11-17T03:42:00Z"
+    },
+    {
+      "path": "/home/shed/CADT/Capstone/dns-anomaly-detection-lab/Capstone/data/raw/2026-11-14.log",
+      "checksum": "b43b7abd6a4a14cb6b6d188aa8c73d25a5cbde35f3dca9a5ba0ceeb27c359220",
+      "type": "log",
+      "records": "7",
+      "trained_at": "2026-11-17T03:42:00Z"
+    },
+    {
+      "path": "/home/shed/CADT/Capstone/dns-anomaly-detection-lab/Capstone/data/processed/extracted_2026-11-15_1794886920.json",
+      "checksum": "5c5f856721b63c302cceaea85de8831c5e09d293816225cd2a003076da208279",
+      "type": "json",
+      "records": 53,
+      "trained_at": "2026-11-17T03:42:02Z"
+    },
+    {
+      "path": "/home/shed/CADT/Capstone/dns-anomaly-detection-lab/Capstone/data/processed/extracted_2026-11-14_1794886920.json",
+      "checksum": "b0b1f1bf252fc5232159bdaf6ce58ec513e815cdc7e263c6f9547c7387737e24",
+      "type": "json",
+      "records": 7,
+      "trained_at": "2026-11-17T03:42:02Z"
     }
   ]
 }

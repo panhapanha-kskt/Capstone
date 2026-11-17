@@ -3,8 +3,8 @@ services:
     image: technitium/dns-server:latest
     container_name: technitium-dns
     ports:
-      - "53:53/udp"
-      - "53:53/tcp"
+      - "5353:53/udp"
+      - "5353:53/tcp"
       - "5380:5380/tcp"
     volumes:
       - ./data/dns_logs:/etc/dns/logs

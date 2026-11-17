@@ -1,0 +1,48 @@
+{
+  "records": 8156,
+  "mode": "production",
+  "fusion": "lr",
+  "fusion_threshold": 0.4875471389381998,
+  "tier_source": "legacy_fixed",
+  "fusion_method": {
+    "lr": 8156
+  },
+  "fusion_status": {
+    "ok": 8156
+  },
+  "path_b": "ok",
+  "path_b_covered": 8133,
+  "path_b_missing": 23,
+  "path_a_missing": 0,
+  "alarms": 8133,
+  "alarms_or_rule": 8134,
+  "suppressed_by_allowlist": 0,
+  "features_filled": null,
+  "tiers": {
+    "HIGH": {
+      "records": 8131,
+      "share": 0.9969347719470328,
+      "expected_benign_per_10k": null
+    },
+    "MEDIUM": {
+      "records": 2,
+      "share": 0.0002452182442373713,
+      "expected_benign_per_10k": null
+    },
+    "LOW": {
+      "records": 0,
+      "share": 0.0,
+      "expected_benign_per_10k": null
+    },
+    "CLEAN": {
+      "records": 23,
+      "share": 0.0028200098087297694,
+      "expected_benign_per_10k": null
+    },
+    "UNSCORED": {
+      "records": 0,
+      "share": 0.0,
+      "expected_benign_per_10k": null
+    }
+  }
+}

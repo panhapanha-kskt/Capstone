@@ -1,121 +1,113 @@
 {
-  "merged_at": "2026-11-02T05:02:37Z",
-  "rows": 18353,
+  "merged_at": "2026-11-17T03:42:02Z",
+  "rows": 60,
   "inputs": [
     {
-      "path": "data/processed/labeled_tunnels.json",
-      "original": null,
+      "path": "/home/shed/CADT/Capstone/dns-anomaly-detection-lab/Capstone/data/processed/extracted_2026-11-15_1794886920.json",
+      "original": "/home/shed/CADT/Capstone/dns-anomaly-detection-lab/Capstone/data/raw/2026-11-15.log",
       "type": "json",
-      "records": 10000,
-      "checksum": "831aab545e62e154"
+      "records": 53,
+      "checksum": "5c5f856721b63c30"
     },
     {
-      "path": "data/processed/labeled_benign.json",
-      "original": null,
+      "path": "/home/shed/CADT/Capstone/dns-anomaly-detection-lab/Capstone/data/processed/extracted_2026-11-14_1794886920.json",
+      "original": "/home/shed/CADT/Capstone/dns-anomaly-detection-lab/Capstone/data/raw/2026-11-14.log",
       "type": "json",
-      "records": 8353,
-      "checksum": "d3ebd6cfe9d53494"
+      "records": 7,
+      "checksum": "b0b1f1bf252fc523"
     }
   ],
   "per_source": [
     {
-      "source_file": "benign_dns.pcap",
-      "source_type": "pcap",
-      "rows": 8353,
-      "labeled_rows": 8353,
+      "source_file": "2026-11-14.log",
+      "source_type": "log",
+      "rows": 7,
+      "labeled_rows": 0,
       "attack": 0,
-      "benign": 8353
-    },
-    {
-      "source_file": "dns2tcp_key_down.pcapng",
-      "source_type": "pcap",
-      "rows": 2000,
-      "labeled_rows": 2000,
-      "attack": 2000,
       "benign": 0
     },
     {
-      "source_file": "dns2tcp_key_up.pcapng",
-      "source_type": "pcap",
-      "rows": 2000,
-      "labeled_rows": 2000,
-      "attack": 2000,
-      "benign": 0
-    },
-    {
-      "source_file": "dns2tcp_txt_down.pcapng",
-      "source_type": "pcap",
-      "rows": 2000,
-      "labeled_rows": 2000,
-      "attack": 2000,
-      "benign": 0
-    },
-    {
-      "source_file": "dns2tcp_txt_up.pcapng",
-      "source_type": "pcap",
-      "rows": 2000,
-      "labeled_rows": 2000,
-      "attack": 2000,
-      "benign": 0
-    },
-    {
-      "source_file": "dnsexfiltrator_txt_up.pcap",
-      "source_type": "pcap",
-      "rows": 2000,
-      "labeled_rows": 2000,
-      "attack": 2000,
+      "source_file": "2026-11-15.log",
+      "source_type": "log",
+      "rows": 53,
+      "labeled_rows": 0,
+      "attack": 0,
       "benign": 0
     }
   ],
   "duplicates": {
-    "distinct_feature_vectors": 4778,
-    "rows_in_duplicated_vectors": 14926,
-    "duplicated_share": 0.8133,
-    "vectors_shared_across_sources": 119,
-    "exact_duplicate_queries": 23,
+    "distinct_feature_vectors": 47,
+    "rows_in_duplicated_vectors": 24,
+    "duplicated_share": 0.4,
+    "vectors_shared_across_sources": 0,
+    "exact_duplicate_queries": 0,
     "largest_groups": [
       {
-        "dup_key": "ddde4a42f608cd4b",
-        "rows": 308
+        "dup_key": "fa1b23cf06722248",
+        "rows": 3
       },
       {
-        "dup_key": "2c49713667f4d186",
-        "rows": 248
+        "dup_key": "68ae01e308c9c61d",
+        "rows": 3
       },
       {
-        "dup_key": "68789cc674d10059",
-        "rows": 243
+        "dup_key": "ac442a205897c820",
+        "rows": 2
       },
       {
-        "dup_key": "d05274f0f6d3bf4d",
-        "rows": 231
+        "dup_key": "18a655662894e1fd",
+        "rows": 2
       },
       {
-        "dup_key": "e1febadd029d6a87",
-        "rows": 220
+        "dup_key": "06f89727c20f7512",
+        "rows": 2
       }
     ]
   },
   "labels": {
-    "labeled_rows": 18353,
-    "unlabeled_rows": 0,
-    "attack": 10000,
-    "benign": 8353,
+    "labeled_rows": 0,
+    "unlabeled_rows": 60,
+    "attack": 0,
+    "benign": 0,
     "conflicting_vectors": 0,
     "rows_in_conflicting_vectors": 0
   },
   "schema": {
-    "pcap": {
-      "rows": 18353,
+    "log": {
+      "rows": 60,
       "missing_features": [],
-      "constant_features": {
-        "answer_count": 0.0
-      }
+      "constant_features": {}
     }
   },
-  "warnings": [
-    "81% of rows repeat another row's exact feature vector (4778 distinct of 18353) \u2014 split by feature vector, not by row.",
-    "Every labeled source file holds only one class \u2014 the source decides the label, so capture differences can become a shortcut for the model.",
-    "'answer_count' is 0 in every row \u2014 it carries no information."
-  ]
+  "missing_values": {},
+  "cleaning": {
+    "input_rows": 60,
+    "kept_rows": 60,
+    "rejected_rows": 0,
+    "rejected_by_reason": {},
+    "exact_packet_copies_dropped": 0,
+    "normalised_values": {},
+    "flags": {
+      "non_hostname_chars": {
+        "rows": 0,
+        "by_label": {}
+      },
+      "infra_query": {
+        "rows": 0,
+        "by_label": {}
+      },
+      "unparsed_timestamp": {
+        "rows": 0,
+        "by_label": {}
+      }
+    },
+    "rules": {
+      "max_name_length": 253,
+      "max_label_length": 63,
+      "drop_exact_packet_copies": true
+    },
+    "skipped_duplicate_inputs": [],
+    "rejected_file": "/home/shed/CADT/Capstone/dns-anomaly-detection-lab/Capstone/data/processed/rejected_rows.json"
+  },
+  "warnings": []
 }

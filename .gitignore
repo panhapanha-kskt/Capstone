@@ -29,6 +29,15 @@ logs/
 .env
 *.key
 
+# PushLogger: machine-specific build artifacts, rebuilt by scripts/setup_pushlogger.sh
+infra/technitium-apps/PushLogger.zip
+infra/technitium-apps/.built_version
+infra/technitium-apps/PushLogger/bin/
+infra/technitium-apps/PushLogger/obj/
+scripts/.push_listener.log
+# Cloned Technitium source + build output (infra/technitium-apps/build.sh) - not our code
+infra/technitium-build/
+
 # IDE
 .vscode/
 .idea/

@@ -784,12 +784,12 @@ Not needed to close Week 5 or Week 6. Listed so they are not forgotten.
 
 **Close Week 6**
 
-- [ ] Task 8: all pages checked in demo mode
+- [x] Task 8: all pages checked in demo mode (2026-11-17, all 8 routes pass)
 - [x] Task 8: restart persistence confirmed (status, assignee, note and 3 audit entries kept after restart; 2026-11-14, Windows, demo mode)
 - [x] Task 8: invalid transition refused with 409 (Closed → Investigating: HTTP 409, `allowed: ["Open"]`; 2026-11-14)
-- [ ] Task 8: bulk Execute works
-- [ ] Task 8: real mode tested, or marked "not tested"
-- [ ] Task 8: TESTING_REPORT.md filled in, section 3.2 corrected
+- [x] Task 8: bulk Execute works (2026-11-17, selected multiple alerts, action confirmed, counts shown)
+- [x] Task 8: real mode marked "not tested" — pipeline log folder not available (2026-11-17)
+- [x] Task 8: TESTING_REPORT.md filled in with all results, section 3.2 corrected (2026-11-17)
 
 **Clean up**
 
@@ -805,5 +805,5 @@ Not needed to close Week 5 or Week 6. Listed so they are not forgotten.
 - [x] Task 10: Path B-only run reproduces recall 1.000 / FPR 9.341% / PR-AUC 1.0 (65.8 s, 2026-11-14)
 - [x] Task 10: full run `runs/v3_iforest` trained, training time recorded (39 min 5 s; fusion 1.0 recall / 7 false alarms, same as v3)
 - [x] Task 10: compared with v3 (fusion recall 1.0 / 7 false alarms, same as v3; Path B recall 1.0), CIC capture 3 checked (1 / 25,222)
-- [ ] Task 10: pipeline runs with `DNS_DETECT_MODELS_DIR=runs/v3_iforest`
-- [ ] Task 10: mentor agrees; result and reasoning written into the report
+- [x] Task 10: pipeline runs with `DNS_DETECT_MODELS_DIR=runs/v3_iforest` (2026-11-17)
+- [x] Task 10: mentor agrees; result and reasoning written into the report (2026-11-17)

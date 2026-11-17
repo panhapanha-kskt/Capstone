@@ -132,7 +132,23 @@ Verdicts (a difference is real only when the min–max ranges do not overlap):
 - **det hurts:** not supported (13–36 overlaps 9–25); seed 42's 36 was v_det's worst seed.
 - **v3 better than the baseline:** borderline (8–9 and 9–25 touch at 9).
 
-v3 is far more stable than any earlier run (SD 0.55 vs 7.56 for the baseline). Seed 42 was near the worst case for the baseline and the worst for v_det, so the single-run comparisons overstated both effects. The fusion's spread over seeds was not measured.
+v3 is far more stable than any earlier run (SD 0.55 vs 7.56 for the baseline). Seed 42 was near the worst case for the baseline and the worst for v_det, so the single-run comparisons overstated both effects.
+
+### 5c. Full multi-seed with Path B (Isolation Forest) and fusion (5.4.3)
+
+Run on Kali 2026-11-17 with `run_multiseed.py --path-b-model iforest` (no `--skip-path-b`). Each seed trains Path A, Path B (Isolation Forest) and the fusion. Seed 46's fusion was re-run after a transient file error; the other 4 seeds completed in a single run.
+
+| Seed | Path A FA | Fusion FA | Fusion recall | Path B recall | Path B FPR |
+|---|---|---|---|---|---|
+| 42 | 8 | 7 | 1.0 | 1.0 | 9.34% |
+| 43 | 9 | 8 | 1.0 | 1.0 | 9.98% |
+| 44 | 9 | 9 | 1.0 | 1.0 | 13.55% |
+| 45 | 8 | 8 | 1.0 | 1.0 | 11.36% |
+| 46 | 9 | 9 | 1.0 | 1.0 | 13.10% |
+| **Summary** | **8.6 ± 0.55** | **8.2 ± 0.84** | **1.0** | **1.0** | — |
+| **Range** | **8–9** | **7–9** | — | — | **9.34–13.55%** |
+
+**Verdict:** the fusion is very stable — **7 to 9 false alarms across all seeds, recall 1.0 every time.** The fusion's range (7–9) is tighter than the baseline's Path A range (9–25), confirming that v3 with the Isolation Forest Path B produces a consistent result regardless of the training seed. Path B recall is 1.0 at every seed; its FPR varies (9.3–13.6%) but the fusion absorbs this variation.
 
 ---
 
@@ -143,13 +159,16 @@ v3 is far more stable than any earlier run (SD 0.55 vs 7.56 for the baseline). S
 3. **The false-alarm threshold drifts:** set for 0.1% on validation rows, it gives 0.35–0.59% on later benign rows in leave-one-tool-out, and 0.6% (7 of 1,168) on the frozen test set. On benign traffic from another network (CIC capture 3) it stays at 0.004%.
 4. **The Isolation Forest fixes Path B without changing the final result:** the fusion stays at recall 1.0 and 7 false alarms, and training drops from 7 h 17 min to 39 min.
 5. **Training randomness is large for the small runs.** Over 5 seeds the baseline's Path A false alarms range from 9 to 25, while v3's stay at 8–9. By the non-overlap rule no difference between runs is proven; v3 vs baseline is borderline (the ranges touch at 9). v3's main gain is a result that barely moves between trainings.
+6. **The full system (Path A + Isolation Forest Path B + fusion) is stable across seeds:** fusion false alarms range from 7 to 9 (mean 8.2, SD 0.84), with recall 1.0 at every seed. The fusion's range is tighter than the baseline's Path A alone (9–25), confirming the system produces a consistent result.
 
 ---
 
 ## 7. Still to measure
 
-| Measurement | How | Where it goes |
+All planned measurements are complete as of 2026-11-17.
+
+| Measurement | Status | Date |
 |---|---|---|
-| Fusion spread over seeds (optional; practical now with the Isolation Forest Path B) | `run_multiseed.py --path-b-model iforest` without `--skip-path-b` | V3_BALANCED_TRAINING.md 5.4.3 |
-| Pipeline run with `runs/v3_iforest` | next task.md 13.5 | next task.md checklist |
-| Conclusion and the replace-`models/` decision | next task.md Task 6 | V3_BALANCED_TRAINING.md section 6.5 |
+| Fusion spread over seeds | ✅ Done — 7–9 FA, recall 1.0 (section 5c) | 2026-11-17 |
+| Pipeline run with `runs/v3_iforest` | ✅ Done | 2026-11-17 |
+| Conclusion and the replace-`models/` decision | ✅ Done — candidate `runs/v3_iforest` | 2026-11-14 |

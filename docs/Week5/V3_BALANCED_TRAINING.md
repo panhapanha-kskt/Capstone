@@ -408,7 +408,7 @@ Yes, both v3 and v3_iforest:
 | Path B recall | 0.0 | 1.0 |
 | Training time | 7 h 17 min | 39 min 5 s |
 
-Limitations to report: the frozen test set's attacks are all dnsexfiltrator; false alarms in leave-one-tool-out are 0.35–0.59%, above the 0.1% budget the threshold was set for; the fusion's spread over seeds was not measured (5.4.3).
+Limitations to report: the frozen test set's attacks are all dnsexfiltrator; false alarms in leave-one-tool-out are 0.35–0.59%, above the 0.1% budget the threshold was set for. The fusion's spread over seeds (5.4.3) was measured on 2026-11-17: 7–9 false alarms (mean 8.2, SD 0.84), recall 1.0 at every seed.
 
 **4. Decision: does `runs/v3` replace `models/`?**
 
@@ -442,7 +442,7 @@ Verdict (5.4.4), by the rule that a difference is real only when the min–max r
 
 **The clearest result is stability:** the baseline's false alarms range from 9 to 25 with the seed alone; v3's from 8 to 9 (SD 0.55 vs 7.56). With 12 times more data, v3 gives nearly the same result every time it is trained. Seed 42 was near the worst case for the baseline (23) and the worst for v_det (36), so the single-run comparisons overstated both effects.
 
-These are Path A false alarms. The fusion followed Path A in every run, but its own spread over seeds was not measured (5.4.3, optional).
+These are Path A false alarms. The full multi-seed check with Path B (Isolation Forest) and fusion was run on 2026-11-17 (5.4.3): fusion false alarms 7–9 (mean 8.2, SD 0.84), recall 1.0 at every seed. See [V3_EVALUATION_RESULTS.md](../Week6/V3_EVALUATION_RESULTS.md) section 5c.
 
 ---
 
@@ -459,5 +459,5 @@ These are Path A false alarms. The fusion followed Path A in every run, but its 
 - [x] 5.3 leave-one-tool-out → table 6.4 (recall 1.0 on all 8 tools, false alarms 0.35–0.59%)
 - [x] 5.4.1 training files rebuilt for baseline, v_dnsshell, v_det (5,000-row dns_shell/det files recreated in `cap5000/`; 18349 / 23349 / 23349 rows)
 - [x] 5.4.2 Path A multi-seed (5 seeds) for baseline, v_dnsshell, v_det, v3 → table 6.6 (v3 8–9, baseline 9–25)
-- [ ] 5.4.3 (optional) full multi-seed with Path B and fusion
+- [x] 5.4.3 full multi-seed with Path B (Isolation Forest) and fusion — fusion FA 7–9 (mean 8.2, SD 0.84), recall 1.0 all seeds (2026-11-17)
 - [x] Conclusion 6.5 written · replace-`models/` decision made (candidate `runs/v3_iforest`; `models/` kept until mentor approval; 2026-11-14)

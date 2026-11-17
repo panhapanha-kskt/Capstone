@@ -159,6 +159,7 @@ The autoencoder remains the default, so earlier runs and saved models are unchan
 | Unit tests (`test_path_b_iforest.py`, `test_path_b_load.py`, `test_bridge.py`) | ✅ 47 passed |
 | Pipeline run with `runs/v3_iforest` | ❌ |
 | Multi-seed check (Week 5 Tasks 4–5) | ✅ baseline 9–25, v_dnsshell 7–11, v_det 13–36, v3 8–9 (Path A false alarms, 5 seeds) |
+| Full multi-seed with Path B + fusion (5.4.3) | ✅ fusion FA 7–9 (mean 8.2, SD 0.84), recall 1.0 all seeds (2026-11-17) |
 | Conclusion and the replace-`models/` decision (Task 6) | ✅ candidate `runs/v3_iforest`; `models/` kept until mentor approval |
 | Mentor agreement on a non-deep-learning Path B | ❌ |
 | Week 6 dashboard end-to-end test (Task 8) | ❌ |

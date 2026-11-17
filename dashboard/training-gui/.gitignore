@@ -1,0 +1,5 @@
+__pycache__/
+*.py[cod]
+.venv/
+gui_data/
+gui_data_capstone/

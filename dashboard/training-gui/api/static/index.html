@@ -1,0 +1,212 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Training console</title>
+<style>
+:root{--bg:#eef1f4;--panel:#fff;--ink:#14213d;--mute:#5b6779;--line:#d5dbe3;--accent:#1f6f8b;--accent-ink:#fff;
+--ok:#2e7d4f;--warn:#b86e00;--bad:#b3261e;--r:6px}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.5 system-ui,-apple-system,"Segoe UI",sans-serif;display:flex;min-height:100vh}
+nav{width:210px;background:var(--ink);color:#dfe6f0;padding:22px 14px;flex-shrink:0}
+nav h1{font-size:16px;margin:0 0 4px;color:#fff}
+nav p{margin:0 0 22px;font-size:13px;color:#9fb0c6}
+nav button{display:block;width:100%;text-align:left;background:none;border:0;color:inherit;padding:9px 10px;border-radius:var(--r);font:inherit;cursor:pointer;margin-bottom:2px}
+nav a{display:block;color:inherit;text-decoration:none;padding:9px 10px;border-radius:var(--r);font-size:14px;margin-bottom:14px}
+nav a:hover{background:#1c2c4d}
+nav button[aria-current=true]{background:#24365c;color:#fff}
+nav button:hover{background:#1c2c4d}
+main{flex:1;padding:26px 30px;max-width:1000px}
+h2{margin:0 0 4px;font-size:22px}
+.lead{color:var(--mute);margin:0 0 20px}
+.panel{background:var(--panel);border:1px solid var(--line);border-radius:var(--r);padding:18px;margin-bottom:16px}
+label{display:block;font-size:13px;color:var(--mute);margin:10px 0 3px}
+input,select{width:100%;padding:8px;border:1px solid var(--line);border-radius:var(--r);font:inherit;background:#fff;color:var(--ink)}
+.row{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px}
+button.act{background:var(--accent);color:var(--accent-ink);border:0;border-radius:var(--r);padding:9px 16px;font:inherit;cursor:pointer;margin-top:14px;margin-right:8px}
+button.act.quiet{background:#fff;color:var(--ink);border:1px solid var(--line)}
+button.act.danger{background:var(--bad)}
+button:focus-visible,input:focus-visible,select:focus-visible{outline:3px solid #8cc4d8;outline-offset:1px}
+table{width:100%;border-collapse:collapse;font-size:14px}
+th,td{text-align:left;padding:7px 8px;border-bottom:1px solid var(--line)}
+th{color:var(--mute);font-weight:600}
+tr.click{cursor:pointer}tr.click:hover{background:#f4f7fa}
+.tag{padding:2px 8px;border-radius:99px;font-size:12px;border:1px solid currentColor}
+.running{color:var(--accent)}.done{color:var(--ok)}.failed,.cancelled{color:var(--bad)}.prod{color:var(--ok)}.cand{color:var(--mute)}
+.warn{color:var(--warn)}.err{color:var(--bad)}
+pre{background:#101a2e;color:#d6e2f5;padding:12px;border-radius:var(--r);max-height:320px;overflow:auto;font-size:12.5px;margin:0}
+.up{color:var(--ok)}.down{color:var(--bad)}
+.gate{position:fixed;inset:0;background:var(--bg);display:flex;align-items:center;justify-content:center;z-index:9}
+.gate .panel{width:320px}
+[hidden]{display:none!important}
+body[data-mode=capstone] .demo,body[data-mode=demo] .cap{display:none}
+.chk{display:flex;gap:8px;align-items:center;color:var(--ink);margin-top:10px}.chk input{width:auto}
+.hint{color:var(--mute);font-size:13px;margin:2px 0 0 26px}
+@media(max-width:700px){body{flex-direction:column}nav{width:100%;display:flex;gap:6px;flex-wrap:wrap;padding:12px}nav p{display:none}nav h1{width:100%;margin:0}nav button{width:auto}main{padding:16px}}
+</style>
+</head>
+<body>
+<div class="gate" id="gate"><div class="panel">
+  <h2>Admin sign-in</h2><p class="lead">Enter the admin token.</p>
+  <input id="tok" type="password" aria-label="Admin token">
+  <button class="act" id="signin">Sign in</button><p class="err" id="gerr"></p>
+</div></div>
+
+<nav>
+  <h1>Training console</h1><p>DNS threat detection</p>
+  <a href="/">← Back to dashboard</a>
+  <button data-tab="data" aria-current="true">1. Data</button>
+  <button data-tab="train">2. Train</button>
+  <button data-tab="runs">3. Runs</button>
+  <button data-tab="models">4. Models</button>
+</nav>
+<main>
+<section id="data">
+  <h2>Data</h2><p class="lead">Upload a labelled CSV and check it before training.</p>
+  <div class="panel"><label for="file">Upload CSV</label><input id="file" type="file" accept=".csv">
+    <button class="act" id="upload">Upload and check</button></div>
+  <div class="panel"><table id="dstab"></table><div id="dsreport"></div></div>
+</section>
+
+<section id="train" hidden>
+  <h2>Train</h2><p class="lead">Training creates a candidate model. It never changes production.</p>
+  <div class="panel">
+    <div class="row">
+      <div><label for="ds">Dataset</label><select id="ds"></select></div>
+      <div><label for="tp">Models to train</label><select id="tp">
+        <option value="both">Both paths (A and B)</option><option value="A">Path A: Random Forest + Transformer</option><option value="B">Path B: Trafficformer</option></select></div>
+    </div>
+    <div class="row demo">
+      <div><label for="ne">Trees (Path A)</label><input id="ne" type="number" value="200"></div>
+      <div><label for="ep">Epochs (Path B)</label><input id="ep" type="number" value="10"></div>
+      <div><label for="ts">Test split</label><input id="ts" type="number" step="0.05" value="0.2"></div>
+    </div>
+    <div class="row cap">
+      <div><label for="nd">Window size, Path B (queries)</label><input id="nd" type="number" value="20"></div>
+      <div><label for="pb">Path B algorithm</label><select id="pb"><option value="trafficformer">Trafficformer (slow)</option><option value="iforest">Isolation Forest (minutes)</option></select></div>
+      <div><label for="rt">Data to train on</label><select id="rt"><option value="all">All files in the dataset</option><option value="new_only">Only files not trained before</option></select></div>
+      <div><label for="pl">Label for .pcap files</label><select id="pl"><option value="">Unlabeled</option><option value="0">Benign</option><option value="1">Attack</option></select></div>
+    </div>
+    <div class="row"><div><label for="sd">Random seed</label><input id="sd" type="number" value="42"></div></div>
+    <div class="cap">
+      <label class="chk"><input type="checkbox" id="ns"> Make a fresh time-ordered split</label>
+      <p class="hint">This changes the test set, so results are not comparable with earlier runs.</p>
+      <label class="chk"><input type="checkbox" id="ah"> Allow heuristic labels (experimental)</label>
+    </div>
+    <button class="act" id="start">Start training</button><span id="tmsg"></span>
+  </div>
+</section>
+
+<section id="runs" hidden>
+  <h2>Runs</h2><p class="lead">Select a run to see its log and metrics.</p>
+  <div class="panel"><table id="runtab"></table></div>
+  <div class="panel" id="rundetail" hidden>
+    <div id="runhead"></div><div id="runmetrics"></div>
+    <pre id="runlog"></pre>
+    <button class="act danger" id="cancel" hidden>Cancel run</button>
+  </div>
+</section>
+
+<section id="models" hidden>
+  <h2>Models</h2><p class="lead">Compare a candidate with production, then promote it.</p>
+  <div class="panel"><table id="modtab"></table>
+    <button class="act quiet" id="rollback">Roll back to previous version</button></div>
+  <div class="panel" id="cmp" hidden></div>
+</section>
+</main>
+
+<script>
+const $=id=>document.getElementById(id);
+let token=sessionStorage.getItem("tok")||"", current=null, timer=null;
+const esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+async function api(path,opt={}){
+  opt.headers={...(opt.headers||{}),"X-Admin-Token":token};
+  if(opt.body&&!(opt.body instanceof FormData)){opt.headers["Content-Type"]="application/json";opt.body=JSON.stringify(opt.body)}
+  const r=await fetch("/training/api"+path,opt);
+  if(r.status===401){sessionStorage.removeItem("tok");$("gate").hidden=false;throw new Error("Sign in again")}
+  const j=await r.json().catch(()=>({}));
+  if(!r.ok)throw new Error(j.detail||r.statusText);
+  return j;
+}
+$("signin").onclick=async()=>{token=$("tok").value;try{await api("/datasets");sessionStorage.setItem("tok",token);$("gate").hidden=true;init()}catch(e){$("gerr").textContent="That token was not accepted."}};
+async function init(){const c=await api("/config");document.body.dataset.mode=c.mode;$("file").accept=c.upload_exts.join(",");loadAll()}
+if(token)api("/datasets").then(()=>{$("gate").hidden=true;init()}).catch(()=>{});
+document.querySelectorAll("nav button").forEach(b=>b.onclick=()=>{
+  document.querySelectorAll("nav button").forEach(x=>x.removeAttribute("aria-current"));b.setAttribute("aria-current","true");
+  document.querySelectorAll("main section").forEach(s=>s.hidden=s.id!==b.dataset.tab);
+  loadAll();});
+const pct=v=>v==null?"-":(v*100).toFixed(2)+"%";
+const LBL={f1:"F1",precision:"Precision",recall:"Recall",pr_auc:"PR-AUC",accuracy:"Accuracy",fpr:"False positive rate",false_alarms:"False alarms"};
+const fmt=(k,v)=>v==null?"-":k==="false_alarms"?String(v):pct(v);
+const alarm=m=>m.fpr!=null?pct(m.fpr):m.false_alarms!=null?m.false_alarms+" false alarms":"-";
+
+async function loadDatasets(){
+  const ds=await api("/datasets");
+  $("dstab").innerHTML="<tr><th>File</th><th>Size</th><th></th></tr>"+(ds.length?ds.map(d=>`<tr><td>${esc(d.label||d.name)}</td><td>${d.size_mb==null?"-":d.size_mb+" MB"}</td><td><button class="act quiet" data-v="${esc(d.name)}">Check</button></td></tr>`).join(""):"<tr><td colspan=3>No datasets yet. Upload a CSV above.</td></tr>");
+  $("dstab").querySelectorAll("button").forEach(b=>b.onclick=()=>check(b.dataset.v));
+  $("ds").innerHTML=ds.map(d=>`<option value="${esc(d.name)}">${esc(d.label||d.name)}</option>`).join("");
+}
+async function check(name){
+  try{const r=await api("/datasets/"+encodeURIComponent(name)+"/validate");showReport(r)}catch(e){$("dsreport").innerHTML=`<p class=err>${esc(e.message)}</p>`}
+}
+function showReport(r){
+  $("dsreport").innerHTML=`<h3>${esc(r.name)}</h3>${r.rows==null?"":`<p>${r.rows} rows, ${r.columns} columns, ${r.numeric_features.length} numeric features, ${r.missing_pct}% empty cells.</p>`}
+  <p>Labels: ${Object.entries(r.class_counts).map(([k,v])=>esc(k)+" "+v).join(", ")||"none found"}</p>
+  ${r.errors.map(e=>`<p class=err>Fix this: ${esc(e)}</p>`).join("")}${r.warnings.map(e=>`<p class=warn>${esc(e)}</p>`).join("")}
+  ${r.ok?"<p class=up>Ready to train.</p>":""}`;
+}
+$("upload").onclick=async()=>{
+  const f=$("file").files[0];if(!f)return;const fd=new FormData();fd.append("file",f);
+  try{const r=await api("/datasets",{method:"POST",body:fd});showReport(r);loadDatasets()}catch(e){$("dsreport").innerHTML=`<p class=err>${esc(e.message)}</p>`}
+};
+$("start").onclick=async()=>{
+  try{const j=await api("/train",{method:"POST",body:{dataset:$("ds").value,train_path:$("tp").value,
+    n_estimators:+$("ne").value,epochs:+$("ep").value,test_size:+$("ts").value,seed:+$("sd").value,
+    n_days:+$("nd").value,path_b_model:$("pb").value,retrain:$("rt").value,pcap_label:$("pl").value,new_split:$("ns").checked,allow_heuristic_labels:$("ah").checked}});
+    $("tmsg").textContent="";current=j.run_id;document.querySelector('[data-tab=runs]').click()}
+  catch(e){$("tmsg").innerHTML=`<span class=err>${esc(e.message)}</span>`}
+};
+async function loadRuns(){
+  const js=await api("/jobs");
+  $("runtab").innerHTML="<tr><th>Run</th><th>Dataset</th><th>Paths</th><th>Status</th></tr>"+(js.length?js.map(j=>`<tr class=click data-r="${j.run_id}"><td>${j.run_id}</td><td>${esc(j.dataset)}</td><td>${j.train_path}</td><td><span class="tag ${j.status}">${j.status}</span></td></tr>`).join(""):"<tr><td colspan=4>No runs yet. Start one in Train.</td></tr>");
+  $("runtab").querySelectorAll("tr.click").forEach(t=>t.onclick=()=>{current=t.dataset.r;showRun()});
+  if(current)showRun();
+}
+async function showRun(){
+  const j=await api("/jobs/"+current);$("rundetail").hidden=false;
+  $("runhead").innerHTML=`<p><b>${j.run_id}</b> <span class="tag ${j.status}">${j.status}</span></p>`;
+  const m=j.metrics;
+  const ks=m?Object.keys(LBL).filter(k=>m[k]!=null):[];
+  $("runmetrics").innerHTML=ks.length?`<table><tr>${ks.map(k=>`<th>${LBL[k]}</th>`).join("")}</tr><tr>${ks.map(k=>`<td>${fmt(k,m[k])}</td>`).join("")}</tr></table><br>`:(m&&m.note?`<p class=warn>${esc(m.note)}</p>`:"");
+  const pre=$("runlog"),atEnd=pre.scrollTop+pre.clientHeight>=pre.scrollHeight-8;
+  pre.textContent=j.log||"Waiting for output...";if(atEnd)pre.scrollTop=pre.scrollHeight;
+  $("cancel").hidden=j.status!=="running";
+  if(j.status==="done"&&m)document.querySelector('nav [data-tab=models]').dataset.new="1";
+}
+$("cancel").onclick=async()=>{if(confirm("Stop this training run?")){await api("/jobs/"+current+"/cancel",{method:"POST"});showRun()}};
+async function loadModels(){
+  const ms=await api("/models");
+  $("modtab").innerHTML="<tr><th>Version</th><th>Dataset</th><th>F1</th><th>False alarms</th><th>Status</th><th></th></tr>"+(ms.length?ms.slice().reverse().map(m=>`<tr><td>${m.version}</td><td>${esc(m.dataset)}</td><td>${pct(m.metrics.f1)}</td><td>${alarm(m.metrics)}</td>
+   <td><span class="tag ${m.is_production?"prod":"cand"}">${m.is_production?"production":"candidate"}</span></td>
+   <td>${m.is_production?"":`<button class="act quiet" data-v="${m.version}">Compare and promote</button>`}</td></tr>`).join(""):"<tr><td colspan=6>No finished runs yet. Models appear here after a run finishes.</td></tr>");
+  $("modtab").querySelectorAll("button").forEach(b=>b.onclick=()=>compare(b.dataset.v));
+}
+async function compare(v){
+  const c=await api("/models/"+v+"/compare");$("cmp").hidden=false;
+  $("cmp").innerHTML=`<h3>${v} vs ${c.production||"no production model yet"}</h3><table><tr><th>Metric</th><th>${v}</th><th>Production</th><th>Change</th></tr>`+
+   c.rows.map(r=>{const low=r.metric==="fpr"||r.metric==="false_alarms",bad=low?r.delta>0:r.delta<0,cnt=r.metric==="false_alarms";return `<tr><td>${LBL[r.metric]}</td><td>${fmt(r.metric,r.candidate)}</td><td>${fmt(r.metric,r.production)}</td><td class="${r.delta==null||r.delta===0?"":bad?"down":"up"}">${r.delta==null?"-":(r.delta>0?"+":"")+(cnt?r.delta:(r.delta*100).toFixed(2)+" pts")}</td></tr>`}).join("")+"</table>"+
+   c.warnings.map(w=>`<p class=warn>${esc(w)}</p>`).join("")+`<button class="act" id="pro">Promote ${v} to production</button><span id="pmsg"></span>`;
+  $("pro").onclick=async()=>{
+    if(!confirm(`Promote ${v}? The live detection pipeline will use it.`))return;
+    try{await api("/models/"+v+"/promote",{method:"POST",body:{force:false}});$("cmp").hidden=true;loadModels()}
+    catch(e){if(c.warnings.length&&confirm(e.message+"\n\nPromote anyway?")){await api("/models/"+v+"/promote",{method:"POST",body:{force:true}});$("cmp").hidden=true;loadModels()}else $("pmsg").innerHTML=`<span class=err>${esc(e.message)}</span>`}
+  };
+}
+$("rollback").onclick=async()=>{if(!confirm("Roll back to the previous production model?"))return;try{await api("/models/rollback",{method:"POST"});loadModels()}catch(e){alert(e.message)}};
+function loadAll(){const t=document.querySelector("nav [aria-current]").dataset.tab;
+  ({data:loadDatasets,train:loadDatasets,runs:loadRuns,models:loadModels})[t]().catch(()=>{});}
+setInterval(()=>{if(!$("gate").hidden)return;const t=document.querySelector("nav [aria-current]").dataset.tab;if(t==="runs")loadRuns().catch(()=>{})},2000);
+</script>
+</body>
+</html>

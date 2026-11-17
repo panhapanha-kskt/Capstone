@@ -111,3 +111,9 @@ See [Week 5 Progress Report](docs/Week5/WEEK5_PROGRESS_REPORT.md) and [V3 Traini
 
 All paths, thresholds, and model parameters are in `config/settings.yaml`.
 Environment variable overrides available via `.env` (see `.env.example`).
+
+The dashboard serves the training console at `/training` on the same host and port; no separate
+training server is needed. It defaults to Capstone mode, using `data/raw/` for the project-default
+training dataset and `models/` as the promotion target. The console and API are in
+[dashboard/training-gui](dashboard/training-gui); see its
+[README](dashboard/training-gui/README.md) for Windows Bash requirements and demo mode.

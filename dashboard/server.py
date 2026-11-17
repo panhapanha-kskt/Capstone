@@ -9,7 +9,7 @@ What it does
   3. Serves the newest results as JSON (/api/state) and the page (/).
 
 It only reads and runs your existing modules. It changes none of them.
-Standard library only, so there is nothing extra to install.
+The integrated training console uses FastAPI and Uvicorn from the project requirements.
 
 Run it where the pipeline already works (needs TensorFlow for the ML bridge):
 
@@ -22,6 +22,7 @@ Then open http://127.0.0.1:8000
 
 import argparse
 import hashlib
+import http.client
 import json
 import mimetypes
 import os
@@ -29,6 +30,7 @@ import random
 import re
 import shlex
 import shutil
+import socket
 import subprocess
 import sys
 import threading
@@ -45,6 +47,8 @@ HERE = Path(__file__).resolve().parent
 DATA = ROOT / "data" / "processed"
 RAW = ROOT / "data" / "raw"
 MODELS = ROOT / "models"
+TRAINING_GUI = HERE / "training-gui"
+TRAINING_API_PORT = None
 
 WEEK3 = DATA / "week3_features_all.json"
 WEEK3_ML = DATA / "week3_features_with_ml.json"
@@ -1088,11 +1092,72 @@ class Handler(BaseHTTPRequestHandler):
         self.send_header("Cache-Control", "no-store")
         self.end_headers()
 
+    def proxy_training_api(self):
+        if TRAINING_API_PORT is None:
+            self.send_json(503, {"detail": "Training API is not available"})
+            return
+
+        parsed = urlparse(self.path)
+        target = parsed.path[len("/training"):] or "/"
+        if parsed.query:
+            target += "?" + parsed.query
+        length_header = self.headers.get("Content-Length")
+        if length_header is None and self.headers.get("Transfer-Encoding"):
+            self.send_json(411, {"detail": "Content-Length is required"})
+            return
+        try:
+            remaining = int(length_header or 0)
+        except ValueError:
+            self.send_json(400, {"detail": "Invalid Content-Length"})
+            return
+        if remaining < 0:
+            self.send_json(400, {"detail": "Invalid Content-Length"})
+            return
+
+        connection = http.client.HTTPConnection("127.0.0.1", TRAINING_API_PORT, timeout=300)
+        try:
+            connection.putrequest(self.command, target, skip_accept_encoding=True)
+            hop_by_hop = {
+                "connection", "keep-alive", "proxy-authenticate", "proxy-authorization",
+                "te", "trailer", "transfer-encoding", "upgrade",
+            }
+            for name, value in self.headers.items():
+                if name.lower() != "host" and name.lower() not in hop_by_hop:
+                    connection.putheader(name, value)
+            connection.endheaders()
+            while remaining:
+                chunk = self.rfile.read(min(64 * 1024, remaining))
+                if not chunk:
+                    raise ConnectionError("Request body ended before Content-Length bytes were read")
+                connection.send(chunk)
+                remaining -= len(chunk)
+
+            response = connection.getresponse()
+            body = response.read()
+            self.send(response.status, body, response.getheader("Content-Type", "application/json"))
+        except (OSError, http.client.HTTPException, ConnectionError) as exc:
+            self.send_json(502, {"detail": f"Training API request failed: {exc}"})
+        finally:
+            connection.close()
+
     # ── GET ────────────────────────────────────────────────────
     def do_GET(self):
         url = urlparse(self.path)
         path = url.path
         query = parse_qs(url.query) if url.query else {}
+
+        if path in ("/training", "/training/"):
+            try:
+                page = (TRAINING_GUI / "api" / "static" / "index.html").read_bytes()
+            except OSError:
+                self.send(500, b"Training console page not found", "text/plain")
+                return
+            self.send(200, page, "text/html; charset=utf-8")
+            return
+
+        if path == "/training/api" or path.startswith("/training/api/"):
+            self.proxy_training_api()
+            return
 
         # HTML pages
         if path in PAGE_ROUTES:
@@ -1209,6 +1274,10 @@ class Handler(BaseHTTPRequestHandler):
     def do_POST(self):
         url = urlparse(self.path)
         path = url.path
+
+        if path == "/training/api" or path.startswith("/training/api/"):
+            self.proxy_training_api()
+            return
 
         if path == "/api/run":
             RUN_REQUESTS.set()
@@ -1419,6 +1488,44 @@ class Handler(BaseHTTPRequestHandler):
 RUN_REQUESTS = threading.Event()
 
 
+def start_training_api():
+    """Run the training API privately; the dashboard proxies it on its own port."""
+    try:
+        import uvicorn
+
+        sys.path.insert(0, str(TRAINING_GUI))
+        try:
+            from api.main import app as training_app
+        finally:
+            sys.path.remove(str(TRAINING_GUI))
+    except ImportError as exc:
+        raise RuntimeError(
+            "Training console dependencies are missing. Install requirements.txt from the project root."
+        ) from exc
+
+    server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    server_socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+    server_socket.bind(("127.0.0.1", 0))
+    server_socket.listen(128)
+    server_socket.setblocking(False)
+    port = server_socket.getsockname()[1]
+    server = uvicorn.Server(uvicorn.Config(
+        training_app, host="127.0.0.1", port=port, log_level="error", access_log=False
+    ))
+    thread = threading.Thread(target=server.run, kwargs={"sockets": [server_socket]}, daemon=True)
+    thread.start()
+
+    deadline = time.monotonic() + 10
+    while not server.started and thread.is_alive() and time.monotonic() < deadline:
+        time.sleep(0.05)
+    if not server.started:
+        server.should_exit = True
+        thread.join(timeout=2)
+        server_socket.close()
+        raise RuntimeError("Training API failed to start; check its dependencies and configuration.")
+    return server, thread, server_socket, port
+
+
 def manual_run_loop(args):
     """The 'Run now' button."""
     while True:
@@ -1429,6 +1536,8 @@ def manual_run_loop(args):
 
 
 def main():
+    global TRAINING_API_PORT
+
     p = argparse.ArgumentParser(description="Live DNS detection dashboard")
     p.add_argument("--watch", default=str(RAW), help="folder with Technitium *.log files (default: data/raw)")
     p.add_argument("--host", default="127.0.0.1")
@@ -1443,6 +1552,8 @@ def main():
 
     STATE.watch_dir = str(Path(args.watch).resolve())
     STATE.poll_interval = args.interval
+    if args.host not in ("127.0.0.1", "localhost", "::1") and os.getenv("ADMIN_TOKEN", "admin") in ("", "admin", "change-me"):
+        sys.exit("Set a non-default ADMIN_TOKEN before exposing the dashboard beyond localhost.")
     if args.demo:
         STATE.mode = "demo"
     else:
@@ -1453,15 +1564,26 @@ def main():
             with STATE.lock:
                 record_history()
 
+    try:
+        training_server, training_thread, training_socket, TRAINING_API_PORT = start_training_api()
+    except RuntimeError as exc:
+        sys.exit(str(exc))
+
     threading.Thread(target=demo_loop if args.demo else watch_loop, args=(args,), daemon=True).start()
     threading.Thread(target=manual_run_loop, args=(args,), daemon=True).start()
 
-    srv = ThreadingHTTPServer((args.host, args.port), Handler)
-    print(f"Dashboard: http://{args.host}:{args.port}   ({'demo data' if args.demo else 'watching ' + STATE.watch_dir})")
     try:
+        srv = ThreadingHTTPServer((args.host, args.port), Handler)
+        print(f"Dashboard: http://{args.host}:{args.port}   ({'demo data' if args.demo else 'watching ' + STATE.watch_dir})")
         srv.serve_forever()
     except KeyboardInterrupt:
         print("\nStopped.")
+    finally:
+        if "srv" in locals():
+            srv.server_close()
+        training_server.should_exit = True
+        training_thread.join(timeout=5)
+        training_socket.close()
 
 
 if __name__ == "__main__":

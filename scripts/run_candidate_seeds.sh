@@ -3,7 +3,7 @@
 # pass/fail gate (scripts/compare_models.py + config/success_criteria.yaml).
 #
 #   ./scripts/run_candidate_seeds.sh                         # labelled_v3 bundle, Isolation Forest, seeds 42 43 44
-#   NAME=x SEEDS="42 43 44 45 46" SPLIT=path/to/split.json ./scripts/run_candidate_seeds.sh
+#   RUN_NAME=x SEEDS="42 43 44 45 46" SPLIT=path/to/split.json ./scripts/run_candidate_seeds.sh
 #   FILES="a.json b.json" ./scripts/run_candidate_seeds.sh   # other training files
 #
 # Every seed uses the same split manifest, so seeds differ only in model randomness.
@@ -11,7 +11,8 @@
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
-NAME="${NAME:-labelled_v3_iforest}"
+# RUN_NAME, not NAME: WSL sets NAME to the computer name.
+RUN_NAME="${RUN_NAME:-labelled_v3_iforest}"
 SEEDS="${SEEDS:-42 43 44}"
 SPLIT="${SPLIT:-dashboard/training-gui/gui_data/runs/20261119-015201-8ffe/model/split_manifest.json}"
 read -r -a FILES <<< "${FILES:-data/external/cic/cic_benign_train.json data/processed/labeled_benign.json data/processed/labeled_tunnels.json}"
@@ -21,19 +22,19 @@ for f in "${FILES[@]}"; do [[ -f "$f" ]] || { echo "✗ training file not found:
 
 export PYTHONUNBUFFERED=1
 mkdir -p runs
-cp -f "$SPLIT" "runs/${NAME}_split.json"
+cp -f "$SPLIT" "runs/${RUN_NAME}_split.json"
 start=$(date +%s)
 for s in $SEEDS; do
-  out="runs/${NAME}_s$s"
+  out="runs/${RUN_NAME}_s$s"
   if [[ -f "$out/evaluation_metrics.json" ]]; then echo "• seed $s: already trained ($out)"; continue; fi
   echo "• seed $s → $out"
   mkdir -p "$out"
   DNS_DETECT_MODELS_DIR="$out" bash scripts/train_models.sh --seed "$s" --n-days 20 --path-b-model iforest \
-    --force-retrain --split-manifest "runs/${NAME}_split.json" --files "${FILES[@]}"
+    --force-retrain --split-manifest "runs/${RUN_NAME}_split.json" --files "${FILES[@]}"
 done
 echo "• trained in $(( ($(date +%s) - start) / 60 )) min"
 
 runs=()
-for s in $SEEDS; do runs+=("runs/${NAME}_s$s"); done
-python3 scripts/compare_models.py --runs "${runs[@]}" --out "runs/${NAME}_gate.json" || true
-echo "• gate report: runs/${NAME}_gate.json"
+for s in $SEEDS; do runs+=("runs/${RUN_NAME}_s$s"); done
+python3 scripts/compare_models.py --runs "${runs[@]}" --out "runs/${RUN_NAME}_gate.json" || true
+echo "• gate report: runs/${RUN_NAME}_gate.json"

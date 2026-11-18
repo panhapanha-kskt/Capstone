@@ -96,6 +96,47 @@ After that, `data/processed/` will show as modified again. That's normal; don't 
 
 ---
 
+## 4b. Phase 5 results: 3 seeds on `labelled_v3` (Observed, 2026-11-19)
+
+Run with `bash scripts/run_candidate_seeds.sh`. Each seed took 4–5 minutes. All three used the same split (sha256 `ff91ee2e…`) and code commit `fcc8db0`.
+
+Seeds 43 and 44 record "uncommitted changes". The only change was the `NAME` → `RUN_NAME` fix in `run_candidate_seeds.sh`; no training code changed.
+
+Each seed has 2,568 test rows: 1,168 benign and 1,400 attack.
+
+| Seed | Fusion recall | Fusion false alarms | Fusion FPR (95% interval) | Path A false alarms | Path A false alarms on test rows without a train twin (478 benign) |
+|---|---|---|---|---|---|
+| 42 | 1.000 | 13 | 1.11% (0.59–1.90%) | 8 | 8 (1.7%) |
+| 43 | 1.000 | 16 | 1.37% (0.78–2.22%) | 16 | 16 (3.3%) |
+| 44 | 1.000 | 2 | 0.17% (0.02–0.62%) | 1 | 1 (0.2%) |
+| **Mean ± sd** | **1.000 ± 0** | **10.3 ± 7.4** | **0.88% ± 0.63%** | 8.3 ± 7.5 | — |
+
+**Comparisons on the same test rows:**
+
+| Detector | Recall | False alarms |
+|---|---|---|
+| Current `models/` Path A | 1.000 | **31** (2.65%) |
+| Rule: record type TXT/KEY/NULL | 1.000 | **0** |
+
+**Gate: FAIL.** The 5 passed criteria were seeds, same split, recall floor, recall vs current model, and false alarms vs current model. The 2 failed criteria were:
+- **FPR within budget:** mean 0.88% against 0.1%.
+- **Beats every rule baseline:** the record-type rule has F1 1.000 on every seed.
+
+**What the numbers say:**
+1. **This model is better than the live one on this data:** about 3 times fewer false alarms (10.3 vs 31) at the same recall. Caveat: the live model was trained on different data.
+2. **It does not meet the 0.1% budget,** and the 95% intervals rule that out on 2 of 3 seeds: seed 42's lower bound is 0.59% and seed 43's is 0.78%.
+3. **The result depends heavily on the seed:** 2 to 16 false alarms with the same data and split. One run alone would have been misleading. Seed 44 alone would suggest 0.17%.
+4. **Every Path A false alarm is on benign rows the model never saw an exact copy of.** The 690 benign test rows that are copies of training rows produce no false alarms. The 478 that aren't produce all of them, at 0.2–3.3%. So the headline test score is flattered by duplicates; the twin-free rate is the better estimate for new traffic.
+5. **A one-line record-type rule is perfect here,** so this dataset can't show that ML is needed. The training EDA warns about the same thing: entropy alone has AUC 0.997, and every source file holds only one class.
+6. **Path B (Isolation Forest) flags 23–26% of benign windows.** The fusion relies almost entirely on Path A.
+
+**Decision:** don't promote. `models/` is unchanged.
+
+**Next steps, by priority (each needs your OK):**
+- **Better data:** benign traffic that uses TXT/MX/SRV and tunnels over A/AAAA/CNAME. This is the only change that can make the rule-baseline criterion passable.
+- **Choose the threshold on more benign rows:** the calibration and threshold halves of validation are small, which is the likely cause of the seed spread. Measure that before changing anything.
+- **Item 6 from the research doc:** check later benign traffic.
+
 ## 5. Commit
 
 `git` can't create its lock files from my workspace, so please commit from PowerShell:

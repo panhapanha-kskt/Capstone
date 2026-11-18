@@ -874,6 +874,16 @@ with open(meta_path, "w") as f:
     json.dump(meta, f, indent=2)
 print(f"  Metadata -> {meta_path}")
 PYEOF
+
+# Run record: git commit, pip freeze, input checksums, split hash, seed. In a separate run folder
+# (DNS_DETECT_MODELS_DIR) the merged labelled data is copied too, because data/processed is
+# rewritten by every run; the live models/ folder only gets the record.
+RECORD_ARGS=(--out "$MODELS_DIR" --provenance "$MEM_PROVENANCE" --split "$MEM_SPLIT" --seed "$SEED"
+             --merged "$MERGED_LABELED")
+if [[ "$(cd "$MODELS_DIR" && pwd -P)" != "$(cd "$PROJECT_ROOT/models" 2>/dev/null && pwd -P)" ]]; then
+  RECORD_ARGS+=(--copy-merged)
+fi
+run python3 "$SCRIPT_DIR/run_record.py" "${RECORD_ARGS[@]}" || later "Run record not written (see log)"
 flush_notes
 
 ELAPSED=$(( $(date +%s) - START_TIME ))

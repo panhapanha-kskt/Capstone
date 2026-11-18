@@ -65,3 +65,6 @@ models_*/
 
 # DNSTunnel2026 extracted copy (train.csv is 3.6 GB, over GitHub's 2 GB LFS limit)
 DNSTunnel2026/
+
+# Experiment run folders (models, copied training data, run records): keep out of git
+runs/

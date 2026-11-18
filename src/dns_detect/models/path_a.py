@@ -44,7 +44,8 @@ from dns_detect.features.aggregates import (
 from dns_detect.models.splits import (
     grouped_split, overlap_share, partition_conflicting_groups, load_manifest_indices,
 )
-from dns_detect.models.thresholds import threshold_for_fpr
+from dns_detect.models.thresholds import (threshold_for_fpr, rate_interval, budget_evidence,
+                                          budget_message)
 from dns_detect.utils.dataset_hash import dataset_hash
 from dns_detect.utils.paths import PROJECT_ROOT, MODELS_DIR
 
@@ -324,6 +325,9 @@ def _metric_block(y_true, scores, threshold):
     y_true = np.asarray(y_true)
     preds = (np.asarray(scores) >= threshold).astype(int)
     n_ben = int((y_true == 0).sum())
+    n_att = int((y_true == 1).sum())
+    n_fa = int(((preds == 1) & (y_true == 0)).sum())
+    n_tp = int(((preds == 1) & (y_true == 1)).sum())
     try:
         roc = float(roc_auc_score(y_true, scores))
     except Exception:
@@ -342,7 +346,28 @@ def _metric_block(y_true, scores, threshold):
         "pr_auc_baseline": float((y_true == 1).mean()) if len(y_true) else None,
         "roc_auc":   roc,
         "threshold": float(threshold),
+        "fpr_ci95":  rate_interval(n_fa, n_ben),
+        "recall_ci95": rate_interval(n_tp, n_att),
     }
+
+
+def twin_free_metrics(groups, tr_idx, te_idx, y_test, scores, threshold) -> dict:
+    """Test metrics on the rows whose exact feature-vector group never appears in train."""
+    groups, y_test, scores = np.asarray(groups), np.asarray(y_test), np.asarray(scores)
+    no_twin = ~np.isin(groups[te_idx], groups[tr_idx])
+    out = {"rows": int(no_twin.sum()), "benign": int((y_test[no_twin] == 0).sum()),
+           "attack": int((y_test[no_twin] == 1).sum()), "metrics": None}
+    if no_twin.any():
+        out["metrics"] = _metric_block(y_test[no_twin], scores[no_twin], threshold)
+    return out
+
+
+def _fmt_rate(v):
+    return "n/a" if v is None else f"{v:.3%}"
+
+
+def _fmt_ci(ci):
+    return "n/a" if not ci else f"[{ci[0]:.3%}, {ci[1]:.3%}]"
 
 
 def _recall_by_family(y_true, preds, families):
@@ -525,6 +550,20 @@ def run_training(input_path: str, rf_weight=0.5, tf_weight=0.5, shuffle_labels=F
     print(classification_report(y_test, preds, target_names=["benign", "attack"], zero_division=0))
     print(f"PR-AUC: {chosen['pr_auc']}  (baseline={chosen['pr_auc_baseline']:.3f})  | ROC-AUC: {chosen['roc_auc']}  "
           f"| false alarms: {chosen['false_alarms']} / {int((y_test == 0).sum())} benign")
+    budget = budget_evidence(chosen["false_alarms"], int((y_test == 0).sum()), max_fpr)
+    print(f"[*] Budget check: {budget_message(budget)}")
+    print(f"    95% intervals: FPR {_fmt_ci(chosen['fpr_ci95'])}  recall {_fmt_ci(chosen['recall_ci95'])}")
+
+    # Test rows whose exact feature vector also sits in train measure memory, not
+    # generalisation; report the test again without them (Arp et al. 2022, data snooping).
+    twin_free = twin_free_metrics(groups, tr_idx, te_idx, y_test, chosen_scores, threshold)
+    if twin_free["metrics"]:
+        tm = twin_free["metrics"]
+        print(f"[*] Test without train twins: {twin_free['rows']}/{len(y_test)} rows "
+              f"({twin_free['benign']} benign, {twin_free['attack']} attack) → recall={tm['recall']:.4f}  "
+              f"FPR={_fmt_rate(tm['fpr'])}  false alarms={tm['false_alarms']}")
+    else:
+        print("[*] Test without train twins: none — every test row has an exact copy in train")
     recall_by_family = _recall_by_family(y_test, preds, fam_test if "attack_family" in df.columns else None)
     for k, v in recall_by_family.items():
         print(f"  - {k}: recall={v['recall']:.3f}  (n={v['support']})")
@@ -565,6 +604,8 @@ def run_training(input_path: str, rf_weight=0.5, tf_weight=0.5, shuffle_labels=F
         "dataset_version": dv,
         "split_sizes": {"train": int(len(tr_idx)), "val": int(len(val_idx)), "test": int(len(te_idx))},
         "test_rows_with_twin_in_train": test_twin_share,
+        "test_without_train_twin": twin_free,
+        "budget_check": budget,
         "conflicting_vectors": int(n_conflicts),
         "missing_filled": {"at_load": missing_at_load, "model_inputs": missing_inputs},
         "clipped_values": clipped_values,

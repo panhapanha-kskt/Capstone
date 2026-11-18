@@ -4,6 +4,8 @@ threshold_for_fpr  empirical: meets the budget on the rows it is given (alarm wh
 np_threshold       Neyman-Pearson umbrella algorithm (Tong, Feng & Li 2018): with probability
                    >= 1 - delta over the draw of the benign calibration rows, the population
                    false-alarm rate is <= alpha (alarm when score > t, strictly).
+rate_interval      exact (Clopper-Pearson) confidence interval for a rate k / n.
+budget_evidence    can these benign test rows show the false-alarm rate is within the budget?
 """
 
 import math
@@ -131,8 +133,69 @@ def threshold_for_fpr(y_true, scores, max_fpr: float) -> float:
     return float(np.nextafter(b, np.inf))
 
 
+def rate_interval(k: int, n: int, confidence: float = 0.95):
+    """
+    Exact two-sided Clopper-Pearson interval [low, high] for a rate of k events in n trials.
+    Returns None when n == 0. With k = 0 the upper end is about 3 / n at 95% (rule of three):
+    a test set can only show a rate below 1 / 1,000 if it has some 3,000 rows and no events.
+    """
+    from scipy.stats import beta
+    k, n = int(k), int(n)
+    if n <= 0:
+        return None
+    if not 0 <= k <= n:
+        raise ValueError(f"need 0 <= k <= n, got k={k}, n={n}")
+    a = 1.0 - float(confidence)
+    low = 0.0 if k == 0 else float(beta.ppf(a / 2, k, n - k + 1))
+    high = 1.0 if k == n else float(beta.ppf(1 - a / 2, k + 1, n - k))
+    return [low, high]
+
+
+def min_rows_for_rate(max_rate: float, confidence: float = 0.95) -> int:
+    """Fewest rows with zero events whose one-sided upper bound is <= max_rate."""
+    max_rate = _check_unit("max_rate", max_rate)
+    # Zero events in n rows: the one-sided upper bound u solves (1 - u)^n = 1 - confidence.
+    return int(math.ceil(math.log(1.0 - float(confidence)) / math.log(1.0 - max_rate)))
+
+
+def budget_evidence(false_alarms: int, benign: int, max_fpr: float, confidence: float = 0.95) -> dict:
+    """
+    Whether the benign rows can support the claim "false-alarm rate <= max_fpr".
+      upper            one-sided upper confidence bound on the false-alarm rate
+      within_budget    upper <= max_fpr (the claim holds with this confidence)
+      enough_rows      benign >= min_rows: even zero false alarms could show the budget
+    """
+    from scipy.stats import beta
+    k, n = int(false_alarms), int(benign)
+    need = min_rows_for_rate(max_fpr, confidence)
+    if n <= 0:
+        return {"max_fpr": float(max_fpr), "confidence": float(confidence), "upper": None,
+                "within_budget": False, "enough_rows": False, "min_rows": need, "benign": 0,
+                "false_alarms": k}
+    upper = 1.0 if k >= n else float(beta.ppf(confidence, k + 1, n - k))
+    return {"max_fpr": float(max_fpr), "confidence": float(confidence), "upper": upper,
+            "within_budget": bool(upper <= max_fpr), "enough_rows": bool(n >= need),
+            "min_rows": need, "benign": n, "false_alarms": k}
+
+
+def budget_message(ev: dict) -> str:
+    """One line for logs: what the benign test rows can and cannot show about the budget."""
+    if not ev.get("benign"):
+        return "no benign test rows: the false-alarm rate cannot be measured"
+    up = f"{ev['upper']:.3%}"
+    if ev["within_budget"]:
+        return (f"false-alarm rate <= {up} with {ev['confidence']:.0%} confidence: within the "
+                f"{ev['max_fpr']:.3%} budget")
+    if not ev["enough_rows"]:
+        return (f"only {ev['benign']} benign test rows: they cannot show a rate below "
+                f"{ev['max_fpr']:.3%} (needs >= {ev['min_rows']} with no false alarms); "
+                f"upper {ev['confidence']:.0%} bound = {up}")
+    return (f"upper {ev['confidence']:.0%} bound {up} is above the {ev['max_fpr']:.3%} budget "
+            f"({ev['false_alarms']} false alarms in {ev['benign']} benign rows)")
+
+
 def rates(y_true, preds) -> dict:
-    """Recall, false-positive rate, precision and counts for hard predictions."""
+    """Recall, false-positive rate, precision and counts for hard predictions (+ 95% intervals)."""
     y = np.asarray(y_true).astype(int)
     p = np.asarray(preds).astype(int)
     tp = int(((p == 1) & (y == 1)).sum())
@@ -148,4 +211,6 @@ def rates(y_true, preds) -> dict:
         "false_alarms": fp,
         "benign": neg,
         "attack": pos,
+        "fpr_ci95": rate_interval(fp, neg),
+        "recall_ci95": rate_interval(tp, pos),
     }

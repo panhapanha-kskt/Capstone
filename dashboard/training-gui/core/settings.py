@@ -20,7 +20,9 @@ DEFAULT_PRODUCTION = PROJECT_ROOT / "models" if MODE == "capstone" else HOME / "
 PRODUCTION = Path(os.getenv("PRODUCTION_DIR", DEFAULT_PRODUCTION))
 
 LABEL_COL = os.getenv("LABEL_COLUMN", "label")
-MAX_UPLOAD_MB = int(os.getenv("MAX_UPLOAD_MB", "200"))
+MAX_UPLOAD_MB = int(os.getenv("MAX_UPLOAD_MB", "0"))   # 0 = no limit; set e.g. MAX_UPLOAD_MB=500 to cap uploads
+# Large CSVs are checked on their first rows only, so "Upload and check" stays fast and light on memory.
+VALIDATE_SAMPLE_ROWS = int(os.getenv("VALIDATE_SAMPLE_ROWS", "200000"))
 ADMIN_TOKEN = os.getenv("ADMIN_TOKEN", "admin")
 
 # Directory the training command runs in (set to your Capstone repo for real training).

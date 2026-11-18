@@ -36,8 +36,15 @@ def validate_csv(name: str) -> dict:
         n = sum(1 for f in p.rglob("*") if f.is_file()) if p.is_dir() else 1
         out["warnings"].append(f"{n} file(s). The training script checks and labels this data itself; see the run log.")
     else:
-        df = pd.read_csv(p)
-        out.update(rows=len(df), columns=len(df.columns), preview=df.head(5).fillna("").to_dict("records"))
+        n_max = S.VALIDATE_SAMPLE_ROWS
+        df = pd.read_csv(p, nrows=n_max + 1, low_memory=False)
+        sampled = len(df) > n_max
+        if sampled:
+            df = df.iloc[:n_max]
+            out["warnings"].append(f"Large file ({p.stat().st_size / 1e6:,.0f} MB): checked the first {n_max:,} rows only, "
+                                   "so the class counts below are for those rows, not the whole file.")
+        out.update(rows=None if sampled else len(df), columns=len(df.columns), sampled=sampled,
+                   preview=df.head(5).fillna("").to_dict("records"))
         has_label = S.LABEL_COL in df.columns
         if has_label:
             out["class_counts"] = df[S.LABEL_COL].astype(str).value_counts().to_dict()
@@ -47,7 +54,7 @@ def validate_csv(name: str) -> dict:
             out["errors"].append(f"Missing label column '{S.LABEL_COL}'. Found: {list(df.columns)[:10]}")
         else:
             out["warnings"].append(f"No '{S.LABEL_COL}' column. The script will label this data from the attack manifest or heuristics.")
-        if len(df) < 100:
+        if not sampled and len(df) < 100:
             out["warnings"].append(f"Only {len(df)} rows. Results will be unreliable.")
         out["missing_pct"] = round(float(df.isna().mean().mean() * 100), 2)
         if out["missing_pct"] > 5:

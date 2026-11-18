@@ -55,6 +55,7 @@ RAW = ROOT / "data" / "raw"
 MODELS = ROOT / "models"
 TRAINING_GUI = HERE / "training-gui"
 TRAINING_API_PORT = None
+TRAINING_PROXY_TIMEOUT = 3600   # seconds per socket operation; big dataset uploads take a while
 
 WEEK3 = DATA / "week3_features_all.json"
 WEEK3_ML = DATA / "week3_features_with_ml.json"
@@ -2549,7 +2550,7 @@ class Handler(BaseHTTPRequestHandler):
             self.send_json(400, {"detail": "Invalid Content-Length"})
             return
 
-        connection = http.client.HTTPConnection("127.0.0.1", TRAINING_API_PORT, timeout=300)
+        connection = http.client.HTTPConnection("127.0.0.1", TRAINING_API_PORT, timeout=TRAINING_PROXY_TIMEOUT)
         try:
             connection.putrequest(self.command, target, skip_accept_encoding=True)
             hop_by_hop = {
@@ -2561,19 +2562,35 @@ class Handler(BaseHTTPRequestHandler):
                     connection.putheader(name, value)
             connection.endheaders()
             while remaining:
-                chunk = self.rfile.read(min(64 * 1024, remaining))
+                chunk = self.rfile.read(min(1024 * 1024, remaining))
                 if not chunk:
-                    raise ConnectionError("Request body ended before Content-Length bytes were read")
-                connection.send(chunk)
+                    # The browser cancelled or lost the upload: nobody is left to answer.
+                    self.close_connection = True
+                    return
+                try:
+                    connection.send(chunk)
+                except OSError:
+                    # The training API answered early (e.g. rejected the upload) and closed its side.
+                    # Stop forwarding and relay its answer below.
+                    self.close_connection = True
+                    break
                 remaining -= len(chunk)
 
             response = connection.getresponse()
             body = response.read()
-            self.send(response.status, body, response.getheader("Content-Type", "application/json"))
-        except (OSError, http.client.HTTPException, ConnectionError) as exc:
-            self.send_json(502, {"detail": f"Training API request failed: {exc}"})
+            self._send_quietly(response.status, body, response.getheader("Content-Type", "application/json"))
+        except (OSError, http.client.HTTPException) as exc:
+            self._send_quietly(502, json.dumps({"detail": f"Training API request failed: {exc}"}).encode(),
+                               "application/json; charset=utf-8")
         finally:
             connection.close()
+
+    def _send_quietly(self, code, body, ctype):
+        """Send a response, but don't print a traceback if the browser has already gone away."""
+        try:
+            self.send(code, body, ctype)
+        except (BrokenPipeError, ConnectionResetError):
+            self.close_connection = True
 
     # ── GET ────────────────────────────────────────────────────
     def do_GET(self):

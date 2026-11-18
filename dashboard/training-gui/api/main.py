@@ -69,14 +69,19 @@ async def upload(file: UploadFile):
     if Path(name).suffix.lower() not in S.UPLOAD_EXTS:
         raise HTTPException(400, "Accepted file types: " + ", ".join(sorted(S.UPLOAD_EXTS)))
     dest = S.DATASETS / name
+    part = dest.with_name(dest.name + ".part")      # not listed as a dataset until complete
+    limit = S.MAX_UPLOAD_MB * 1_000_000 if S.MAX_UPLOAD_MB > 0 else None
     size = 0
-    with open(dest, "wb") as out:
-        while chunk := await file.read(1 << 20):
-            size += len(chunk)
-            if size > S.MAX_UPLOAD_MB * 1e6:
-                out.close(); dest.unlink(missing_ok=True)
-                raise HTTPException(413, f"File is over {S.MAX_UPLOAD_MB} MB")
-            out.write(chunk)
+    try:
+        with open(part, "wb") as out:
+            while chunk := await file.read(8 << 20):
+                size += len(chunk)
+                if limit is not None and size > limit:
+                    raise HTTPException(413, f"File is over {S.MAX_UPLOAD_MB} MB")
+                out.write(chunk)
+        part.replace(dest)
+    finally:
+        part.unlink(missing_ok=True)
     return data.validate_csv(name)
 
 

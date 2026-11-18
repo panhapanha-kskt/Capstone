@@ -62,3 +62,6 @@ data/processed/*
 # Experiment model folders (DNS_DETECT_MODELS_DIR)
 models_*/
 .venv/
+
+# DNSTunnel2026 extracted copy (train.csv is 3.6 GB, over GitHub's 2 GB LFS limit)
+DNSTunnel2026/

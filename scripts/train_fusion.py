@@ -47,7 +47,7 @@ from dns_detect.parsing.dns_parser import load_as_dataframe  # noqa: E402
 from dns_detect.models.path_a import score_frame, _training_setting  # noqa: E402
 from dns_detect.models.path_b_predict import score_records  # noqa: E402
 from dns_detect.models.splits import load_manifest_indices  # noqa: E402
-from dns_detect.models.thresholds import rates  # noqa: E402
+from dns_detect.models.thresholds import rates, budget_evidence, budget_message  # noqa: E402
 from dns_detect.fusion import stacker  # noqa: E402
 from dns_detect.ingest.labeling import parent_domain, validate_training_labels  # noqa: E402
 from dns_detect.utils.dataset_hash import dataset_hash  # noqa: E402
@@ -154,6 +154,9 @@ def main():
         results[n] = r
         print(f"   {n:14s} {r['recall']:8.3f} {r['fpr']:8.4f} {r['false_alarms']:>8d}/{r['benign']:<5d} "
               f"{r['precision']:10.3f}")
+    results[name]["budget_check"] = budget_evidence(results[name]["false_alarms"], results[name]["benign"],
+                                                    max_fpr)
+    print(f"[*] Fusion budget check: {budget_message(results[name]['budget_check'])}")
 
     metrics_path = MODELS_DIR / "evaluation_metrics.json"
     try:

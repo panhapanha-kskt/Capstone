@@ -184,12 +184,31 @@ class Labels:
         return lab.map(self.map)
 
 
+# Same list as dns_detect.parsing.dns_parser.FORBIDDEN_FEATURES, used when src/ can't be imported.
+FORBIDDEN_FALLBACK = {
+    "client_ip", "client_port", "timestamp", "hour_of_day", "day_of_week",
+    "source_file", "source_type", "input_file", "label_source", "attack_family", "dup_key", "label",
+}
+
+
+def forbidden_features() -> set:
+    """Identity, time and provenance columns that must never be a model input."""
+    try:
+        return set(_pipeline_module("dns_detect.parsing.dns_parser").FORBIDDEN_FEATURES) | FORBIDDEN_FALLBACK
+    except Exception:
+        return set(FORBIDDEN_FALLBACK)
+
+
 def feature_columns(path: Path):
-    """(numeric feature columns, timestamp column or None)."""
+    """(numeric feature columns, timestamp column or None). Identity/time/provenance columns are dropped."""
     head = pd.read_csv(path, nrows=50_000, low_memory=False)
     if LABEL not in head.columns:
         raise SystemExit(f"No '{LABEL}' column in {path.name}.")
-    feats = [c for c in head.select_dtypes("number").columns if c != LABEL]
+    banned = forbidden_features()
+    dropped = [c for c in head.select_dtypes("number").columns if c != LABEL and c.lower() in banned]
+    if dropped:
+        log(f"not used as model inputs (identity/time/provenance): {', '.join(dropped)}")
+    feats = [c for c in head.select_dtypes("number").columns if c != LABEL and c.lower() not in banned]
     if not feats:
         raise SystemExit(f"No numeric feature columns in {path.name}.")
     return feats, ("timestamp" if "timestamp" in head.columns else None)
@@ -242,7 +261,28 @@ def weighted_metrics(y, p, w, thr) -> dict:
         "pr_auc": round(float(average_precision_score(y, p, sample_weight=w)), 4) if pos.any() else None,
         "false_alarms": int(round(fp)), "missed_attacks": int(round(fn)), "caught_attacks": int(round(tp)),
         "rows": int(len(y)), "weighted_rows": int(round(float(w.sum()))), "threshold": round(float(thr), 6),
+        # Intervals use the rows actually scored (not the weights): they show how much these rows can prove.
+        "benign_rows_scored": int(neg.sum()), "false_alarm_rows": int((neg & pred).sum()),
+        "fpr_ci95": _interval(int((neg & pred).sum()), int(neg.sum())),
+        "recall_ci95": _interval(int((pos & pred).sum()), int(pos.sum())),
     }
+
+
+def _interval(k: int, n: int):
+    try:
+        return _pipeline_module("dns_detect.models.thresholds").rate_interval(k, n)
+    except Exception:
+        return None
+
+
+def budget_check(false_alarm_rows: int, benign_rows: int, max_fpr: float):
+    """(evidence dict, message) from dns_detect.models.thresholds, or (None, '') if unavailable."""
+    try:
+        t = _pipeline_module("dns_detect.models.thresholds")
+        ev = t.budget_evidence(false_alarm_rows, benign_rows, max_fpr)
+        return ev, t.budget_message(ev)
+    except Exception:
+        return None, ""
 
 
 def best_threshold(y, p, w) -> float:
@@ -342,6 +382,9 @@ def main():
     log(f"test ({test_name}): F1 {test['f1']}, precision {test['precision']}, recall {test['recall']}, "
         f"FPR {test['fpr']:.4%}, false alarms {test['false_alarms']:,}, missed attacks {test['missed_attacks']:,}")
     log(f"for reference, at the best-F1 threshold: F1 {test_f1['f1']}, false alarms {test_f1['false_alarms']:,}")
+    budget, budget_msg = budget_check(test["false_alarm_rows"], test["benign_rows_scored"], max_fpr)
+    if budget_msg:
+        log(f"budget check: {budget_msg}")
 
     out = run / "model"
     out.mkdir(parents=True, exist_ok=True)
@@ -357,8 +400,11 @@ def main():
             "trained_at": datetime.now(timezone.utc).isoformat(timespec="seconds")}
     (out / "model_meta.json").write_text(json.dumps(meta, indent=2))
     (out / "evaluation_metrics.json").write_text(json.dumps(
-        {"validation_threshold_half": val, "test": test, "test_at_best_f1_threshold": test_f1}, indent=2))
-    metrics = {k: test[k] for k in ("f1", "precision", "recall", "fpr", "pr_auc", "accuracy", "false_alarms")}
+        {"validation_threshold_half": val, "test": test, "test_at_best_f1_threshold": test_f1,
+         "budget_check": budget}, indent=2))
+    metrics = {k: test[k] for k in ("f1", "precision", "recall", "fpr", "pr_auc", "accuracy", "false_alarms",
+                                    "fpr_ci95", "recall_ci95")}
+    metrics["budget_check"] = budget
     metrics.update(trainer="feature_table", source="feature_table", test_data=test_name,
                    test_rows=test["rows"], missed_attacks=test["missed_attacks"], max_fpr=max_fpr)
     if benign_rate < 1:
@@ -366,6 +412,19 @@ def main():
                            "and metrics are weighted to represent the whole file.")
     (run / "metrics.json").write_text(json.dumps(metrics, indent=2))
     log(f"wrote {out / 'model.joblib'} and metrics.json")
+    write_run_record(out, src, seed)
+
+
+def write_run_record(out: Path, dataset: Path, seed: int) -> None:
+    """run_record.json (git commit, pip freeze, dataset sha256, seed) via scripts/run_record.py.
+    The dataset is recorded, not copied: feature tables can be several GB."""
+    try:
+        sys.path.insert(0, str(Path.cwd() / "scripts"))
+        import run_record
+        path = run_record.write_record(out, seed=seed, merged=dataset)
+        log(f"wrote {path}")
+    except Exception as e:                      # the model is already saved; never fail the run here
+        log(f"run record not written: {e}")
 
 
 if __name__ == "__main__":

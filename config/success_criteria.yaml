@@ -1,0 +1,39 @@
+# Success criteria for a candidate model (scripts/compare_models.py).
+# Written BEFORE training, per the project's hard rules. Change them only with a reason in git.
+#
+# A candidate is a set of run folders trained the same way with different seeds
+# (DNS_DETECT_MODELS_DIR=runs/<name>_s<seed> ./scripts/train_models.sh --seed <seed> ...).
+# Every number is measured on each run's own frozen test rows; the gate passes only when every
+# criterion holds, using the mean over seeds unless a criterion says "every seed".
+
+min_seeds: 3                 # claims need >= 3 seeds (report mean ± sd)
+same_split: true             # all seeds must use the same split manifest (same sha256)
+
+# Which detector is judged: "fusion" (the deployed decision) or "path_a".
+detector: fusion
+
+# 1. Absolute floor, every seed.
+recall_min: 0.95
+
+# 2. False-alarm budget (training.path_a_max_fpr in settings.yaml when null).
+#    point:  mean test FPR <= budget
+#    bound:  95% upper bound <= budget on every seed — needs >= 2,995 benign test rows with no
+#            false alarms at a 0.1% budget, so it fails on small test sets by design.
+fpr_budget: null
+require_point_fpr_within_budget: true
+require_upper_bound_within_budget: false
+
+# 3. Versus the current model (models/, read only), scored on the SAME test rows (Path A level:
+#    the live Path B may need TensorFlow and is not re-scored).
+#    The current model may have been trained on some of these rows, which favours it.
+current_models_dir: models
+current_recall_tolerance: 0.0       # candidate recall >= current recall - tolerance (mean)
+current_false_alarms_not_higher: true
+
+# 4. Versus the rule baselines (dns_detect.models.baselines, thresholds fitted on train rows only):
+#    the candidate's F1 must beat every rule's F1 on every seed.
+beat_rule_baselines: true
+
+# 5. Exact-twin check: recall on test rows with no exact copy in train (reported; set a floor
+#    here to make it a criterion).
+twin_free_recall_min: null

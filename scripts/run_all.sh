@@ -14,6 +14,9 @@
 #    ./scripts/run_all.sh --force-retrain       # full retrain, then detect
 #    ./scripts/run_all.sh --skip-train          # detect only (models must already exist)
 #    ./scripts/run_all.sh --zscore 2.5          # custom Z-score threshold for detection
+#    ./scripts/run_all.sh --force-retrain --path-b-model iforest \
+#        --files data/processed/labeled_tunnels.json data/processed/labeled_benign.json
+#                                               # choose Path B + training data (passed to train_models.sh)
 #    ./scripts/run_all.sh --auto-retrain        # if monitoring says so, retrain + re-detect once
 #    ./scripts/run_all.sh --with-infra          # docker compose up Technitium+ELK first
 #    ./scripts/run_all.sh --with-attack "127.0.0.1 lab.local --all-attacks -t 8 -r 5000 -d 60 -w subs.txt -W nx.txt"
@@ -64,6 +67,9 @@ SKIP_TRAIN=false
 AUTO_RETRAIN=false
 ZSCORE_THRESHOLD=2.0
 declare -a TRAIN_ARGS=()   # retrain flags passed through to train_models.sh
+declare -a MODEL_ARGS=()   # model/label options passed through to train_models.sh (also on --auto-retrain)
+declare -a DATA_ARGS=()    # --data-dir / --files passed through to train_models.sh (--files goes last)
+RETRAIN_GIVEN=false
 
 # ── ARG PARSING ────────────────────────────────────────────
 show_help() {
@@ -83,6 +89,22 @@ show_help() {
   echo "  --auto-retrain         If monitoring recommends it, retrain + re-detect once"
   echo "  --help                 Show this help"
   echo ""
+  echo -e "${BOLD}Training options${NC} (passed to train_models.sh; see ./scripts/train_models.sh --help):"
+  echo "  --path-b-model T       Path B algorithm: trafficformer (default, slow) or iforest (minutes)"
+  echo "  --files F1 F2 ...      Train on these files (.json/.csv/.pcap/.log) instead of scanning data/raw/"
+  echo "  --data-dir PATH        Train on every data file in this folder"
+  echo "  --path-a-only          Train only Path A (RF + GBT)"
+  echo "  --path-b-only          Train only Path B"
+  echo "  --n-days N             Path B window size in queries (default: 20)"
+  echo "  --seed N               Seed for both paths and a fresh split (default: 42)"
+  echo "  --new-split            Make a fresh time-ordered split (results not comparable with older runs)"
+  echo "  --split-manifest F     Reuse this base split"
+  echo "  --pcap-label 0|1       Label every query in .pcap files (0 = benign, 1 = attack)"
+  echo "  --allow-heuristic-labels  EXPERIMENTAL: train even with heuristic labels"
+  echo "  --verbose              Stream the full training output"
+  echo "  Detection (step B) always scores the logs in data/raw/, whatever data trained the models."
+  echo "  Models that exist are kept unless you add --retrain or --force-retrain."
+  echo ""
   echo -e "${BOLD}Examples:${NC}"
   echo "  ./scripts/run_all.sh"
   echo "  ./scripts/run_all.sh --force-retrain --zscore 2.5"
@@ -95,8 +117,24 @@ while [[ $# -gt 0 ]]; do
   case "$1" in
     --with-infra)    WITH_INFRA=true;                 shift ;;
     --with-attack)   WITH_ATTACK=true; ATTACK_ARGS="${2:-}"; shift 2 ;;
-    --retrain)       TRAIN_ARGS+=(--retrain);         shift ;;
-    --force-retrain) TRAIN_ARGS+=(--force-retrain);   shift ;;
+    --retrain)       TRAIN_ARGS+=(--retrain);  RETRAIN_GIVEN=true; shift ;;
+    --force-retrain) TRAIN_ARGS+=(--force-retrain); RETRAIN_GIVEN=true; shift ;;
+    --path-b-model)
+      case "${2:-}" in trafficformer|iforest) ;; *) fail "--path-b-model needs trafficformer or iforest (got: ${2:-nothing})" ;; esac
+      MODEL_ARGS+=(--path-b-model "$2"); shift 2 ;;
+    --n-days|--seed|--split-manifest|--pcap-label)
+      [[ -n "${2:-}" && "${2:-}" != --* ]] || fail "$1 needs a value"
+      MODEL_ARGS+=("$1" "$2"); shift 2 ;;
+    --path-a-only|--path-b-only|--new-split|--allow-heuristic-labels|--verbose|-v)
+      MODEL_ARGS+=("$1"); shift ;;
+    --data-dir)
+      [[ -n "${2:-}" && "${2:-}" != --* ]] || fail "--data-dir needs a folder"
+      DATA_ARGS=(--data-dir "$2" "${DATA_ARGS[@]+"${DATA_ARGS[@]}"}"); shift 2 ;;
+    --files)
+      shift; FILE_LIST=()
+      while [[ $# -gt 0 && "$1" != --* ]]; do FILE_LIST+=("$1"); shift; done
+      [[ ${#FILE_LIST[@]} -gt 0 ]] || fail "--files needs at least one file"
+      DATA_ARGS+=(--files "${FILE_LIST[@]}") ;;
     --skip-train)    SKIP_TRAIN=true;                 shift ;;
     --auto-retrain)  AUTO_RETRAIN=true;               shift ;;
     --zscore)        ZSCORE_THRESHOLD="${2:-2.0}";    shift 2 ;;
@@ -213,7 +251,16 @@ if [[ "$SKIP_TRAIN" == true ]]; then
   ok "Using existing models in models/"
 else
   stage "TRAIN (steps 1–11) — train_models.sh"
-  info "First run trains; if models already exist this auto-skips."
+  # --files must stay last: train_models.sh reads every following word as a file
+  TRAIN_ARGS+=("${MODEL_ARGS[@]+"${MODEL_ARGS[@]}"}" "${DATA_ARGS[@]+"${DATA_ARGS[@]}"}")
+  if [[ ${#TRAIN_ARGS[@]} -gt 0 ]]; then
+    info "train_models.sh ${TRAIN_ARGS[*]}"
+  fi
+  if [[ "$RETRAIN_GIVEN" == false && ( ${#MODEL_ARGS[@]} -gt 0 || ${#DATA_ARGS[@]} -gt 0 ) ]]; then
+    warn "Training options given without --retrain/--force-retrain: existing models are kept; only missing ones are trained."
+  else
+    info "First run trains; if models already exist this auto-skips."
+  fi
   "$SCRIPT_DIR/train_models.sh" "${TRAIN_ARGS[@]+"${TRAIN_ARGS[@]}"}" \
     || fail "Training stage failed"
   ok "Training stage complete"
@@ -239,7 +286,7 @@ except Exception:
 if [[ "$RETRAIN_FLAG" == "yes" ]]; then
   if [[ "$AUTO_RETRAIN" == true ]]; then
     warn "Monitoring recommends retrain — auto-retraining (--auto-retrain)"
-    "$SCRIPT_DIR/train_models.sh" --retrain || fail "Auto-retrain failed"
+    "$SCRIPT_DIR/train_models.sh" --retrain "${MODEL_ARGS[@]+"${MODEL_ARGS[@]}"}" || fail "Auto-retrain failed"
     info "Re-running detection on freshly retrained models ..."
     "$SCRIPT_DIR/run_pipeline.sh" --zscore "$ZSCORE_THRESHOLD" || fail "Post-retrain detection failed"
     ok "Auto-retrain + re-detect complete"
@@ -269,6 +316,11 @@ CSV_PATH="${WEEK4_ALERTS%.json}.csv"
 [[ -f "$MONITOR_REPORT" ]]         && echo "  📈 Monitoring       : $MONITOR_REPORT"
 [[ -f "$MODELS_DIR/evaluation_metrics.json" ]] && \
   echo "  📐 Test metrics     : $MODELS_DIR/evaluation_metrics.json"
+if grep -Eq '"model_type"[[:space:]]*:[[:space:]]*"iforest"' "$MODELS_DIR/dns_trafficformer_threshold.json" 2>/dev/null; then
+  echo "  🌲 Path B in use    : Isolation Forest"
+elif [[ -f "$MODELS_DIR/dns_trafficformer_threshold.json" ]]; then
+  echo "  🧠 Path B in use    : Trafficformer"
+fi
 NEWEST_LOG=$(ls -t "$LOG_DIR"/pipeline_*.log 2>/dev/null | head -1 || true)
 [[ -n "${NEWEST_LOG:-}" ]]         && echo "  📋 Pipeline log     : $NEWEST_LOG"
 echo ""

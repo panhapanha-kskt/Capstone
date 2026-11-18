@@ -264,3 +264,117 @@ def test_training_is_blocked_until_a_dataset_passed_the_check(page):
     assert "Blocked: check a dataset first" in train and "passed(name)" in train
     start = page[page.index('$("start").onclick'):page.index("// ── 3. Runs")]
     assert 'go("#/runs/"' in start and '$("start").disabled=true' in start
+
+
+# ── multi-file datasets (train_models.sh --files) and split choice ───────────────
+
+@pytest.fixture
+def project(tmp_path, monkeypatch):
+    """A tiny project tree: data/ with training files, outputs that must be hidden, and splits."""
+    d = tmp_path / "data"
+    (d / "processed" / "splits").mkdir(parents=True)
+    (d / "external" / "cic").mkdir(parents=True)
+    (d / "raw").mkdir()
+    rec = lambda lab, n: json.dumps([{"domain": f"q{i}.example.com", "timestamp": f"2026-11-18T10:00:{i % 60:02d}",
+                                      "client_ip": "10.0.0.1", "label": lab} for i in range(n)])
+    (d / "processed" / "labeled_tunnels.json").write_text(rec(1, 30))
+    (d / "processed" / "labeled_benign.json").write_text(rec(0, 50))
+    (d / "external" / "cic" / "cic_benign_train.json").write_text(rec(0, 20))
+    (d / "raw" / "2026-03-18.log").write_text("x")
+    for hidden in ("merged_features_all.json", "week4_unified_alerts.json", "merge_report.json"):
+        (d / "processed" / hidden).write_text("[]")
+    (d / "attack_manifest.example.csv").write_text("family,start,end\n")
+    (d / "processed" / "splits" / "time_seed42.json").write_text("{}")
+    (d / "processed" / "splits" / "capture_group_seed42.json").write_text("{}")
+    monkeypatch.setattr(S, "PROJECT_DIR", tmp_path)
+    for b in S.BUNDLES.iterdir():
+        b.unlink()
+    return tmp_path
+
+
+PF = ["data/processed/labeled_tunnels.json", "data/processed/labeled_benign.json", "data/external/cic/cic_benign_train.json"]
+
+
+def test_project_files_lists_training_data_only(project):
+    paths = [f["path"] for f in data.list_project_files()]
+    assert paths == ["data/external/cic/cic_benign_train.json", "data/processed/labeled_benign.json",
+                     "data/processed/labeled_tunnels.json", "data/raw/2026-03-18.log"]
+
+
+def test_combined_dataset_is_created_checked_listed_and_deleted(project):
+    c = TestClient(main.app)
+    r = c.post("/api/bundles", headers=TOKEN, json={"name": "labelled_v3", "files": [{"source": "project", "path": p} for p in PF]})
+    assert r.status_code == 200 and r.json() == {"name": "bundle:labelled_v3", "files": 3}
+    ds = {d["name"]: d for d in c.get("/api/datasets", headers=TOKEN).json()}
+    assert ds["bundle:labelled_v3"]["kind"] == "bundle" and ds["bundle:labelled_v3"]["label"] == "labelled_v3 (3 files)"
+    v = c.get("/api/datasets/bundle%3Alabelled_v3/validate", headers=TOKEN).json()
+    assert v["ok"] is True and v["kind"] == "bundle" and v["class_counts"] == {"1": 30, "0": 70}
+    assert [f["rows"] for f in v["files"]] == [30, 50, 20] and all(f["status"] == "ok" for f in v["files"])
+    assert "train_models.sh (--files)" in v["notes"][0]
+    assert c.post("/api/bundles/bundle%3Alabelled_v3/delete", headers=TOKEN).status_code == 200
+    assert all(f.is_file() for f in (project / p for p in PF))          # data files are never deleted
+    assert "bundle:labelled_v3" not in [d["name"] for d in c.get("/api/datasets", headers=TOKEN).json()]
+
+
+@pytest.mark.parametrize("name,files,code,msg", [
+    ("x", [{"source": "project", "path": "../secret.json"}, {"source": "project", "path": PF[0]}], 409, "only files inside the project's data/ folder"),
+    ("x", [{"source": "project", "path": "README.md"}, {"source": "project", "path": PF[0]}], 409, "only files inside"),
+    ("x", [{"source": "project", "path": PF[0]}, {"source": "project", "path": PF[0]}], 409, "at least two different files"),
+    ("x", [{"source": "project", "path": PF[0]}, {"source": "project", "path": "data/processed/nope.json"}], 404, "file not found"),
+    ("x", [{"source": "upload", "path": "../a.csv"}, {"source": "project", "path": PF[0]}], 409, "not an uploaded dataset"),
+    ("bad name!", [{"source": "project", "path": p} for p in PF[:2]], 409, "Name:"),
+])
+def test_combined_dataset_rejects_unsafe_or_invalid_input(project, name, files, code, msg):
+    r = TestClient(main.app).post("/api/bundles", headers=TOKEN, json={"name": name, "files": files})
+    assert r.status_code == code and msg in r.json()["detail"]
+    assert list(S.BUNDLES.iterdir()) == []
+
+
+def test_feature_tables_cannot_join_a_combined_dataset(project):
+    agg = _aggregated()
+    data.create_bundle("mix", [{"source": "upload", "path": agg}, {"source": "project", "path": PF[0]}])
+    v = data.validate_csv("bundle:mix")
+    assert v["ok"] is False and any(agg in e and "pre-aggregated feature table" in e for e in v["errors"])
+
+
+def test_combined_dataset_and_split_become_the_train_models_command(project, tmp_path):
+    from adapters.capstone_train import build_command
+    raw = _raw("q.csv", label=lambda i: "dnstunnel" if i % 10 == 0 else "safe")
+    data.create_bundle("v3", [{"source": "project", "path": PF[0]}, {"source": "project", "path": PF[1]},
+                              {"source": "upload", "path": raw}])
+    run = tmp_path / "run"
+    run.mkdir()
+    params = {"path_b_model": "iforest", "seed": 7, "split_manifest": str(data.split_path("capture_group_seed42.json")),
+              "label_map": {"safe": "benign", "dnstunnel": "attack"}}
+    cmd = build_command(params, "both", "all", run, "bundle:v3", data.dataset_path("bundle:v3"))
+    i = cmd.index("--files")
+    assert cmd[i + 1:i + 3] == [str(project / PF[0]), str(project / PF[1])] and len(cmd) == i + 4    # --files last
+    assert cmd[i + 3] == str(run / f"labels01_2_{raw}")                    # text labels -> 0/1 copy
+    assert (run / f"labels01_2_{raw}").read_text().splitlines()[1].endswith(",1")
+    assert cmd[cmd.index("--split-manifest") + 1].endswith("capture_group_seed42.json")
+    assert cmd[cmd.index("--path-b-model") + 1] == "iforest" and "--force-retrain" in cmd
+    assert "--split-manifest" not in build_command({**params, "new_split": True}, "both", "all", run, "bundle:v3",
+                                                   data.dataset_path("bundle:v3"))
+
+
+def test_splits_are_listed_and_unknown_splits_refused(project):
+    c = TestClient(main.app)
+    assert c.get("/api/splits", headers=TOKEN).json() == [
+        {"name": "capture_group_seed42.json", "size_kb": 0.0, "default": False},
+        {"name": "time_seed42.json", "size_kb": 0.0, "default": True}]
+    for bad in ("../../etc/passwd", "nope.json"):
+        r = c.post("/api/train", headers=TOKEN, json={"dataset": _raw(), "split_manifest": bad})
+        assert r.status_code in (404, 409)
+    assert list(S.RUNS.iterdir()) == []
+
+
+def test_page_offers_combined_datasets_and_split_choice(page):
+    assert 'id="bnew"' in page and 'api("/bundles"' in page and 'api("/project-files")' in page
+    assert 'id="sp"' in page and "split_manifest:" in page and 'api("/splits")' in page
+
+
+def test_a_stored_sign_in_hides_the_gate_after_a_refresh(page):
+    """Regression (browser check 2026-11-19): after reload the gate stayed on top and every step rendered empty."""
+    boot = page[page.index("async function boot"):page.index("if(token)boot()")]
+    ok_path = boot[:boot.index("catch(e)")]
+    assert '$("gate").hidden=true' in ok_path

@@ -1,7 +1,18 @@
 """Dataset checks shown to the admin before training."""
+import json
+import re
+from collections import Counter
+from datetime import datetime, timezone
 from pathlib import Path
 import pandas as pd
 from . import settings as S
+
+BUNDLE_PREFIX = "bundle:"     # multi-file datasets: "bundle:<name>", stored as <HOME>/bundles/<name>.json
+BUNDLE_NAME = re.compile(r"^[A-Za-z0-9][A-Za-z0-9_.-]{0,63}$")
+# Pipeline outputs and helpers in data/ that are not training data (detection results, reports, manifests)
+SKIP_DIRS = {"splits", "feedback", "__pycache__"}
+SKIP_FILE = re.compile(r"^(merged_features_|abstained_rows|rejected_rows|week[34]_|attack_manifest)|_report\.json$|\.meta\.json$")
+DEFAULT_SPLIT = "time_seed42.json"   # train_models.sh BASE_MANIFEST
 
 
 # What scripts/train_models.sh can read from a CSV. It passes CSVs straight to
@@ -94,9 +105,117 @@ def _check_pipeline(df: pd.DataFrame, out: dict) -> None:
         "plus timestamp and client_ip for Path B), and the feature-table trainer needs a label column.")
 
 
+# ── project files, multi-file datasets (bundles) and splits ─────────────────────
+
+def project_data_root() -> Path:
+    return S.PROJECT_DIR / "data"
+
+
+def list_project_files() -> list:
+    """Data files under <project>/data that train_models.sh can read (--files)."""
+    root = project_data_root()
+    if S.MODE != "capstone" or not root.is_dir():
+        return []
+    out = []
+    for p in sorted(root.rglob("*")):
+        rel = p.relative_to(S.PROJECT_DIR)
+        if (not p.is_file() or p.suffix.lower() not in S.UPLOAD_EXTS or SKIP_FILE.search(p.name)
+                or any(part in SKIP_DIRS or part.startswith(".") for part in rel.parts) or len(rel.parts) > 5):
+            continue
+        out.append({"path": rel.as_posix(), "size_mb": round(p.stat().st_size / 1e6, 2)})
+    return out
+
+
+def _member_path(m: dict) -> Path:
+    """Resolve one bundle member; only files inside <project>/data or the uploaded datasets."""
+    raw = str(m.get("path") or "")
+    if m.get("source") == "project":
+        root = project_data_root().resolve()
+        p = (S.PROJECT_DIR / raw).resolve()
+        if root != p and root not in p.parents:
+            raise ValueError(f"{raw}: only files inside the project's data/ folder can be used.")
+    elif m.get("source") == "upload":
+        if raw.startswith(BUNDLE_PREFIX) or Path(raw).name != raw:
+            raise ValueError(f"{raw}: not an uploaded dataset file.")
+        p = S.DATASETS / raw
+    else:
+        raise ValueError(f"{raw}: unknown source {m.get('source')!r}.")
+    if p.suffix.lower() not in S.UPLOAD_EXTS:
+        raise ValueError(f"{raw}: accepted file types are {', '.join(sorted(S.UPLOAD_EXTS))}.")
+    return p
+
+
+def _bundle_spec(name: str) -> dict:
+    return json.loads(dataset_path(name).read_text(encoding="utf-8"))
+
+
+def bundle_files(name: str) -> list:
+    """Absolute paths of a multi-file dataset's files, in the order chosen."""
+    return [_member_path(m) for m in _bundle_spec(name)["files"]]
+
+
+def create_bundle(name: str, files: list) -> dict:
+    if S.MODE != "capstone":
+        raise ValueError("Multi-file datasets are for the Capstone training pipeline.")
+    name = (name or "").strip()
+    if not BUNDLE_NAME.match(name):
+        raise ValueError("Name: 1-64 letters, digits, '.', '_' or '-', starting with a letter or digit.")
+    target = S.BUNDLES / f"{name}.json"
+    if target.exists():
+        raise ValueError(f"A multi-file dataset called {name} already exists.")
+    members, seen = [], set()
+    for f in files or []:
+        m = {"source": f.get("source"), "path": str(f.get("path") or "")}
+        p = _member_path(m)
+        if not p.is_file():
+            raise FileNotFoundError(f"{m['path']}: file not found.")
+        key = str(p.resolve())
+        if key not in seen:
+            seen.add(key)
+            members.append(m)
+    if len(members) < 2:
+        raise ValueError("Choose at least two different files.")
+    if len(members) > 50:
+        raise ValueError("Choose at most 50 files.")
+    target.write_text(json.dumps({"name": name, "files": members,
+                                  "created": datetime.now(timezone.utc).isoformat(timespec="seconds")}, indent=2),
+                      encoding="utf-8")
+    return {"name": BUNDLE_PREFIX + name, "files": len(members)}
+
+
+def delete_bundle(name: str) -> dict:
+    """Remove the multi-file dataset's list only; the data files are never touched."""
+    p = dataset_path(name if name.startswith(BUNDLE_PREFIX) else BUNDLE_PREFIX + name)
+    p.unlink()
+    return {"deleted": p.stem}
+
+
+def list_splits() -> list:
+    d = S.PROJECT_DIR / "data" / "processed" / "splits"
+    if S.MODE != "capstone" or not d.is_dir():
+        return []
+    return [{"name": p.name, "size_kb": round(p.stat().st_size / 1e3, 1), "default": p.name == DEFAULT_SPLIT}
+            for p in sorted(d.glob("*.json"))]
+
+
+def split_path(name: str) -> Path:
+    if not name or Path(name).name != name or not name.endswith(".json"):
+        raise ValueError(f"Unknown split: {name}")
+    p = S.PROJECT_DIR / "data" / "processed" / "splits" / name
+    if not p.is_file():
+        raise FileNotFoundError(f"Split not found: {name}")
+    return p
+
+
 def dataset_path(name: str) -> Path:
     if name == S.DEFAULT_DATASET and S.MODE == "capstone":
         return S.PROJECT_DIR / "data" / "raw"
+    if name.startswith(BUNDLE_PREFIX):
+        bn = name[len(BUNDLE_PREFIX):]
+        p = S.BUNDLES / f"{Path(bn).name}.json"
+        if Path(bn).name != bn or not p.exists():
+            raise FileNotFoundError(f"Dataset not found: {name}")
+        return p
     p = S.DATASETS / Path(name).name      # Path(name).name blocks ../ tricks; symlinks are allowed
     if not p.exists():
         raise FileNotFoundError(f"Dataset not found: {name}")
@@ -112,7 +231,15 @@ def list_datasets():
             continue
         if p.is_dir() or p.suffix.lower() in S.UPLOAD_EXTS:
             items.append({"name": p.name, "label": p.name + ("/ (folder)" if p.is_dir() else ""),
-                          "size_mb": None if p.is_dir() else round(p.stat().st_size / 1e6, 2)})
+                          "size_mb": None if p.is_dir() else round(p.stat().st_size / 1e6, 2), "kind": "file"})
+    for b in sorted(S.BUNDLES.glob("*.json")):
+        try:
+            files = bundle_files(BUNDLE_PREFIX + b.stem)
+        except (ValueError, KeyError, OSError, json.JSONDecodeError):
+            files = []
+        size = sum(f.stat().st_size for f in files if f.is_file())
+        items.append({"name": BUNDLE_PREFIX + b.stem, "label": f"{b.stem} ({len(files)} files)",
+                      "size_mb": round(size / 1e6, 2), "kind": "bundle", "files": len(files)})
     return items
 
 
@@ -121,45 +248,119 @@ def validate_csv(name: str) -> dict:
     out = {"name": name, "rows": None, "columns": None, "class_counts": {}, "missing_pct": 0,
            "numeric_features": [], "warnings": [], "errors": [], "notes": [], "preview": [],
            "check_version": CHECK_VERSION}
-    if not p.exists():
+    if name.startswith(BUNDLE_PREFIX):
+        _check_bundle(name, out)
+    elif not p.exists():
         out["errors"].append(f"Folder not found: {p}")
     elif p.is_dir() or p.suffix.lower() != ".csv":
         n = sum(1 for f in p.rglob("*") if f.is_file()) if p.is_dir() else 1
         out["kind"] = "files"
         out["warnings"].append(f"{n} file(s). The training script checks and labels this data itself; see the run log.")
     else:
-        n_max = S.VALIDATE_SAMPLE_ROWS
-        try:
-            df = pd.read_csv(p, nrows=n_max + 1, low_memory=False)
-        except (pd.errors.EmptyDataError, pd.errors.ParserError, UnicodeDecodeError, ValueError) as e:
-            out["errors"].append(f"Could not read this file as CSV: {str(e).splitlines()[0][:200]}")
-            out["ok"] = False
-            return out
-        sampled = len(df) > n_max
-        if sampled:
-            df = df.iloc[:n_max]
-            out["warnings"].append(f"Large file ({p.stat().st_size / 1e6:,.0f} MB): checked the first {n_max:,} rows only, "
-                                   "so the class counts below are for those rows, not the whole file.")
-        out.update(rows=None if sampled else len(df), columns=len(df.columns), sampled=sampled,
-                   preview=df.head(5).fillna("").to_dict("records"))
-        has_label = S.LABEL_COL in df.columns
-        if has_label:
-            out["class_counts"] = df[S.LABEL_COL].astype(str).value_counts().to_dict()
-            if min(out["class_counts"].values()) / len(df) < 0.05:
-                out["warnings"].append("A class is under 5% of the data. Expect low recall on that class.")
-        elif S.REQUIRE_LABEL:
-            out["errors"].append(f"Missing label column '{S.LABEL_COL}'. Found: {list(df.columns)[:10]}")
-        else:
-            out["warnings"].append(f"No '{S.LABEL_COL}' column. The script will label this data from the attack manifest or heuristics.")
-        if not sampled and len(df) < 100:
-            out["warnings"].append(f"Only {len(df)} rows. Results will be unreliable.")
-        out["missing_pct"] = round(float(df.isna().mean().mean() * 100), 2)
-        if out["missing_pct"] > 5:
-            out["warnings"].append(f"{out['missing_pct']}% of cells are empty.")
-        out["numeric_features"] = df.select_dtypes("number").columns.drop(S.LABEL_COL, errors="ignore").tolist()
-        if S.REQUIRE_LABEL and not out["numeric_features"]:
-            out["errors"].append("No numeric feature columns found.")
-        if S.MODE == "capstone":
-            _check_pipeline(df, out)
+        _check_csv(p, out)
     out["ok"] = not out["errors"]
     return out
+
+
+def _check_csv(p: Path, out: dict) -> None:
+    """Checks for one CSV file; fills out (errors, warnings, notes, counts, kind)."""
+    n_max = S.VALIDATE_SAMPLE_ROWS
+    try:
+        df = pd.read_csv(p, nrows=n_max + 1, low_memory=False)
+    except (pd.errors.EmptyDataError, pd.errors.ParserError, UnicodeDecodeError, ValueError) as e:
+        out["errors"].append(f"Could not read this file as CSV: {str(e).splitlines()[0][:200]}")
+        return
+    sampled = len(df) > n_max
+    if sampled:
+        df = df.iloc[:n_max]
+        out["warnings"].append(f"Large file ({p.stat().st_size / 1e6:,.0f} MB): checked the first {n_max:,} rows only, "
+                               "so the class counts below are for those rows, not the whole file.")
+    out.update(rows=None if sampled else len(df), columns=len(df.columns), sampled=sampled,
+               preview=df.head(5).fillna("").to_dict("records"))
+    has_label = S.LABEL_COL in df.columns
+    if has_label:
+        out["class_counts"] = df[S.LABEL_COL].astype(str).value_counts().to_dict()
+        if min(out["class_counts"].values()) / len(df) < 0.05:
+            out["warnings"].append("A class is under 5% of the data. Expect low recall on that class.")
+    elif S.REQUIRE_LABEL:
+        out["errors"].append(f"Missing label column '{S.LABEL_COL}'. Found: {list(df.columns)[:10]}")
+    else:
+        out["warnings"].append(f"No '{S.LABEL_COL}' column. The script will label this data from the attack manifest or heuristics.")
+    if not sampled and len(df) < 100:
+        out["warnings"].append(f"Only {len(df)} rows. Results will be unreliable.")
+    out["missing_pct"] = round(float(df.isna().mean().mean() * 100), 2)
+    if out["missing_pct"] > 5:
+        out["warnings"].append(f"{out['missing_pct']}% of cells are empty.")
+    out["numeric_features"] = df.select_dtypes("number").columns.drop(S.LABEL_COL, errors="ignore").tolist()
+    if S.REQUIRE_LABEL and not out["numeric_features"]:
+        out["errors"].append("No numeric feature columns found.")
+    if S.MODE == "capstone":
+        _check_pipeline(df, out)
+
+
+def _json_label_counts(p: Path):
+    """Label counts of a features JSON the way ingest/merge reads it (0/1, everything else unlabeled)."""
+    data = json.loads(p.read_text(encoding="utf-8"))
+    rows = data if isinstance(data, list) else data.get("records", []) if isinstance(data, dict) else []
+    c = Counter()
+    for r in rows:
+        v = r.get("label") if isinstance(r, dict) else None
+        c[str(int(float(v))) if v in (0, 1, "0", "1", 0.0, 1.0) else "unlabeled"] += 1
+    return len(rows), c
+
+
+def _check_bundle(name: str, out: dict) -> None:
+    """A multi-file dataset: every file must be something scripts/train_models.sh can train on."""
+    out["kind"] = "bundle"
+    out["files"] = []
+    total, roles, has_pcap = Counter(), {}, False
+    try:
+        members = _bundle_spec(name)["files"]
+    except (OSError, KeyError, json.JSONDecodeError) as e:
+        out["errors"].append(f"Could not read the multi-file dataset: {e}")
+        return
+    for m in members:
+        shown = m.get("path", "?")
+        entry = {"path": shown, "source": m.get("source"), "type": Path(shown).suffix.lower().lstrip(".")}
+        out["files"].append(entry)
+        try:
+            fp = _member_path(m)
+        except ValueError as e:
+            out["errors"].append(str(e)); entry["status"] = "not allowed"; continue
+        if not fp.is_file():
+            out["errors"].append(f"{shown}: file not found."); entry["status"] = "missing"; continue
+        entry["size_mb"] = round(fp.stat().st_size / 1e6, 2)
+        ext = fp.suffix.lower()
+        if ext == ".csv":
+            sub = {"class_counts": {}, "warnings": [], "errors": [], "notes": [], "numeric_features": [], "preview": []}
+            _check_csv(fp, sub)
+            if not sub["errors"] and sub.get("kind") != "raw_queries":
+                sub["errors"].append("is a pre-aggregated feature table; multi-file datasets are trained by "
+                                     "scripts/train_models.sh, which needs raw DNS query records. Train it on its own.")
+            out["errors"] += [f"{shown}: {e}" for e in sub["errors"]]
+            out["warnings"] += [f"{shown}: {w}" for w in sub["warnings"] if not w.startswith("A class is under")]
+            out["notes"] += [f"{shown}: {n}" for n in sub["notes"] if "not 0/1" in n]
+            total.update(sub["class_counts"]); roles.update(sub.get("label_roles") or {})
+            entry.update(rows=sub.get("rows"), class_counts=sub["class_counts"], status="error" if sub["errors"] else "ok")
+        elif ext == ".json":
+            try:
+                n, c = _json_label_counts(fp)
+            except (OSError, ValueError, AttributeError) as e:
+                out["errors"].append(f"{shown}: could not read as JSON records ({e})"); entry["status"] = "error"; continue
+            total.update(c)
+            entry.update(rows=n, class_counts=dict(c), status="ok")
+            if c.get("unlabeled"):
+                out["notes"].append(f"{shown}: {c['unlabeled']:,} rows have no 0/1 label; the pipeline labels them "
+                                    "from the attack manifest or heuristics.")
+        else:
+            has_pcap = has_pcap or ext in (".pcap", ".pcapng")
+            entry["status"] = "ok (no labels in the file)"
+    out["class_counts"] = dict(total)
+    out["label_roles"] = roles
+    out["has_pcap"] = has_pcap
+    out["notes"].insert(0, f"{len(members)} files, trained together by scripts/train_models.sh (--files): "
+                           "Path A, Path B and fusion.")
+    labelled = {k: v for k, v in total.items() if k != "unlabeled"}
+    if labelled and len(labelled) < 2:
+        out["warnings"].append("Only one label value across these files; training needs both benign and attack rows "
+                               "(or a manifest / heuristics for the unlabeled ones).")

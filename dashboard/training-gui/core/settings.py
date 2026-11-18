@@ -6,6 +6,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 HOME = Path(os.getenv("TRAINGUI_HOME", ROOT / "gui_data"))
 DATASETS = HOME / "datasets"
+BUNDLES = HOME / "bundles"          # multi-file datasets: lists of files, never copies
 RUNS = HOME / "runs"
 REGISTRY = HOME / "registry.json"
 
@@ -43,7 +44,7 @@ TRAIN_COMMAND = os.getenv("TRAIN_COMMAND", DEFAULT_TRAIN_COMMAND)
 # Pre-aggregated, labelled feature tables (e.g. DNSTunnel2026) use their own trainer.
 FEATURE_TRAIN_COMMAND = os.getenv("FEATURE_TRAIN_COMMAND", f'"{sys.executable}" -m adapters.feature_table_train')
 
-for _d in (DATASETS, RUNS, PRODUCTION.parent):
+for _d in (DATASETS, BUNDLES, RUNS, PRODUCTION.parent):
     _d.mkdir(parents=True, exist_ok=True)
 
 REQUIRE_LABEL = MODE == "demo"   # Capstone labels unlabeled data itself (manifest, then heuristics)

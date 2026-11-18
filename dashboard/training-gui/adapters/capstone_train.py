@@ -65,6 +65,43 @@ def map_labels(src: Path, dst: Path, label_map: dict, label_col: str = "label") 
     return dst
 
 
+def _mapped(src: Path, run: Path, label_map: dict, tag: str = "") -> Path:
+    """The file to train on: src itself, or a 0/1-label copy when its CSV labels need mapping."""
+    if src.is_file() and src.suffix.lower() == ".csv" and needs_label_mapping(label_map):
+        return map_labels(src, run / f"labels01_{tag}{src.name}", label_map)
+    return src
+
+
+def build_command(params: dict, path: str, retrain: str, run: Path, dataset_name: str, dataset_path: Path) -> list:
+    """The scripts/train_models.sh command line for one console run (--files / --data-dir stay last)."""
+    cmd = ["bash", "scripts/train_models.sh", "--verbose",
+           "--seed", str(params.get("seed", 42)),
+           "--n-days", str(params.get("n_days", 20)),
+           "--path-b-model", params.get("path_b_model", "trafficformer"),
+           "--retrain" if retrain == "new_only" else "--force-retrain"]
+    if path == "A":
+        cmd.append("--path-a-only")
+    if path == "B":
+        cmd.append("--path-b-only")
+    if params.get("new_split"):
+        cmd.append("--new-split")
+    elif params.get("split_manifest"):
+        cmd += ["--split-manifest", str(params["split_manifest"])]
+    if params.get("pcap_label") in ("0", "1"):
+        cmd += ["--pcap-label", params["pcap_label"]]
+    if params.get("allow_heuristic_labels"):
+        cmd.append("--allow-heuristic-labels")
+    label_map = params.get("label_map") or {}
+    if dataset_name.startswith("bundle:"):                      # several files, like train_models.sh --files
+        from core.data import bundle_files
+        files = [_mapped(f, run, label_map, f"{i}_") for i, f in enumerate(bundle_files(dataset_name))]
+        cmd += ["--files", *map(str, files)]
+    elif dataset_name != "project-default":
+        src = _mapped(dataset_path, run, label_map)
+        cmd += ["--data-dir", str(src)] if src.is_dir() else ["--files", str(src)]
+    return cmd
+
+
 def main():
     run = Path(os.environ["RUN_DIR"])
     project = Path.cwd()
@@ -81,27 +118,8 @@ def main():
         shutil.copytree(prod, models)
     models.mkdir(exist_ok=True)
 
-    cmd = ["bash", "scripts/train_models.sh", "--verbose",
-           "--seed", str(params.get("seed", 42)),
-           "--n-days", str(params.get("n_days", 20)),
-           "--path-b-model", params.get("path_b_model", "trafficformer"),
-           "--retrain" if retrain == "new_only" else "--force-retrain"]
-    if path == "A":
-        cmd.append("--path-a-only")
-    if path == "B":
-        cmd.append("--path-b-only")
-    if params.get("new_split"):
-        cmd.append("--new-split")
-    if params.get("pcap_label") in ("0", "1"):
-        cmd += ["--pcap-label", params["pcap_label"]]
-    if params.get("allow_heuristic_labels"):
-        cmd.append("--allow-heuristic-labels")
-    if os.environ.get("DATASET_NAME") != "project-default":      # --files must stay last
-        src = Path(os.environ["DATASET_PATH"])
-        label_map = params.get("label_map") or {}
-        if src.is_file() and src.suffix.lower() == ".csv" and needs_label_mapping(label_map):
-            src = map_labels(src, run / f"labels01_{src.name}", label_map)
-        cmd += ["--data-dir", str(src)] if src.is_dir() else ["--files", str(src)]
+    cmd = build_command(params, path, retrain, run, os.environ.get("DATASET_NAME", ""),
+                        Path(os.environ["DATASET_PATH"]))
 
     env = {**os.environ, "DNS_DETECT_MODELS_DIR": str(models)}
     print("[console] " + " ".join(cmd), flush=True)

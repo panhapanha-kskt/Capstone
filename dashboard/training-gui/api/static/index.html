@@ -63,6 +63,9 @@ dl.kv{display:grid;grid-template-columns:max-content 1fr;gap:4px 14px;margin:0}d
 #trainform[data-kind=feature_table] .pipe,#trainform:not([data-kind=feature_table]) .ft{display:none}
 .lblrow{display:grid;grid-template-columns:minmax(120px,1fr) minmax(160px,220px);gap:10px;align-items:center;padding:6px 0;border-bottom:1px solid var(--line)}
 .lblrow label{margin:0;color:var(--ink)}
+fieldset{border:1px solid var(--line);border-radius:var(--r);margin:12px 0;padding:8px 12px;max-height:320px;overflow:auto}
+legend{color:var(--mute);font-size:13px;padding:0 4px}
+.pick{display:flex;gap:8px;align-items:center;margin:3px 0;color:var(--ink);font-size:14px}.pick input{width:auto}
 @media(max-width:760px){body{flex-direction:column}nav{width:100%;padding:12px}nav>p{display:none}
   ol.steps{display:grid;grid-template-columns:1fr 1fr;gap:4px}ol.steps a{margin:0}main{padding:16px}}
 </style>
@@ -92,6 +95,15 @@ dl.kv{display:grid;grid-template-columns:max-content 1fr;gap:4px 14px;margin:0}d
     <button class="act" id="upload">Upload and check</button><button class="act quiet" id="upcancel" hidden>Cancel upload</button>
     <div id="upstate" role="status" aria-live="polite" hidden><progress id="upbar" max="100" value="0"></progress><p id="uptext"></p></div></div>
   <div class="panel"><h3>Datasets</h3><div class="tablewrap" id="dslist"></div></div>
+  <div class="panel"><h3>Combine several files</h3>
+    <p class="muted">Train scripts/train_models.sh on several files at once (like <code>--files</code>), for example labelled tunnels plus benign traffic. Pick files from the project's data/ folder and uploaded datasets. Nothing is copied: the new dataset is just a list of the files.</p>
+    <button class="act quiet" id="bnew">Choose files...</button>
+    <div id="bform" hidden>
+      <label for="bname">Name for the combined dataset</label><input id="bname" maxlength="64" placeholder="e.g. labelled_v3" autocomplete="off">
+      <div id="bfiles"></div>
+      <button class="act" id="bcreate">Create and check</button><button class="act quiet" id="bcancel">Cancel</button>
+      <p id="bmsg" role="status" aria-live="polite"></p>
+    </div></div>
   <div class="panel" id="dsreport" role="region" aria-label="Check result" aria-live="polite" hidden></div>
 </section>
 
@@ -124,6 +136,9 @@ dl.kv{display:grid;grid-template-columns:max-content 1fr;gap:4px 14px;margin:0}d
         <div><label for="ne">Trees (Path A)</label><input id="ne" type="number" value="200" min="1"></div>
         <div><label for="ep">Epochs (Path B)</label><input id="ep" type="number" value="10" min="1"></div>
         <div><label for="ts">Test split</label><input id="ts" type="number" step="0.05" value="0.2" min="0.05" max="0.9"></div>
+      </div>
+      <div class="row cap pipe">
+        <div><label for="sp">Train / test split</label><select id="sp"><option value="">Default: time_seed42.json (as train_models.sh)</option></select></div>
       </div>
       <div class="row cap pipe">
         <div><label for="nd">Window size, Path B (queries)</label><input id="nd" type="number" value="20" min="2"></div>
@@ -194,7 +209,7 @@ async function api(path,opt={}){
 }
 const loading=(el,msg)=>{el.innerHTML=`<p class="muted">${esc(msg)}</p>`};
 function showError(el,e,retry){
-  el.innerHTML=`<p class="err">${esc(e.message)}</p>`+(retry&&e.status!==401?`<button class="act quiet small">Try again</button>`:"");
+  el.innerHTML=`<p class="err">${esc(e.message)}</p>`+(retry&&e.status!==401&&e.status!==404?`<button class="act quiet small">Try again</button>`:"");
   const b=el.querySelector("button");if(b)b.onclick=retry;
 }
 const fmtBytes=b=>b>=1e9?(b/1e9).toFixed(2)+" GB":b>=1e6?(b/1e6).toFixed(1)+" MB":Math.max(1,Math.round(b/1e3))+" kB";
@@ -202,6 +217,7 @@ const fmtDur=s=>!isFinite(s)||s<0?"":s<60?Math.max(1,Math.round(s))+" s":s<3600?
 const fmtTime=iso=>iso?new Date(iso).toLocaleString():"-";
 const pct=v=>v==null?"-":(v*100).toFixed(2)+"%";
 const fmtMetric=(k,v)=>v==null?"-":k==="false_alarms"?String(v):pct(v);
+const dsName=n=>String(n||"").startsWith("bundle:")?String(n).slice(7)+" (combined)":String(n||"");   // display name
 
 // ── Dataset selection and check results (kept for this browser tab) ───────
 function selectedDs(){return st.route&&st.route.q.get("dataset")||ss.get("ds")}
@@ -214,7 +230,8 @@ function passed(name){
 function recordCheck(r){
   if(r.ok)ss.set("check:"+r.name,JSON.stringify({ok:true,class_counts:r.class_counts,warnings:r.warnings,
       rows:r.rows,columns:r.columns,sampled:!!r.sampled,pipeline:r.pipeline||null,kind:r.kind||"files",
-      label_roles:r.label_roles||{},notes:r.notes||[],v:r.check_version,at:Date.now()}));
+      label_roles:r.label_roles||{},notes:r.notes||[],has_pcap:!!r.has_pcap,files:(r.files||[]).length||null,
+      v:r.check_version,at:Date.now()}));
   else ss.del("check:"+r.name);
 }
 
@@ -271,8 +288,8 @@ async function refreshStatus(){
     const [jobs,models]=await Promise.all([api("/jobs"),api("/models")]);
     st.jobs=jobs;st.models=models;
     const ds=selectedDs(),ok=ds&&passed(ds);
-    setStep("data",ok?"done":"todo",ok?`Done: ${ds}`:"Upload or check a dataset");
-    setStep("train",ok?(jobs.length?"done":"todo"):"blocked",ok?(jobs.length?`Done · ${ds}`:`Ready · ${ds}`):"Blocked: check a dataset first");
+    setStep("data",ok?"done":"todo",ok?`Done: ${dsName(ds)}`:"Upload or check a dataset");
+    setStep("train",ok?(jobs.length?"done":"todo"):"blocked",ok?(jobs.length?`Done · ${dsName(ds)}`:`Ready · ${dsName(ds)}`):"Blocked: check a dataset first");
     const running=jobs.filter(j=>j.status==="running").length;
     setStep("runs",jobs.length?(running?"todo":"done"):"todo",running?`${running} running`:jobs.length?`${jobs.length} run${jobs.length>1?"s":""}`:"No runs yet");
     const cands=models.filter(m=>!m.is_production&&m.deployable!==false).length,live=models.find(m=>m.is_production);
@@ -298,8 +315,9 @@ function drawDatasets(){
     ds.map(d=>{const p=passed(d.name),isSel=d.name===sel;
       return `<tr class="${isSel?"sel":""}"><td>${esc(d.label||d.name)}${isSel?' <span class="tag">selected</span>':""}</td>
       <td>${d.size_mb==null?"-":esc(d.size_mb)+" MB"}</td><td>${p?'<span class="up">✓ passed</span>':'<span class="muted">not checked</span>'}</td>
-      <td><button class="act quiet small" data-v="${esc(d.name)}">Check</button></td></tr>`}).join("")+"</table>";
+      <td><button class="act quiet small" data-v="${esc(d.name)}">Check</button>${d.kind==="bundle"?` <button class="act quiet small" data-del="${esc(d.name)}" aria-label="Delete ${esc(d.label)}">Delete</button>`:""}</td></tr>`}).join("")+"</table>";
   $("dslist").querySelectorAll("button[data-v]").forEach(b=>b.onclick=()=>check(b.dataset.v,b));
+  $("dslist").querySelectorAll("button[data-del]").forEach(b=>b.onclick=()=>deleteBundle(b.dataset.del,b));
 }
 async function check(name,btn){
   if(btn)btn.disabled=true;
@@ -317,12 +335,49 @@ function showReport(r){
   const stats=r.columns==null?"":r.rows==null?`<p>${r.columns} columns (first rows checked).</p>`:`<p>${r.rows} rows, ${r.columns} columns.</p>`;
   const labels=Object.entries(r.class_counts||{}).map(([k,v])=>esc(k)+" "+esc(v)).join(", ");
   $("dsreport").hidden=false;
-  $("dsreport").innerHTML=`<h3>Check result: ${esc(r.name)}</h3>${stats}${labels?`<p>Labels: ${labels}</p>`:""}
+  $("dsreport").innerHTML=`<h3>Check result: ${esc(dsName(r.name))}</h3>${stats}${labels?`<p>Labels: ${labels}</p>`:""}
+    ${r.files&&r.files.length?`<div class="tablewrap"><table><tr><th scope="col">File</th><th scope="col">Rows</th><th scope="col">Labels</th><th scope="col">Status</th></tr>${r.files.map(f=>`<tr><td>${esc(f.path)}</td><td>${f.rows==null?"-":esc(f.rows)}</td>
+      <td>${esc(Object.entries(f.class_counts||{}).map(([k,v])=>k+" "+v).join(", ")||"-")}</td><td class="${String(f.status).startsWith("ok")?"up":"err"}">${esc(f.status||"-")}</td></tr>`).join("")}</table></div>`:""}
     ${(r.notes||[]).map(n=>`<p>ℹ ${esc(n)}</p>`).join("")}
     ${(r.errors||[]).map(e=>`<p class=err>✕ Fix this: ${esc(e)}</p>`).join("")}
     ${(r.warnings||[]).map(w=>`<p class=warn>! ${esc(w)}</p>`).join("")}
-    ${r.ok?`<p class=up>✓ Passed. ${esc(r.name)} is selected for training.</p><a class="act" href="#/train?dataset=${enc(r.name)}">Use ${esc(r.name)} for training →</a>`
+    ${r.ok?`<p class=up>✓ Passed. ${esc(dsName(r.name))} is selected for training.</p><a class="act" href="#/train?dataset=${enc(r.name)}">Use ${esc(dsName(r.name))} for training →</a>`
           :`<p class=err>This dataset can't be used for training until the problems above are fixed. Fix the file and upload it again.</p>`}`;
+}
+
+// ── Combine several files (multi-file dataset = train_models.sh --files) ──
+$("bnew").onclick=async()=>{
+  $("bform").hidden=false;$("bnew").hidden=true;loading($("bfiles"),"Loading files...");$("bmsg").textContent="";
+  try{
+    const [pf,ds]=await Promise.all([api("/project-files"),api("/datasets")]);
+    const up=ds.filter(d=>d.kind==="file");
+    const box=(src,path,size)=>`<label class="pick"><input type="checkbox" data-src="${src}" data-path="${esc(path)}"> ${esc(path)} <span class="muted">${size==null?"":esc(size)+" MB"}</span></label>`;
+    $("bfiles").innerHTML=`<fieldset><legend>Project files (data/)</legend>${pf.length?pf.map(f=>box("project",f.path,f.size_mb)).join(""):'<p class="muted">No data files found.</p>'}</fieldset>
+      <fieldset><legend>Uploaded datasets</legend>${up.length?up.map(d=>box("upload",d.name,d.size_mb)).join(""):'<p class="muted">None uploaded yet.</p>'}</fieldset>`;
+    $("bname").focus();
+  }catch(e){showError($("bfiles"),e,()=>$("bnew").onclick())}
+};
+$("bcancel").onclick=()=>{$("bform").hidden=true;$("bnew").hidden=false};
+$("bcreate").onclick=async()=>{
+  const files=[...$("bfiles").querySelectorAll("input:checked")].map(i=>({source:i.dataset.src,path:i.dataset.path}));
+  if(files.length<2){$("bmsg").innerHTML=`<span class=err>Choose at least two files.</span>`;return}
+  if(!$("bname").value.trim()){$("bmsg").innerHTML=`<span class=err>Give the combined dataset a name.</span>`;$("bname").focus();return}
+  $("bcreate").disabled=true;$("bmsg").innerHTML=`<span class=muted>Creating...</span>`;
+  try{
+    const b=await api("/bundles",{method:"POST",body:{name:$("bname").value.trim(),files}});
+    $("bmsg").innerHTML=`<span class=up>Created ${esc(b.name.slice(7))} with ${b.files} files. Checking it...</span>`;
+    $("bform").hidden=true;$("bnew").hidden=false;$("bname").value="";
+    st.datasets=await api("/datasets");drawDatasets();
+    await check(b.name);
+  }catch(e){$("bmsg").innerHTML=`<span class=err>Not created: ${esc(e.message)}</span>`}
+  finally{$("bcreate").disabled=false}
+};
+async function deleteBundle(name,btn){
+  if(!confirm(`Delete the combined dataset ${name.slice(7)}? Only the list is removed; the data files stay where they are.`))return;
+  btn.disabled=true;
+  try{await api("/bundles/"+enc(name)+"/delete",{method:"POST"});ss.del("check:"+name);if(ss.get("ds")===name)ss.del("ds");
+    st.datasets=await api("/datasets");drawDatasets();$("dsreport").hidden=true;refreshStatus()}
+  catch(e){btn.disabled=false;$("dsreport").hidden=false;showError($("dsreport"),e,()=>deleteBundle(name,btn))}
 }
 
 // Upload: raw file body via XMLHttpRequest (fetch cannot report upload progress)
@@ -391,8 +446,8 @@ async function viewTrain(route){
     return;
   }
   if(!p){
-    $("trainblock").innerHTML=`<div class="notice bad"><p><b>Blocked: ${esc(name)} has not passed the check yet.</b></p>
-      <button class="act" id="checknow">Check ${esc(name)} now</button><a class="act quiet" href="#/data">Choose another dataset</a><div id="checknowmsg" role="status" aria-live="polite"></div></div>`;
+    $("trainblock").innerHTML=`<div class="notice bad"><p><b>Blocked: ${esc(dsName(name))} has not passed the check yet.</b></p>
+      <button class="act" id="checknow">Check ${esc(dsName(name))} now</button><a class="act quiet" href="#/data">Choose another dataset</a><div id="checknowmsg" role="status" aria-live="polite"></div></div>`;
     $("checknow").onclick=async()=>{
       $("checknow").disabled=true;loading($("checknowmsg"),`Checking ${name}...`);
       try{const r=await api("/datasets/"+enc(name)+"/validate");recordCheck(r);
@@ -409,10 +464,11 @@ async function viewTrain(route){
   const labels=Object.entries(p.class_counts||{}).map(([k,v])=>esc(k)+" "+esc(v)).join(", ")||"none in the file (the pipeline labels them)";
   const kindText={raw_queries:"Raw DNS queries → scripts/train_models.sh (Path A, Path B, fusion)",
     feature_table:"Pre-aggregated feature table → feature-table trainer (compare only, not promotable)",
-    files:"Logs / captures / folder → scripts/train_models.sh (Path A, Path B, fusion)"}[p.kind]||p.kind;
+    files:"Logs / captures / folder → scripts/train_models.sh (Path A, Path B, fusion)",
+    bundle:`${p.files||"Several"} files combined → scripts/train_models.sh --files (Path A, Path B, fusion)`}[p.kind]||p.kind;
   $("trainform").dataset.kind=p.kind;
-  drawLabels(name,p);drawEval(name);
-  $("dscard").innerHTML=`<h3>Dataset</h3><dl class="kv"><dt>Name</dt><dd>${esc(name)}</dd><dt>Type</dt><dd>${esc(kindText)}</dd><dt>Size</dt><dd>${esc(size)}</dd>
+  drawLabels(name,p);drawEval(name);await loadSplits();
+  $("dscard").innerHTML=`<h3>Dataset</h3><dl class="kv"><dt>Name</dt><dd>${esc(dsName(name))}</dd><dt>Type</dt><dd>${esc(kindText)}</dd><dt>Size</dt><dd>${esc(size)}</dd>
     <dt>Labels</dt><dd>${labels}${p.sampled?" (first rows checked)":""}</dd>
     <dt>Check</dt><dd class="up">✓ Passed${p.warnings&&p.warnings.length?` <span class="warn">with ${p.warnings.length} warning${p.warnings.length>1?"s":""}</span>`:""}</dd></dl>
     ${(p.warnings||[]).map(w=>`<p class="warn">! ${esc(w)}</p>`).join("")}
@@ -422,9 +478,11 @@ async function viewTrain(route){
 const ROLE_TEXT={benign:"Benign (normal traffic)",attack:"Attack",ignore:"Ignore these rows"};
 function drawLabels(name,p){
   const roles=p.label_roles||{},vals=Object.keys(roles),counts=p.class_counts||{};
-  $("pcaprow").hidden=p.kind!=="files"&&!/\.(pcap|pcapng)$/i.test(name);
+  $("pcaprow").hidden=p.kind!=="files"&&!p.has_pcap&&!/\.(pcap|pcapng)$/i.test(name);
   if(!vals.length){
-    $("labelhelp").textContent=p.kind==="files"
+    $("labelhelp").textContent=p.kind==="bundle"
+      ?"These files carry their own labels (0 = benign, 1 = attack). Rows without one are labelled from data/attack_manifest.csv, or by heuristics if you allow them below."
+      :p.kind==="files"
       ?"Logs and captures carry no labels. Labelled .csv/.json rows keep their 0/1 labels; the rest are labelled from data/attack_manifest.csv, or by heuristics if you allow them below."
       :"This file has no label column, so its rows are labelled from the attack manifest or heuristics.";
     $("labelrows").innerHTML="";return;
@@ -452,10 +510,20 @@ function drawEval(name){
   $("fts").disabled=!!$("ev").value;
 }
 $("ev").addEventListener("change",()=>{$("fts").disabled=!!$("ev").value});
+async function loadSplits(){
+  if(document.body.dataset.mode==="demo")return;
+  try{st.splits=st.splits||await api("/splits")}catch(e){st.splits=[];$("tmsg").innerHTML=`<span class=warn>Could not list splits (${esc(e.message)}); the default split will be used.</span>`}
+  const prev=$("sp").value;
+  $("sp").innerHTML=`<option value="">Default: time_seed42.json (as train_models.sh)</option>`+
+    st.splits.filter(x=>!x.default).map(x=>`<option value="${esc(x.name)}">${esc(x.name)}</option>`).join("");
+  if(prev&&st.splits.some(x=>x.name===prev))$("sp").value=prev;
+  $("sp").disabled=$("ns").checked;
+}
+$("ns").addEventListener("change",()=>{$("sp").disabled=$("ns").checked});
 function drawReview(){
   const sel=id=>$(id).options[$(id).selectedIndex].text,cap=document.body.dataset.mode!=="demo";
   const kind=$("trainform").dataset.kind,lm=labelMap();
-  const items=[`Dataset: ${selectedDs()}`];
+  const items=[`Dataset: ${dsName(selectedDs())}`];
   if(Object.keys(lm).length)items.push("Labels: "+Object.entries(lm).map(([v,r])=>`${v} = ${r}`).join(", "));
   const lp=labelProblem(kind);if(lp)items.push("⚠ "+lp);
   if(kind==="feature_table"){
@@ -467,7 +535,7 @@ function drawReview(){
   items.push(`Models: ${sel("tp")}`);
   if(cap)items.push(`Path B algorithm: ${sel("pb")}, window ${$("nd").value} queries`,`Data: ${sel("rt")}`,
     ...($("pcaprow").hidden?[]:[`.pcap label: ${sel("pl").split(":")[0]}`]),`Heuristic labels: ${$("ah").checked?"allowed (experimental)":"not allowed"}`,
-    `Split: ${$("ns").checked?"new time-ordered split (not comparable with earlier runs)":"existing split"}`);
+    `Split: ${$("ns").checked?"new time-ordered split (not comparable with earlier runs)":sel("sp")}`);
   else items.push(`Trees ${$("ne").value}, epochs ${$("ep").value}, test split ${$("ts").value}`);
   items.push(`Random seed: ${$("sd").value}`);
   $("review").innerHTML=items.map(i=>`<li>${esc(i)}</li>`).join("");
@@ -483,6 +551,7 @@ $("start").onclick=async()=>{
       n_estimators:kind==="feature_table"?300:+$("ne").value,epochs:+$("ep").value,
       test_size:kind==="feature_table"?+$("fts").value:+$("ts").value,seed:+$("sd").value,
       label_map:labelMap(),eval_dataset:kind==="feature_table"?$("ev").value:"",max_memory_gb:+$("mem").value||0,
+      split_manifest:kind==="feature_table"||$("ns").checked?"":$("sp").value,
       n_days:+$("nd").value,path_b_model:$("pb").value,retrain:$("rt").value,pcap_label:$("pl").value,
       new_split:$("ns").checked,allow_heuristic_labels:$("ah").checked}});
     go("#/runs/"+enc(j.run_id));
@@ -510,7 +579,7 @@ function drawRuns(sel){
   if(!js.length){$("runlist").innerHTML=`<p>No runs yet.</p><a class="act" href="#/train">Start one in 2. Train →</a>`;return}
   $("runlist").innerHTML=`<table><tr><th scope="col">Run</th><th scope="col">Dataset</th><th scope="col">Models</th><th scope="col">Started</th><th scope="col">Status</th></tr>`+
     js.map(j=>`<tr class="${j.run_id===sel?"sel":""}"><td><a href="#/runs/${enc(j.run_id)}"${j.run_id===sel?' aria-current="true"':""}>${esc(j.run_id)}</a></td>
-      <td>${esc(j.dataset)}</td><td>${esc(j.train_path)}</td><td>${esc(fmtTime(j.started))}</td><td>${statusTag(j.status)}</td></tr>`).join("")+"</table>";
+      <td>${esc(dsName(j.dataset))}</td><td>${esc(j.train_path)}</td><td>${esc(fmtTime(j.started))}</td><td>${statusTag(j.status)}</td></tr>`).join("")+"</table>";
 }
 function statusTag(s){const t={running:"● running",done:"✓ done",failed:"✕ failed",cancelled:"✕ cancelled"}[s]||s;
   return `<span class="tag ${s==="done"?"done-t":esc(s)}">${esc(t)}</span>`}
@@ -535,7 +604,7 @@ async function showRun(id){
   }else next=`<p class="err">This run ${esc(j.status)}. The last lines of the log are shown above.</p><a class="act" href="#/train?dataset=${enc(j.dataset)}">Change settings and retry</a>`;
   box.innerHTML=`<h3 tabindex="-1">Run ${esc(j.run_id)}</h3>
     <p role="status" aria-live="polite">${statusTag(j.status)} · ${j.status==="running"?"running for":"took"} ${esc(fmtDur(elapsed))}</p>
-    <dl class="kv"><dt>Dataset</dt><dd>${esc(j.dataset)}</dd><dt>Models</dt><dd>${esc(j.train_path)}</dd><dt>Started</dt><dd>${esc(fmtTime(j.started))}</dd>
+    <dl class="kv"><dt>Dataset</dt><dd>${esc(dsName(j.dataset))}</dd><dt>Models</dt><dd>${esc(j.train_path)}</dd><dt>Started</dt><dd>${esc(fmtTime(j.started))}</dd>
     ${j.finished?`<dt>Finished</dt><dd>${esc(fmtTime(j.finished))}</dd>`:""}</dl><br>
     ${ks.length?`<div class="tablewrap"><table><tr>${ks.map(k=>`<th scope="col">${LBL[k]}</th>`).join("")}</tr><tr>${ks.map(k=>`<td>${fmtMetric(k,m[k])}</td>`).join("")}</tr></table></div>`:""}
     ${m&&m.test_data?`<p class="muted">Tested on ${esc(m.test_data)}${m.missed_attacks!=null?` · missed attacks: ${esc(m.missed_attacks)}`:""}</p>`:""}${m&&m.note?`<p class=warn>! ${esc(m.note)}</p>`:""}<br>
@@ -565,7 +634,7 @@ function drawModels(sel){
   $("rollback").textContent=s.previous?`Roll back to ${s.previous}`:"Roll back (no earlier version)";
   if(!ms.length){$("modlist").innerHTML=`<p>No models yet. A model appears here when a training run finishes with metrics.</p><a class="act" href="#/runs">See runs →</a>`;return}
   $("modlist").innerHTML=`<table><tr><th scope="col">Version</th><th scope="col">Run</th><th scope="col">Dataset</th><th scope="col">F1</th><th scope="col">False alarms</th><th scope="col">Role</th><th scope="col"><span hidden>Actions</span></th></tr>`+
-    ms.slice().reverse().map(m=>`<tr class="${m.version===sel?"sel":""}"><td>${esc(m.version)}</td><td><a href="#/runs/${enc(m.run_id)}">${esc(m.run_id)}</a></td><td>${esc(m.dataset)}</td>
+    ms.slice().reverse().map(m=>`<tr class="${m.version===sel?"sel":""}"><td>${esc(m.version)}</td><td><a href="#/runs/${enc(m.run_id)}">${esc(m.run_id)}</a></td><td>${esc(dsName(m.dataset))}</td>
       <td>${pct(m.metrics.f1)}</td><td>${m.metrics.fpr!=null?pct(m.metrics.fpr):m.metrics.false_alarms??"-"}</td>
       <td>${m.is_production?'<span class="tag prod">✓ production (champion)</span>':m.deployable===false?'<span class="tag cand">feature-table model (compare only)</span>':'<span class="tag cand">candidate (challenger)</span>'}</td>
       <td>${m.is_production?"":`<a href="#/models/${enc(m.version)}">Compare →</a>`}</td></tr>`).join("")+"</table>";
@@ -615,7 +684,7 @@ $("rollback").onclick=async()=>{
 
 // ── Start ─────────────────────────────────────────────────────────────────
 async function boot(){
-  try{const c=await api("/config");document.body.dataset.mode=c.mode;$("file").accept=c.upload_exts.join(",")}
+  try{const c=await api("/config");document.body.dataset.mode=c.mode;$("file").accept=c.upload_exts.join(",");$("gate").hidden=true}
   catch(e){if(e.status!==401){document.querySelector("main").insertAdjacentHTML("afterbegin",`<p class="notice bad">Could not load settings: ${esc(e.message)}</p>`)}return}
   st.route=null;await render();
 }

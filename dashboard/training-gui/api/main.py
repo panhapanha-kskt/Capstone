@@ -48,6 +48,7 @@ class TrainRequest(BaseModel):
     path_b_model: Literal["trafficformer", "iforest"] = "trafficformer"
     retrain: Literal["all", "new_only"] = "all"
     new_split: bool = False
+    split_manifest: str = ""          # a file in data/processed/splits/; "" = train_models.sh default
     pcap_label: Literal["", "0", "1"] = ""
     allow_heuristic_labels: bool = False
     # Labelled CSVs: which label values mean benign / attack ("ignore" drops those rows)
@@ -55,6 +56,16 @@ class TrainRequest(BaseModel):
     # Feature-table trainer only
     eval_dataset: str = ""            # another uploaded feature table to test on (e.g. test.csv); "" = hold-out split
     max_memory_gb: float = 0          # 0 = decide from the free memory
+
+
+class BundleFile(BaseModel):
+    source: Literal["project", "upload"]
+    path: str
+
+
+class BundleRequest(BaseModel):
+    name: str
+    files: list[BundleFile]
 
 
 class PromoteRequest(BaseModel):
@@ -136,6 +147,27 @@ async def upload(file: UploadFile):
     return await _store(_upload_name(file.filename), _uploadfile_chunks(file))
 
 
+@app.get("/api/project-files", dependencies=[Depends(admin)])
+def project_files():
+    """Data files in the project's data/ folder, for multi-file datasets."""
+    return data.list_project_files()
+
+
+@app.post("/api/bundles", dependencies=[Depends(admin)])
+def create_bundle(r: BundleRequest):
+    return guarded(data.create_bundle, r.name, [f.model_dump() for f in r.files])
+
+
+@app.post("/api/bundles/{name}/delete", dependencies=[Depends(admin)])
+def delete_bundle(name: str):
+    return guarded(data.delete_bundle, name)
+
+
+@app.get("/api/splits", dependencies=[Depends(admin)])
+def splits():
+    return data.list_splits()
+
+
 @app.get("/api/datasets/{name}/validate", dependencies=[Depends(admin)])
 def validate(name: str):
     return guarded(data.validate_csv, name)
@@ -158,6 +190,8 @@ def train(r: TrainRequest):
         if kind == "feature_table" and used != {"benign", "attack"}:
             raise HTTPException(422, "Training needs at least one label value marked benign and one marked attack.")
         params["label_map"] = {**roles, **r.label_map}
+    if r.split_manifest and kind != "feature_table":
+        params["split_manifest"] = str(guarded(data.split_path, r.split_manifest))
     if kind == "feature_table":
         if r.eval_dataset:
             ev = guarded(data.validate_csv, r.eval_dataset)

@@ -160,7 +160,7 @@ def test_feature_table_run_trains_end_to_end_and_cannot_be_promoted():
     rows = []
     for i in range(4000):
         attack = i % 40 == 0
-        rows.append(f"{rng.normal() + (3 if attack else 0):.4f},{rng.normal():.4f},{i % 7},{'dnstunnel' if attack else 'safe'}")
+        rows.append(f"{rng.normal() + (6 if attack else 0):.4f},{rng.normal():.4f},{i % 7},{'dnstunnel' if attack else 'safe'}")
     name = _write("ft.csv", "f1,f2,f3,label", rows)
     c = TestClient(main.app)
     r = c.post("/api/train", headers=TOKEN, json={"dataset": name, "seed": 1, "test_size": 0.25})
@@ -171,10 +171,16 @@ def test_feature_table_run_trains_end_to_end_and_cannot_be_promoted():
     assert j["trainer"] == "feature_table" and j["train_path"] == "features"
     assert "using every row of the file" in log
     m = jobs.get_metrics(j["run_id"])
-    assert m["trainer"] == "feature_table" and m["f1"] > 0.5 and "25% hold-out" in m["test_data"]
+    # train_models.sh / Path A standard: 72/14/14 per class, FPR-budget threshold, calibration, capping
+    assert m["trainer"] == "feature_table" and m["f1"] > 0.5 and "14% test split" in m["test_data"]
+    assert m["max_fpr"] == 0.001 and m["fpr"] <= 0.01
     meta = json.loads((S.RUNS / j["run_id"] / "model" / "model_meta.json").read_text())
     assert meta["label_map"] == {"dnstunnel": "attack", "safe": "benign"} and meta["rows_read"] == 4000
     assert meta["attack_rows"] == 100 and meta["benign_sample_rate"] == 1.0
+    assert meta["split_rows"] == {"train": 2880, "validation": 560, "test": 560}      # 72 / 14 / 14 of 4,000
+    assert meta["split"].startswith("per_class_random") and meta["clip_quantile"] == 0.999
+    assert meta["threshold_rule"] == "false alarms on benign validation rows <= 0.001"
+    assert "isotonic" in meta["model"] and "standard (as train_models.sh / Path A)" in log
     ms = c.get("/api/models", headers=TOKEN).json()
     assert len(ms) == 1 and ms[0]["deployable"] is False and ms[0]["trainer"] == "feature_table"
     r = c.post(f"/api/models/{ms[0]['version']}/promote", headers=TOKEN, json={"force": True})
@@ -232,7 +238,7 @@ def test_steps_are_page_navigation_links_not_aria_tabs(page):
 
 def test_hash_routes_drive_the_page(page):
     assert 'window.addEventListener("hashchange",render)' in page
-    for route in ('"#/train?dataset="', '"#/runs/"', '"#/data?dataset="', 'href="#/models/${', 'href="#/runs/${'):
+    for route in ('"#/train?dataset="', '"#/runs/"', 'href="#/data?dataset=${', 'href="#/models/${', 'href="#/runs/${'):
         assert route in page
     assert 'location.replace("#/data")' in page          # unknown routes fall back to Data
     assert "document.title=" in page
@@ -378,3 +384,93 @@ def test_a_stored_sign_in_hides_the_gate_after_a_refresh(page):
     boot = page[page.index("async function boot"):page.index("if(token)boot()")]
     ok_path = boot[:boot.index("catch(e)")]
     assert '$("gate").hidden=true' in ok_path
+
+
+def test_step_2_is_a_confirm_page_with_train_models_defaults(page):
+    train = page[page.index('<section id="train"'):page.index('<section id="runs"')]
+    order = [train.index(x) for x in ('id="dscard"', 'id="labelpanel"', 'id="adv"', 'id="review"', 'id="start"')]
+    assert order == sorted(order)                                   # dataset → labels → (advanced) → review → start
+    assert '<details class="panel" id="adv">' in train                # settings closed by default
+    for gone in ('id="ev"', 'id="fts"', 'id="mem"'):                  # fixed by the train_models.sh standard
+        assert gone not in page
+    assert 'const DEFAULTS={tp:"both",pb:"trafficformer",nd:"20",rt:"all",sd:"42",sp:""' in page
+    check = page[page.index("async function check(name,btn)"):page.index("function showReport")]
+    assert 'if(r.ok){setSelected(r.name);go("#/train?dataset="' in check   # a passed check opens step 2
+
+
+
+# ── Windows server -> WSL / Git Bash (run 20261119-014540-c577 failed and pointed at the live models/) ──
+
+@pytest.mark.parametrize("flavor,path,expected", [
+    ("wsl", r"C:\Programming-CTF\Capstone\data\processed\labeled_tunnels.json", "/mnt/c/Programming-CTF/Capstone/data/processed/labeled_tunnels.json"),
+    ("msys", r"D:\x\y.json", "/d/x/y.json"),
+    ("unknown", r"C:\x\y.json", "C:/x/y.json"),
+    ("posix", "/mnt/c/x/y.json", "/mnt/c/x/y.json"),
+    ("wsl", "--force-retrain", "--force-retrain"),
+    ("wsl", "iforest", "iforest"),
+])
+def test_paths_are_converted_for_the_bash_that_runs_train_models(flavor, path, expected):
+    from adapters import capstone_train as ct
+    assert ct.to_shell_path(path, flavor) == expected
+
+
+def test_wsl_receives_the_run_model_folder(tmp_path):
+    from adapters import capstone_train as ct
+    env = ct.shell_env(tmp_path / "model", "wsl")
+    assert env["DNS_DETECT_MODELS_DIR"] == str(tmp_path / "model") and env["WSLENV"].startswith("DNS_DETECT_MODELS_DIR/p")
+    assert "WSLENV" not in ct.shell_env(tmp_path / "model", "posix") or os.environ.get("WSLENV")
+    assert ct.same_dir("/mnt/c/A/runs/x/model/", "/mnt/c/a/runs/x/model") and not ct.same_dir("", "/x")
+
+
+def _fake_train_env(monkeypatch, tmp_path, seen_models_dir):
+    """Run capstone_train.main with a fake bash: returns what DNS_DETECT_MODELS_DIR looks like inside it."""
+    import subprocess
+    from adapters import capstone_train as ct
+    run = tmp_path / "run"
+    run.mkdir()
+    calls = []
+
+    def fake_run(cmd, **kw):
+        calls.append(cmd)
+        if cmd[:2] == ["bash", "-c"]:
+            out = "Linux 6.6.87.2-microsoft-standard-WSL2" if "uname" in cmd[2] else seen_models_dir(run / "model")
+            return subprocess.CompletedProcess(cmd, 0, stdout=out + "\n", stderr="")
+        return subprocess.CompletedProcess(cmd, 1)           # "train_models.sh" fails fast
+    monkeypatch.setattr(ct.subprocess, "run", fake_run)
+    monkeypatch.setattr(ct, "bash_flavor", lambda: "wsl")          # a Windows server whose bash is WSL
+    monkeypatch.setenv("RUN_DIR", str(run))
+    monkeypatch.setenv("DATASET_PATH", str(tmp_path))
+    monkeypatch.setenv("DATASET_NAME", "project-default")
+    monkeypatch.setenv("PARAMS_JSON", "{}")
+    monkeypatch.setenv("PRODUCTION_DIR", str(tmp_path / "no-prod"))
+    return ct, calls
+
+
+def test_training_refuses_to_start_when_bash_would_use_the_live_models(monkeypatch, tmp_path, capsys):
+    ct, calls = _fake_train_env(monkeypatch, tmp_path, lambda models: "")       # the variable did not arrive
+    with pytest.raises(SystemExit) as e:
+        ct.main()
+    assert e.value.code == 3
+    assert not any("scripts/train_models.sh" in c for c in calls)              # never started
+    assert "Stopped before training so the live models/ folder is not overwritten" in capsys.readouterr().out
+
+
+def test_training_starts_when_bash_sees_the_run_folder(monkeypatch, tmp_path, capsys):
+    from adapters import capstone_train as ct0
+    ct, calls = _fake_train_env(monkeypatch, tmp_path, lambda models: ct0.to_shell_path(models, "wsl"))
+    with pytest.raises(SystemExit) as e:
+        ct.main()
+    assert e.value.code == 1                                                   # the fake train_models.sh "failed"
+    started = [c for c in calls if "scripts/train_models.sh" in c]
+    out = capsys.readouterr().out
+    assert len(started) == 1 and f"models go to {tmp_path / 'run' / 'model'}" in out
+    assert out.index("models go to") < out.index("scripts/train_models.sh")      # checked before starting
+
+
+def test_run_log_is_read_as_utf8():
+    d = S.RUNS / "20261119-000001-aaaa"
+    d.mkdir()
+    (d / "job.json").write_text(json.dumps({"run_id": d.name, "dataset": "x", "train_path": "both", "params": {},
+                                            "started": "2026-11-19T00:00:00+00:00", "pid": 999999}))
+    (d / "train.log").write_bytes("Training DNS models · log ✓ → done\n".encode("utf-8"))
+    assert jobs.tail_log(d.name) == "Training DNS models · log ✓ → done"

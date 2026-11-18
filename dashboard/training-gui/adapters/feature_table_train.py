@@ -8,10 +8,16 @@ Rows: reads every row of the file. Every attack row is kept. Benign rows are all
 memory; otherwise a random sample is kept and each kept benign row is weighted by 1 / sample rate, so the
 training signal and every reported metric still represent the whole file. The log and metrics say which.
 
-Model: scikit-learn HistGradientBoostingClassifier on the numeric feature columns, class_weight="balanced"
-for the rare attack class. The decision threshold is the one with the best F1 on a validation split.
-Test data: a stratified hold-out of the file (test_size), or a second uploaded feature table (eval_path),
-which is then scored row by row in full.
+Standard: the same as scripts/train_models.sh / Path A (src/dns_detect/models/path_a.py, splits.py,
+thresholds.py, config/settings.yaml), so results are judged the same way:
+  split      per class, 72 % train / 14 % validation / 14 % test; oldest -> newest when the file has a
+             'timestamp' column (splits._time_split), otherwise a seeded random order per class
+  capping    each feature capped at the train rows' 0.1 % / 99.9 % quantiles (path_a_clip_quantile)
+  model      HistGradientBoostingClassifier(learning_rate=0.1, max_iter=300, early_stopping,
+             validation_fraction=0.15, class_weight="balanced") — Path A's gradient-boosting learner
+  validation cut in two halves: isotonic calibration of the scores, then the alarm threshold
+  threshold  threshold_for_fpr: false alarms on benign validation rows <= path_a_max_fpr (0.1 %)
+  test       scored once; the best-F1 threshold is reported next to it for reference only
 
 Writes RUN_DIR/model/{model.joblib, model_meta.json, evaluation_metrics.json} and RUN_DIR/metrics.json."""
 import json
@@ -28,6 +34,7 @@ LABEL = os.environ.get("LABEL_COLUMN", "label")
 CHUNK_ROWS = 1_000_000
 MEM_FACTOR = 4 * 4          # float32 bytes x (data + split copies + binning + headroom)
 MEM_SHARE = 0.6             # use at most this share of the free memory
+VAL_SHARE = TEST_SHARE = 0.14   # splits._time_split defaults used by train_models.sh
 
 
 def log(msg: str) -> None:
@@ -58,6 +65,100 @@ def count_rows(path: Path) -> int:
     return max(n - 1 + (last != b"\n"), 0)        # minus the header line
 
 
+def project_settings() -> dict:
+    """The training section of config/settings.yaml (the job runs in the project root)."""
+    try:
+        import yaml
+        with open(Path.cwd() / "config" / "settings.yaml", encoding="utf-8") as f:
+            return (yaml.safe_load(f) or {}).get("training") or {}
+    except Exception as e:                       # noqa: BLE001 — fall back to the documented defaults
+        log(f"config/settings.yaml not read ({e}); using path_a_max_fpr=0.001, path_a_clip_quantile=0.999")
+        return {}
+
+
+def _pipeline_module(name: str):
+    """A module from the project's src/dns_detect, so this trainer uses the pipeline's own code."""
+    src = str(Path.cwd() / "src")
+    if src not in sys.path:
+        sys.path.insert(0, src)
+    import importlib
+    return importlib.import_module(name)
+
+
+def threshold_for_fpr(y, s, max_fpr):
+    try:
+        return _pipeline_module("dns_detect.models.thresholds").threshold_for_fpr(y, s, max_fpr)
+    except ImportError:                          # same rule as dns_detect.models.thresholds
+        y, s = np.asarray(y).astype(int), np.asarray(s, dtype=float)
+        ben = np.sort(s[y == 0])
+        if len(ben) == 0:
+            return 0.5
+        k = int(np.floor(max_fpr * len(ben)))
+        if k >= len(ben):
+            return float(ben[0])
+        b = ben[len(ben) - 1 - k]
+        above = s[(y == 1) & (s > b)]
+        return float((b + above.min()) / 2.0) if len(above) else float(np.nextafter(b, np.inf))
+
+
+def split_like_pipeline(y, ts, seed: int, test_share: float = TEST_SHARE):
+    """(train, val, test, name): per class 72/14/14 like train_models.sh's default time split."""
+    if ts is not None:
+        try:
+            tr, va, te, name = _pipeline_module("dns_detect.models.splits")._time_split(
+                pd.DataFrame({"timestamp": ts}), y, seed=seed, val_share=VAL_SHARE, test_share=test_share)
+            return np.asarray(tr), np.asarray(va), np.asarray(te), name
+        except (ImportError, ValueError) as e:
+            log(f"time split not possible ({e}); using a random order per class")
+    rng = np.random.default_rng(seed)
+    tr, va, te = [], [], []
+    for cls in np.unique(y):
+        idx = rng.permutation(np.where(y == cls)[0])
+        n = len(idx)
+        n_te = max(1, int(round(n * test_share))) if test_share else 0
+        n_va = max(1, int(round(n * VAL_SHARE)))
+        te += idx[:n_te].tolist()
+        va += idx[n_te:n_te + n_va].tolist()
+        tr += idx[n_te + n_va:].tolist()
+    tr = np.array(tr)
+    rng.shuffle(tr)
+    return tr, np.array(va), np.array(te, dtype=int), "per_class_random (no timestamp column)"
+
+
+def halve(idx, y, seed: int):
+    """Validation -> (calibration half, threshold half), both with both classes when possible."""
+    from sklearn.model_selection import train_test_split
+    if len(idx) >= 20 and np.bincount(y[idx], minlength=2).min() >= 2:
+        return tuple(train_test_split(idx, test_size=0.5, stratify=y[idx], random_state=seed))
+    log("[warn] validation too small to halve — calibration and threshold share it")
+    return idx, idx
+
+
+def clip_bounds(X, rows, q):
+    """Per-feature (low, high) at the q / (1-q) quantiles of the training rows; None when q is 0/None."""
+    if not q:
+        return None
+    low, high = np.empty(X.shape[1], np.float32), np.empty(X.shape[1], np.float32)
+    for j in range(X.shape[1]):                   # one column at a time keeps memory small
+        low[j], high[j] = np.nanquantile(X[rows, j], [1.0 - q, q])
+    return low, high
+
+
+def calibrate(model, X, y, w):
+    """Isotonic calibration on held-out rows (sigmoid if few), as path_a.calibrate."""
+    from sklearn.calibration import CalibratedClassifierCV
+    if len(np.unique(y)) < 2:
+        log("[warn] calibration half has one class — scores left uncalibrated")
+        return model
+    method = "isotonic" if len(y) >= 200 else "sigmoid"
+    try:
+        from sklearn.frozen import FrozenEstimator
+        cal = CalibratedClassifierCV(FrozenEstimator(model), method=method)
+    except ImportError:
+        cal = CalibratedClassifierCV(model, method=method, cv="prefit")
+    return cal.fit(X, y, sample_weight=w)
+
+
 def suggest(value: str):
     try:
         from core.data import suggest_label_roles   # same rules the console's check uses
@@ -83,27 +184,31 @@ class Labels:
         return lab.map(self.map)
 
 
-def feature_columns(path: Path) -> list:
+def feature_columns(path: Path):
+    """(numeric feature columns, timestamp column or None)."""
     head = pd.read_csv(path, nrows=50_000, low_memory=False)
     if LABEL not in head.columns:
         raise SystemExit(f"No '{LABEL}' column in {path.name}.")
     feats = [c for c in head.select_dtypes("number").columns if c != LABEL]
     if not feats:
         raise SystemExit(f"No numeric feature columns in {path.name}.")
-    return feats
+    return feats, ("timestamp" if "timestamp" in head.columns else None)
 
 
-def read_table(path: Path, feats: list, labels: Labels, benign_rate: float, rng, total: int):
+def read_table(path: Path, feats: list, labels: Labels, benign_rate: float, rng, total: int, ts_col=None):
     """Stream the file; keep all attack rows and (a weighted sample of) benign rows."""
-    xs, ys, ws = [], [], []
+    xs, ys, ws, tss = [], [], [], []
     st = {"rows_read": 0, "attack_rows": 0, "benign_rows": 0, "benign_kept": 0, "ignored_rows": 0}
     t0 = time.time()
-    for chunk in pd.read_csv(path, usecols=feats + [LABEL], chunksize=CHUNK_ROWS, low_memory=False):
+    cols = feats + [LABEL] + ([ts_col] if ts_col else [])
+    for chunk in pd.read_csv(path, usecols=cols, chunksize=CHUNK_ROWS, low_memory=False):
         role = labels.roles(chunk[LABEL])
         attack = (role == "attack").to_numpy()
         benign = (role == "benign").to_numpy()
         keep_b = benign & (rng.random(len(chunk)) < benign_rate) if benign_rate < 1 else benign
         keep = attack | keep_b
+        if ts_col:
+            tss.append(chunk.loc[keep, ts_col].astype(str).to_numpy())
         x = chunk.loc[keep, feats].apply(pd.to_numeric, errors="coerce").to_numpy(np.float32)
         xs.append(x)
         ys.append(attack[keep].astype(np.int8))
@@ -118,7 +223,7 @@ def read_table(path: Path, feats: list, labels: Labels, benign_rate: float, rng,
             f"{st['attack_rows']:,} attack, {st['benign_rows']:,} benign")
     if not xs:
         raise SystemExit("The file has no data rows.")
-    return np.concatenate(xs), np.concatenate(ys), np.concatenate(ws), st
+    return np.concatenate(xs), np.concatenate(ys), np.concatenate(ws), (np.concatenate(tss) if ts_col else None), st
 
 
 def weighted_metrics(y, p, w, thr) -> dict:
@@ -147,12 +252,14 @@ def best_threshold(y, p, w) -> float:
     return float(thr[int(np.argmax(f1))]) if len(thr) else 0.5
 
 
-def score_file(model, path: Path, feats: list, labels: Labels):
+def score_file(model, path: Path, feats: list, labels: Labels, clip=None):
     ys, ps = [], []
     for chunk in pd.read_csv(path, usecols=feats + [LABEL], chunksize=CHUNK_ROWS, low_memory=False):
         role = labels.roles(chunk[LABEL])
         keep = role.isin(["attack", "benign"]).to_numpy()
         x = chunk.loc[keep, feats].apply(pd.to_numeric, errors="coerce").to_numpy(np.float32)
+        if clip is not None:
+            np.clip(x, clip[0], clip[1], out=x)
         ys.append((role[keep] == "attack").to_numpy().astype(np.int8))
         ps.append(model.predict_proba(x)[:, 1].astype(np.float32))
         log(f"scored {sum(len(a) for a in ys):,} rows of {path.name}")
@@ -164,20 +271,24 @@ def main():
     import joblib
     import sklearn
     from sklearn.ensemble import HistGradientBoostingClassifier
-    from sklearn.model_selection import train_test_split
 
     run = Path(os.environ["RUN_DIR"])
     src = Path(os.environ["DATASET_PATH"])
     params = json.loads(os.environ.get("PARAMS_JSON", "{}"))
     seed = int(params.get("seed", 42))
-    test_size = float(params.get("test_size", 0.2))
     eval_path = Path(params["eval_path"]) if params.get("eval_path") else None
     labels = Labels(params.get("label_map") or {})
+    cfg = project_settings()
+    max_fpr = float(cfg.get("path_a_max_fpr", 0.001))
+    clip_q = cfg.get("path_a_clip_quantile", 0.999)
     rng = np.random.default_rng(seed)
 
-    feats = feature_columns(src)
-    log(f"training file: {src.name} · {len(feats)} numeric feature columns · label column '{LABEL}'")
+    feats, ts_col = feature_columns(src)
+    log(f"training file: {src.name} · {len(feats)} numeric feature columns · label column '{LABEL}'"
+        + (" · has timestamps" if ts_col else ""))
     log(f"label roles: {labels.map}")
+    log(f"standard (as train_models.sh / Path A): split 72/14/14 per class, capping {clip_q}, "
+        f"isotonic calibration, threshold at <= {max_fpr:.2%} false alarms on benign validation rows, seed {seed}")
     total = count_rows(src)
     budget = float(params.get("max_memory_gb") or 0) * 1e9 or available_memory() * MEM_SHARE
     need = total * len(feats) * MEM_FACTOR
@@ -189,56 +300,67 @@ def main():
     else:
         log("using every row of the file")
 
-    X, y, w, st = read_table(src, feats, labels, benign_rate, rng, total)
+    X, y, w, ts, st = read_table(src, feats, labels, benign_rate, rng, total, ts_col)
     if y.sum() < 10 or (y == 0).sum() < 10:
         raise SystemExit(f"Need at least 10 attack and 10 benign rows; got {int(y.sum())} attack, {int((y == 0).sum())} benign.")
-    idx = np.arange(len(y))
-    if eval_path:
-        tr_idx, te_idx = idx, None
-    else:
-        tr_idx, te_idx = train_test_split(idx, test_size=test_size, stratify=y, random_state=seed)
-    fit_idx, val_idx = train_test_split(tr_idx, test_size=0.1, stratify=y[tr_idx], random_state=seed)
-    log(f"training on {len(fit_idx):,} rows, choosing the threshold on {len(val_idx):,}, "
-        + (f"testing on all of {eval_path.name}" if eval_path else f"testing on a {test_size:.0%} hold-out ({len(te_idx):,} rows)"))
+    tr, va, te, split_name = split_like_pipeline(y, ts, seed, test_share=0.0 if eval_path else TEST_SHARE)
+    cal_idx, thr_idx = halve(va, y, seed)
+    log(f"split {split_name}: train {len(tr):,} · validation {len(va):,} (calibration {len(cal_idx):,}, "
+        f"threshold {len(thr_idx):,}) · " + (f"test: all of {eval_path.name}" if eval_path else f"test {len(te):,}"))
+
+    clip = clip_bounds(X, tr, clip_q)
+    if clip is not None:
+        n_capped = int(((X < clip[0]) | (X > clip[1])).sum())
+        np.clip(X, clip[0], clip[1], out=X)
+        log(f"outliers capped at the train {clip_q:.1%} quantiles (rows kept): {n_capped:,} values")
 
     model = HistGradientBoostingClassifier(
-        max_iter=int(params.get("n_estimators", 300)), learning_rate=0.1, max_leaf_nodes=63,
-        class_weight="balanced", early_stopping=True, validation_fraction=0.1, n_iter_no_change=20,
-        random_state=seed)
+        learning_rate=0.1, max_iter=300, early_stopping=True, validation_fraction=0.15,
+        class_weight="balanced", random_state=seed)
     t0 = time.time()
-    model.fit(X[fit_idx], y[fit_idx], sample_weight=w[fit_idx])
+    model.fit(X[tr], y[tr], sample_weight=w[tr])
     log(f"trained {model.n_iter_} boosting rounds in {time.time() - t0:.0f} s")
+    model = calibrate(model, X[cal_idx], y[cal_idx], w[cal_idx])
 
-    p_val = model.predict_proba(X[val_idx])[:, 1]
-    thr = best_threshold(y[val_idx], p_val, w[val_idx])
-    val = weighted_metrics(y[val_idx], p_val, w[val_idx], thr)
-    log(f"threshold {thr:.4f} (best F1 on validation: {val['f1']})")
+    p_thr = model.predict_proba(X[thr_idx])[:, 1]
+    thr = threshold_for_fpr(y[thr_idx], p_thr, max_fpr)
+    thr_f1 = best_threshold(y[thr_idx], p_thr, w[thr_idx])
+    val = weighted_metrics(y[thr_idx], p_thr, w[thr_idx], thr)
+    log(f"alarm threshold {thr:.6f} (validation false-alarm rate {val['fpr']:.4%} <= {max_fpr:.2%}); "
+        f"best-F1 threshold for reference {thr_f1:.6f}")
 
     if eval_path:
         del X
-        y_te, p_te, w_te = score_file(model, eval_path, feats, labels)
+        y_te, p_te, w_te = score_file(model, eval_path, feats, labels, clip)
         test_name = eval_path.name
     else:
-        y_te, w_te = y[te_idx], w[te_idx]
-        p_te = model.predict_proba(X[te_idx])[:, 1]
-        test_name = f"{test_size:.0%} hold-out of {src.name}"
+        y_te, w_te = y[te], w[te]
+        p_te = model.predict_proba(X[te])[:, 1]
+        test_name = f"14% test split of {src.name} ({split_name})"
     test = weighted_metrics(y_te, p_te, w_te, thr)
+    test_f1 = weighted_metrics(y_te, p_te, w_te, thr_f1)
     log(f"test ({test_name}): F1 {test['f1']}, precision {test['precision']}, recall {test['recall']}, "
-        f"false alarms {test['false_alarms']:,}, missed attacks {test['missed_attacks']:,}")
+        f"FPR {test['fpr']:.4%}, false alarms {test['false_alarms']:,}, missed attacks {test['missed_attacks']:,}")
+    log(f"for reference, at the best-F1 threshold: F1 {test_f1['f1']}, false alarms {test_f1['false_alarms']:,}")
 
     out = run / "model"
     out.mkdir(parents=True, exist_ok=True)
     joblib.dump(model, out / "model.joblib")
-    meta = {"trainer": "feature_table", "model": "HistGradientBoostingClassifier", "features": feats,
-            "label_column": LABEL, "label_map": labels.map, "unseen_label_values": labels.unseen,
-            "threshold": thr, "dataset": src.name, "test_data": test_name, "benign_sample_rate": benign_rate,
+    meta = {"trainer": "feature_table", "model": "HistGradientBoostingClassifier + isotonic calibration",
+            "standard": "train_models.sh / Path A", "features": feats, "label_column": LABEL,
+            "label_map": labels.map, "unseen_label_values": labels.unseen, "threshold": thr,
+            "threshold_rule": f"false alarms on benign validation rows <= {max_fpr}", "threshold_best_f1": thr_f1,
+            "clip_quantile": clip_q, "clip": {"low": clip[0].tolist(), "high": clip[1].tolist()} if clip is not None else None,
+            "split": split_name, "split_rows": {"train": int(len(tr)), "validation": int(len(va)), "test": int(len(te))},
+            "dataset": src.name, "test_data": test_name, "benign_sample_rate": benign_rate,
             **st, "rows_used": int(len(y)), "seed": seed, "sklearn": sklearn.__version__,
             "trained_at": datetime.now(timezone.utc).isoformat(timespec="seconds")}
     (out / "model_meta.json").write_text(json.dumps(meta, indent=2))
-    (out / "evaluation_metrics.json").write_text(json.dumps({"validation": val, "test": test}, indent=2))
+    (out / "evaluation_metrics.json").write_text(json.dumps(
+        {"validation_threshold_half": val, "test": test, "test_at_best_f1_threshold": test_f1}, indent=2))
     metrics = {k: test[k] for k in ("f1", "precision", "recall", "fpr", "pr_auc", "accuracy", "false_alarms")}
     metrics.update(trainer="feature_table", source="feature_table", test_data=test_name,
-                   test_rows=test["rows"], missed_attacks=test["missed_attacks"])
+                   test_rows=test["rows"], missed_attacks=test["missed_attacks"], max_fpr=max_fpr)
     if benign_rate < 1:
         metrics["note"] = (f"Benign rows were sampled at {benign_rate:.1%} for memory; every attack row was used, "
                            "and metrics are weighted to represent the whole file.")

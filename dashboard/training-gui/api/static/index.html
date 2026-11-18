@@ -60,6 +60,7 @@ body[data-mode=capstone] .demo,body[data-mode=demo] .cap{display:none}
 dl.kv{display:grid;grid-template-columns:max-content 1fr;gap:4px 14px;margin:0}dl.kv dt{color:var(--mute)}dl.kv dd{margin:0}
 #upstate{margin-top:14px}#upstate p{margin:6px 0 0}progress{width:100%;height:14px;accent-color:var(--accent)}
 .review{margin:14px 0 0;padding-left:18px}
+details.panel>summary{cursor:pointer;padding:2px 0}details.panel[open]>summary{margin-bottom:8px}
 #trainform[data-kind=feature_table] .pipe,#trainform:not([data-kind=feature_table]) .ft{display:none}
 .lblrow{display:grid;grid-template-columns:minmax(120px,1fr) minmax(160px,220px);gap:10px;align-items:center;padding:6px 0;border-bottom:1px solid var(--line)}
 .lblrow label{margin:0;color:var(--ink)}
@@ -118,15 +119,10 @@ legend{color:var(--mute);font-size:13px;padding:0 4px}
       <div id="labelrows"></div>
       <div id="pcaprow"><label for="pl">Label for .pcap capture files (captures carry no labels)</label><select id="pl"><option value="">Unlabeled: label them from the attack manifest or heuristics</option><option value="0">Benign: every query in the captures is normal traffic</option><option value="1">Attack: every query in the captures is attack traffic</option></select></div>
     </div>
-    <div class="panel">
-      <h3>Settings</h3>
+    <details class="panel" id="adv">
+      <summary><b>Advanced settings</b> <span class="muted">— leave closed to use the train_models.sh defaults</span></summary>
       <div class="ft">
-        <p>Trainer: <b>gradient-boosted trees on this file's feature columns</b>. It reads every row: all attack rows are always used, and benign rows are all used when they fit in memory (otherwise a weighted sample, shown in the run log).</p>
-        <div class="row">
-          <div><label for="ev">Test data</label><select id="ev"></select></div>
-          <div><label for="fts">Hold-out share (when testing on this file)</label><input id="fts" type="number" step="0.05" value="0.2" min="0.05" max="0.5"></div>
-          <div><label for="mem">Memory limit in GB (0 = automatic)</label><input id="mem" type="number" step="1" value="0" min="0"></div>
-        </div>
+        <p>This file is trained with the <b>train_models.sh standard</b> (as Path A): per class 72 % train / 14 % validation / 14 % test, outliers capped at the training 0.1 % / 99.9 % quantiles, gradient-boosted trees with isotonic calibration, and an alarm threshold at ≤ 0.1 % false alarms on benign validation rows. Every row is read; if memory is short, all attack rows and a weighted sample of benign rows are used (shown in the run log).</p>
       </div>
       <div class="row pipe">
         <div><label for="tp">Models to train</label><select id="tp">
@@ -142,7 +138,7 @@ legend{color:var(--mute);font-size:13px;padding:0 4px}
       </div>
       <div class="row cap pipe">
         <div><label for="nd">Window size, Path B (queries)</label><input id="nd" type="number" value="20" min="2"></div>
-        <div><label for="pb">Path B algorithm</label><select id="pb"><option value="trafficformer">Trafficformer (slow)</option><option value="iforest">Isolation Forest (minutes)</option></select></div>
+        <div><label for="pb">Path B algorithm</label><select id="pb"><option value="trafficformer">Trafficformer (train_models.sh default, slow)</option><option value="iforest">Isolation Forest (minutes)</option></select></div>
         <div><label for="rt">Data to train on</label><select id="rt"><option value="all">All files in the dataset</option><option value="new_only">Only files not trained before</option></select></div>
       </div>
       <div class="row"><div><label for="sd">Random seed</label><input id="sd" type="number" value="42"></div></div>
@@ -151,7 +147,8 @@ legend{color:var(--mute);font-size:13px;padding:0 4px}
         <p class="hint">This changes the test set, so results are not comparable with earlier runs.</p>
         <label class="chk"><input type="checkbox" id="ah"> Allow heuristic labels (experimental)</label>
       </div>
-    </div>
+      <button class="act quiet small" id="resetadv" type="button">Reset to train_models.sh defaults</button>
+    </details>
     <div class="panel">
       <h3>Review</h3>
       <ul class="review" id="review"></ul>
@@ -325,8 +322,9 @@ async function check(name,btn){
   try{
     const r=await api("/datasets/"+enc(name)+"/validate");
     recordCheck(r);
-    if(r.ok){setSelected(r.name);replaceHash("#/data?dataset="+enc(r.name))}
-    showReport(r);drawDatasets();refreshStatus();
+    showReport(r);
+    if(r.ok){setSelected(r.name);go("#/train?dataset="+enc(r.name));return r}   // passed: confirm it in step 2
+    drawDatasets();refreshStatus();
     return r;
   }catch(e){showError($("dsreport"),e,()=>check(name,btn))}
   finally{if(btn)btn.disabled=false}
@@ -467,7 +465,7 @@ async function viewTrain(route){
     files:"Logs / captures / folder → scripts/train_models.sh (Path A, Path B, fusion)",
     bundle:`${p.files||"Several"} files combined → scripts/train_models.sh --files (Path A, Path B, fusion)`}[p.kind]||p.kind;
   $("trainform").dataset.kind=p.kind;
-  drawLabels(name,p);drawEval(name);await loadSplits();
+  drawLabels(name,p);await loadSplits();
   $("dscard").innerHTML=`<h3>Dataset</h3><dl class="kv"><dt>Name</dt><dd>${esc(dsName(name))}</dd><dt>Type</dt><dd>${esc(kindText)}</dd><dt>Size</dt><dd>${esc(size)}</dd>
     <dt>Labels</dt><dd>${labels}${p.sampled?" (first rows checked)":""}</dd>
     <dt>Check</dt><dd class="up">✓ Passed${p.warnings&&p.warnings.length?` <span class="warn">with ${p.warnings.length} warning${p.warnings.length>1?"s":""}</span>`:""}</dd></dl>
@@ -502,14 +500,6 @@ function labelProblem(kind){
   if(kind==="feature_table"&&!(used.has("benign")&&used.has("attack")))return "Mark at least one label value as benign and one as attack.";
   return null;
 }
-function drawEval(name){
-  const opts=(st.datasets||[]).filter(d=>d.name!==name).map(d=>({d,p:passed(d.name)})).filter(x=>x.p&&x.p.kind==="feature_table");
-  const prev=$("ev").value;
-  $("ev").innerHTML=`<option value="">A hold-out share of ${esc(name)}</option>`+opts.map(x=>`<option value="${esc(x.d.name)}">All of ${esc(x.d.name)} (upload and check it in step 1)</option>`).join("");
-  if(prev&&opts.some(x=>x.d.name===prev))$("ev").value=prev;
-  $("fts").disabled=!!$("ev").value;
-}
-$("ev").addEventListener("change",()=>{$("fts").disabled=!!$("ev").value});
 async function loadSplits(){
   if(document.body.dataset.mode==="demo")return;
   try{st.splits=st.splits||await api("/splits")}catch(e){st.splits=[];$("tmsg").innerHTML=`<span class=warn>Could not list splits (${esc(e.message)}); the default split will be used.</span>`}
@@ -520,16 +510,25 @@ async function loadSplits(){
   $("sp").disabled=$("ns").checked;
 }
 $("ns").addEventListener("change",()=>{$("sp").disabled=$("ns").checked});
+// The values train_models.sh uses when no option is given (and the console's own defaults)
+const DEFAULTS={tp:"both",pb:"trafficformer",nd:"20",rt:"all",sd:"42",sp:"",ns:false,ah:false,ne:"200",ep:"10",ts:"0.2"};
+const DEFAULT_NAMES={tp:"models",pb:"Path B algorithm",nd:"window size",rt:"data to train on",sd:"seed",sp:"split",ns:"fresh split",ah:"heuristic labels",ne:"trees",ep:"epochs",ts:"test split"};
+function changedSettings(kind){
+  const keys=kind==="feature_table"?["sd"]:document.body.dataset.mode==="demo"?["tp","ne","ep","ts","sd"]:["tp","pb","nd","rt","sd","sp","ns","ah"];
+  return keys.filter(k=>{const el=$(k);return el.type==="checkbox"?el.checked!==DEFAULTS[k]:String(el.value)!==DEFAULTS[k]}).map(k=>DEFAULT_NAMES[k]);
+}
+$("resetadv").onclick=()=>{Object.entries(DEFAULTS).forEach(([k,v])=>{const el=$(k);if(el.type==="checkbox")el.checked=v;else el.value=v});$("sp").disabled=false;drawReview()};
 function drawReview(){
   const sel=id=>$(id).options[$(id).selectedIndex].text,cap=document.body.dataset.mode!=="demo";
   const kind=$("trainform").dataset.kind,lm=labelMap();
   const items=[`Dataset: ${dsName(selectedDs())}`];
   if(Object.keys(lm).length)items.push("Labels: "+Object.entries(lm).map(([v,r])=>`${v} = ${r}`).join(", "));
   const lp=labelProblem(kind);if(lp)items.push("⚠ "+lp);
+  const changed=changedSettings(kind);
+  items.push(changed.length?"⚙ Changed from the train_models.sh defaults: "+changed.join(", "):"✓ Settings: train_models.sh defaults");
   if(kind==="feature_table"){
-    items.push("Trainer: gradient-boosted trees on the file's feature columns (every row; weighted benign sample only if memory is short)",
-      `Test data: ${$("ev").value?"all of "+$("ev").value:`${Math.round(+$("fts").value*100)}% hold-out of ${selectedDs()}`}`,
-      `Memory limit: ${+$("mem").value>0?$("mem").value+" GB":"automatic"}`,`Random seed: ${$("sd").value}`);
+    items.push("Trainer: gradient-boosted trees on the file's feature columns, train_models.sh standard (72/14/14 split, threshold at ≤ 0.1% false alarms)",
+      `Random seed: ${$("sd").value}`,"Next: the run opens in 3. Runs");
     $("review").innerHTML=items.map(i=>`<li>${esc(i)}</li>`).join("");return;
   }
   items.push(`Models: ${sel("tp")}`);
@@ -537,7 +536,7 @@ function drawReview(){
     ...($("pcaprow").hidden?[]:[`.pcap label: ${sel("pl").split(":")[0]}`]),`Heuristic labels: ${$("ah").checked?"allowed (experimental)":"not allowed"}`,
     `Split: ${$("ns").checked?"new time-ordered split (not comparable with earlier runs)":sel("sp")}`);
   else items.push(`Trees ${$("ne").value}, epochs ${$("ep").value}, test split ${$("ts").value}`);
-  items.push(`Random seed: ${$("sd").value}`);
+  items.push(`Random seed: ${$("sd").value}`,"Next: the run opens in 3. Runs with the live train_models.sh log");
   $("review").innerHTML=items.map(i=>`<li>${esc(i)}</li>`).join("");
 }
 document.querySelectorAll("#trainform input,#trainform select").forEach(el=>el.addEventListener("change",drawReview));
@@ -548,9 +547,8 @@ $("start").onclick=async()=>{
   $("start").disabled=true;$("tmsg").innerHTML=`<span class="muted">Starting training...</span>`;
   try{
     const j=await api("/train",{method:"POST",body:{dataset:name,train_path:$("tp").value,
-      n_estimators:kind==="feature_table"?300:+$("ne").value,epochs:+$("ep").value,
-      test_size:kind==="feature_table"?+$("fts").value:+$("ts").value,seed:+$("sd").value,
-      label_map:labelMap(),eval_dataset:kind==="feature_table"?$("ev").value:"",max_memory_gb:+$("mem").value||0,
+      n_estimators:+$("ne").value,epochs:+$("ep").value,test_size:+$("ts").value,seed:+$("sd").value,
+      label_map:labelMap(),
       split_manifest:kind==="feature_table"||$("ns").checked?"":$("sp").value,
       n_days:+$("nd").value,path_b_model:$("pb").value,retrain:$("rt").value,pcap_label:$("pl").value,
       new_split:$("ns").checked,allow_heuristic_labels:$("ah").checked}});
@@ -572,6 +570,8 @@ async function viewRuns(route){
 }
 async function pollRuns(route){
   try{st.jobs=await api("/jobs");drawRuns(route.id)}catch(e){stopPolling();showError($("runlist"),e,()=>render());return}
+  const sig=st.jobs.map(j=>j.run_id+":"+j.status).join(",");
+  if(sig!==st.jobsSig){st.jobsSig=sig;refreshStatus()}          // keep "1 running" / "Done" in the menu current
   if(route.id&&(st.runShown!==route.id||st.runStatus==="running"))await showRun(route.id);   // finished runs don't change
 }
 function drawRuns(sel){

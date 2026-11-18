@@ -6,6 +6,7 @@ models folder is untouched until an admin clicks Promote, then writes RUN_DIR/me
 Run with the Capstone repo as the working directory (PROJECT_DIR)."""
 import json
 import os
+import re
 import shutil
 import subprocess
 import sys
@@ -38,6 +39,61 @@ def read_json(p):
         return json.loads(Path(p).read_text())
     except Exception:
         return {}
+
+
+# ── Running train_models.sh from a Windows server ─────────────────────────────
+# On Windows, "bash" is usually WSL (or Git Bash). Two things then go wrong unless handled:
+#  * Windows paths (C:\x\y) lose their backslashes on the way into bash -> "File not found".
+#  * Windows environment variables are NOT passed into WSL, so DNS_DETECT_MODELS_DIR would be
+#    missing and train_models.sh would write to the live models/ folder.
+
+def bash_flavor() -> str:
+    """posix (Linux/macOS server), wsl, msys (Git Bash / Cygwin) or unknown."""
+    if os.name != "nt":
+        return "posix"
+    try:
+        out = subprocess.run(["bash", "-c", "uname -sr"], capture_output=True, text=True, timeout=120).stdout.lower()
+    except (OSError, subprocess.SubprocessError):
+        return "unknown"
+    if "microsoft" in out or "wsl" in out:
+        return "wsl"
+    if any(k in out for k in ("mingw", "msys", "cygwin")):
+        return "msys"
+    return "unknown"
+
+
+def to_shell_path(p, flavor: str) -> str:
+    """A Windows path in the form the bash running train_models.sh understands; others unchanged."""
+    m = re.match(r"^([A-Za-z]):[\\/](.*)$", str(p))
+    if not m or flavor == "posix":
+        return str(p)
+    drive, rest = m.group(1).lower(), m.group(2).replace("\\", "/")
+    if flavor == "wsl":
+        return f"/mnt/{drive}/{rest}"
+    if flavor == "msys":
+        return f"/{drive}/{rest}"
+    return f"{m.group(1)}:/{rest}"
+
+
+def shell_env(models: Path, flavor: str) -> dict:
+    env = {**os.environ, "DNS_DETECT_MODELS_DIR": str(models)}
+    if flavor == "wsl":   # WSLENV lists the variables WSL may see; /p translates a Windows path
+        env["WSLENV"] = ":".join(x for x in ("DNS_DETECT_MODELS_DIR/p", "PYTHONUNBUFFERED", os.environ.get("WSLENV", "")) if x)
+    return env
+
+
+def models_dir_in_shell(env: dict) -> str:
+    """What DNS_DETECT_MODELS_DIR looks like inside the bash that will run train_models.sh."""
+    try:
+        return subprocess.run(["bash", "-c", "echo $DNS_DETECT_MODELS_DIR"], env=env, capture_output=True,
+                              text=True, timeout=120).stdout.strip()
+    except (OSError, subprocess.SubprocessError):
+        return ""
+
+
+def same_dir(got: str, expected: str) -> bool:
+    norm = lambda s: s.replace("\\", "/").rstrip("/").lower()
+    return bool(got) and norm(got) == norm(expected)
 
 
 def needs_label_mapping(label_map: dict) -> bool:
@@ -121,7 +177,18 @@ def main():
     cmd = build_command(params, path, retrain, run, os.environ.get("DATASET_NAME", ""),
                         Path(os.environ["DATASET_PATH"]))
 
-    env = {**os.environ, "DNS_DETECT_MODELS_DIR": str(models)}
+    flavor = bash_flavor()
+    cmd = [to_shell_path(c, flavor) for c in cmd]
+    env = shell_env(models, flavor)
+    # Safety: never train unless bash sees the run's own model folder (otherwise models/ would be written)
+    got, expected = models_dir_in_shell(env), to_shell_path(models, flavor)
+    if not same_dir(got, expected):
+        print(f"[console] ERROR: the training shell ({flavor} bash) did not receive this run's model folder "
+              f"(expected {expected!r}, got {got!r}). Stopped before training so the live models/ folder "
+              "is not overwritten. Start the dashboard from Kali/Linux, or fix WSLENV.", flush=True)
+        sys.exit(3)
+    if flavor != "posix":
+        print(f"[console] Windows server, {flavor} bash: paths converted; models go to {expected}", flush=True)
     print("[console] " + " ".join(cmd), flush=True)
     rc = subprocess.run(cmd, env=env).returncode
     if rc != 0:

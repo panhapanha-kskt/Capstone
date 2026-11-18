@@ -126,7 +126,8 @@ def cancel_job(run_id: str) -> dict:
 
 def tail_log(run_id: str, lines: int = 200) -> str:
     f = _dir(run_id) / "train.log"
-    return "\n".join(f.read_text(errors="replace").splitlines()[-lines:]) if f.exists() else ""
+    # the log is UTF-8 (bash/Python output); Windows' default code page would garble it
+    return "\n".join(f.read_text(encoding="utf-8", errors="replace").splitlines()[-lines:]) if f.exists() else ""
 
 
 def get_metrics(run_id: str):

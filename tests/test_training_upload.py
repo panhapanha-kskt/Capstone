@@ -31,7 +31,10 @@ RAW = {**TOKEN, "Content-Type": "application/octet-stream"}
 
 
 def _csv(rows, every=10):
-    lines = ["a,b,label"] + [f"{i},{i * 2},{'dnstunnel' if i % every == 0 else 'safe'}" for i in range(rows)]
+    """Raw DNS query records in the shape scripts/train_models.sh accepts (label 1 = attack)."""
+    lines = ["timestamp,client_ip,domain,label"] + [
+        f"2026-11-18T10:{i // 60 % 60:02d}:{i % 60:02d},10.0.0.{i % 5},q{i}.example.com,{1 if i % every == 0 else 0}"
+        for i in range(rows)]
     return ("\n".join(lines) + "\n").encode()
 
 
@@ -59,7 +62,8 @@ def test_streamed_upload_saves_the_exact_file_and_checks_it(client):
     assert r.status_code == 200, r.text
     j = r.json()
     assert j["ok"] is True and j["name"] == "d.csv" and j["rows"] == 300 and j["sampled"] is False
-    assert j["class_counts"] == {"safe": 270, "dnstunnel": 30}
+    assert j["class_counts"] == {"0": 270, "1": 30}
+    assert j["pipeline"] == {"compatible": True, "query_column": "domain", "path_b_ready": True}
     assert (S.DATASETS / "d.csv").read_bytes() == body
     assert _files() == ["d.csv"]                                  # no leftover .part file
     assert "d.csv" in [d["name"] for d in client.get("/api/datasets", headers=TOKEN).json()]
@@ -87,7 +91,7 @@ def test_big_csv_check_reads_only_a_sample(client, monkeypatch):
     r = client.post("/api/datasets/upload", params={"name": "big.csv"}, headers=RAW, content=_csv(1000))
     j = r.json()
     assert r.status_code == 200 and j["ok"] is True
-    assert j["sampled"] is True and j["rows"] is None and j["columns"] == 3
+    assert j["sampled"] is True and j["rows"] is None and j["columns"] == 4
     assert sum(j["class_counts"].values()) == 100
     assert any("first 100 rows" in w for w in j["warnings"])
     assert (S.DATASETS / "big.csv").stat().st_size == len(_csv(1000))   # the whole file is still stored
@@ -142,5 +146,5 @@ def test_console_page_uses_the_streamed_upload_and_only_advances_when_ok():
     assert "/training/api/datasets/upload?name=" in page and "x.upload.onprogress" in page
     handler = page[page.index('$("upload").onclick'):page.index('$("upcancel").onclick')]
     ok_branch = handler[handler.index("if(r.ok)"):handler.index("}else{")]
-    assert 'goTab("train")' in ok_branch and handler.count('goTab("train")') == 1
-    assert "setUploading(true)" in handler and "if(uploading)return" in handler
+    assert 'go("#/train?dataset="' in ok_branch and handler.count('go("#/train') == 1
+    assert "setUploading(true)" in handler and "if(st.uploading)return" in handler

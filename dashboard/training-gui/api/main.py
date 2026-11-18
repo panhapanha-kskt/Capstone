@@ -50,6 +50,11 @@ class TrainRequest(BaseModel):
     new_split: bool = False
     pcap_label: Literal["", "0", "1"] = ""
     allow_heuristic_labels: bool = False
+    # Labelled CSVs: which label values mean benign / attack ("ignore" drops those rows)
+    label_map: dict[str, Literal["benign", "attack", "ignore"]] = {}
+    # Feature-table trainer only
+    eval_dataset: str = ""            # another uploaded feature table to test on (e.g. test.csv); "" = hold-out split
+    max_memory_gb: float = 0          # 0 = decide from the free memory
 
 
 class PromoteRequest(BaseModel):
@@ -142,6 +147,24 @@ def train(r: TrainRequest):
     if not check["ok"]:
         raise HTTPException(422, "; ".join(check["errors"]))
     params = r.model_dump(exclude={"dataset", "train_path"})
+    kind = check.get("kind")
+    if check.get("label_roles"):
+        # every label value seen needs a role; the admin's choice wins over the suggestion
+        roles = {v: r.label_map.get(v) or s for v, s in check["label_roles"].items()}
+        missing = [v for v, role in roles.items() if not role]
+        if missing:
+            raise HTTPException(422, "Choose benign, attack or ignore for label value(s): " + ", ".join(missing))
+        used = {role for role in roles.values() if role != "ignore"}
+        if kind == "feature_table" and used != {"benign", "attack"}:
+            raise HTTPException(422, "Training needs at least one label value marked benign and one marked attack.")
+        params["label_map"] = {**roles, **r.label_map}
+    if kind == "feature_table":
+        if r.eval_dataset:
+            ev = guarded(data.validate_csv, r.eval_dataset)
+            if not ev["ok"] or ev.get("kind") != "feature_table":
+                raise HTTPException(422, f"{r.eval_dataset} can't be used as test data: it is not a labelled feature table.")
+            params["eval_path"] = str(data.dataset_path(r.eval_dataset))
+        return guarded(jobs.start_job, r.dataset, "features", params, "feature_table")
     return guarded(jobs.start_job, r.dataset, r.train_path, params)
 
 
@@ -164,6 +187,11 @@ def cancel(run_id: str):
 @app.get("/api/models", dependencies=[Depends(admin)])
 def models():
     return registry.list_models()
+
+
+@app.get("/api/models/status", dependencies=[Depends(admin)])
+def models_status():
+    return registry.status()
 
 
 @app.get("/api/models/{version}/compare", dependencies=[Depends(admin)])

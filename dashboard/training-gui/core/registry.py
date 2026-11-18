@@ -31,6 +31,7 @@ def sync():
                 "version": f"v{len(reg['models']) + 1}", "run_id": j["run_id"],
                 "created": j["started"], "dataset": j["dataset"], "train_path": j["train_path"],
                 "params": j["params"], "metrics": jobs.get_metrics(j["run_id"]),
+                "trainer": j.get("trainer", "pipeline"),
             })
     _save(reg)
     return reg
@@ -38,7 +39,20 @@ def sync():
 
 def list_models():
     reg = sync()
-    return [{**m, "is_production": m["version"] == reg["production"]} for m in reg["models"]]
+    return [{**m, "is_production": m["version"] == reg["production"], "deployable": _deployable(m)}
+            for m in reg["models"]]
+
+
+def _deployable(m) -> bool:
+    """Only train_models.sh runs produce the Path A/B model folder the live pipeline loads."""
+    return m.get("trainer", "pipeline") == "pipeline"
+
+
+def status() -> dict:
+    """Which version is live, and which one Roll back would restore."""
+    reg = sync()
+    hist = [h["version"] for h in reg["history"]]
+    return {"production": reg["production"], "previous": hist[-2] if len(hist) >= 2 else None, "history": hist}
 
 
 def _get(reg, version):
@@ -64,7 +78,11 @@ def compare(candidate: str) -> dict:
             warnings.append(f"{LABEL[k]} is lower than the production model.")
         if d is not None and k in WORSE_IF_HIGHER and d > 0:
             warnings.append(f"{LABEL[k]} is higher than the production model.")
-    return {"candidate": candidate, "production": reg["production"], "rows": rows, "warnings": warnings}
+    if prod and cand.get("trainer", "pipeline") != prod.get("trainer", "pipeline"):
+        warnings.insert(0, "Not a like-for-like comparison: these models were trained on different kinds of data "
+                           "(feature table vs raw DNS queries) and tested on different test sets.")
+    return {"candidate": candidate, "production": reg["production"], "rows": rows, "warnings": warnings,
+            "deployable": _deployable(cand)}
 
 
 def _deploy(m):
@@ -85,6 +103,10 @@ def promote(version: str, force: bool = False) -> dict:
     m = _get(reg, version)
     if reg["production"] == version:
         raise RuntimeError(f"{version} is already in production.")
+    if not _deployable(m):
+        raise RuntimeError(f"{version} was trained by the feature-table trainer on pre-aggregated features. The live "
+                           "detection pipeline loads Path A/B models, so it can't be promoted. Its model files are in "
+                           f"the run folder runs/{m['run_id']}/model.")
     warnings = compare(version)["warnings"]
     if warnings and not force:
         raise RuntimeError("Not promoted: " + " ".join(warnings) + " Confirm to override.")

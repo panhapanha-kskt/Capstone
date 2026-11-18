@@ -40,6 +40,8 @@ DEFAULT_TRAIN_COMMAND = (
     else f'"{sys.executable}" -m core.demo_trainer'
 )
 TRAIN_COMMAND = os.getenv("TRAIN_COMMAND", DEFAULT_TRAIN_COMMAND)
+# Pre-aggregated, labelled feature tables (e.g. DNSTunnel2026) use their own trainer.
+FEATURE_TRAIN_COMMAND = os.getenv("FEATURE_TRAIN_COMMAND", f'"{sys.executable}" -m adapters.feature_table_train')
 
 for _d in (DATASETS, RUNS, PRODUCTION.parent):
     _d.mkdir(parents=True, exist_ok=True)

@@ -40,6 +40,31 @@ def read_json(p):
         return {}
 
 
+def needs_label_mapping(label_map: dict) -> bool:
+    """False when the labels already are 0 = benign, 1 = attack (nothing to rewrite)."""
+    same = {"0": "benign", "0.0": "benign", "1": "attack", "1.0": "attack"}
+    return any(same.get(str(v).strip()) != role for v, role in (label_map or {}).items())
+
+
+def map_labels(src: Path, dst: Path, label_map: dict, label_col: str = "label") -> Path:
+    """Copy a CSV with its label column rewritten to 0/1 from the admin's choices.
+    benign -> 0, attack -> 1, ignore -> row dropped; values without a choice stay unlabeled ("")."""
+    import pandas as pd
+    to01 = {"benign": "0", "attack": "1"}
+    roles = {str(k).strip(): v for k, v in label_map.items()}
+    first, kept, dropped = True, 0, 0
+    for chunk in pd.read_csv(src, chunksize=500_000, dtype=str, keep_default_na=False):
+        lab = chunk[label_col].str.strip()
+        role = lab.map(roles)
+        keep = (role != "ignore").to_numpy()
+        part = chunk[keep].copy()
+        part[label_col] = role[keep].map(to01).fillna("")
+        part.to_csv(dst, mode="w" if first else "a", header=first, index=False)
+        first, kept, dropped = False, kept + int(keep.sum()), dropped + int((~keep).sum())
+    print(f"[console] labels mapped to 0/1 in {dst.name}: {kept:,} rows kept, {dropped:,} ignored", flush=True)
+    return dst
+
+
 def main():
     run = Path(os.environ["RUN_DIR"])
     project = Path.cwd()
@@ -73,6 +98,9 @@ def main():
         cmd.append("--allow-heuristic-labels")
     if os.environ.get("DATASET_NAME") != "project-default":      # --files must stay last
         src = Path(os.environ["DATASET_PATH"])
+        label_map = params.get("label_map") or {}
+        if src.is_file() and src.suffix.lower() == ".csv" and needs_label_mapping(label_map):
+            src = map_labels(src, run / f"labels01_{src.name}", label_map)
         cmd += ["--data-dir", str(src)] if src.is_dir() else ["--files", str(src)]
 
     env = {**os.environ, "DNS_DETECT_MODELS_DIR": str(models)}

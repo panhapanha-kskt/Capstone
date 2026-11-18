@@ -371,7 +371,14 @@ def test_training_console_requests_pass_the_guard():
     assert server.check_request("POST", {**multipart, "Origin": "http://evil.test"}, "/training/api/datasets")[0] == 403
     assert server.check_request("POST", {**host, "Content-Type": "text/plain", "X-Admin-Token": "t"},
                                 "/training/api/train")[0] == 415
+    # streamed dataset upload: raw body, still needs the admin token and same-origin
+    raw = {**host, "Content-Type": "application/octet-stream", "X-Admin-Token": "t"}
+    assert server.check_request("POST", raw, "/training/api/datasets/upload") is None
+    assert server.check_request("POST", {**host, "Content-Type": "application/octet-stream"},
+                                "/training/api/datasets/upload")[0] == 403
+    assert server.check_request("POST", {**raw, "Sec-Fetch-Site": "cross-site"}, "/training/api/datasets/upload")[0] == 403
     # the exemption is only for the training proxy
     assert server.check_request("POST", multipart, "/api/run")[0] == 415
+    assert server.check_request("POST", raw, "/api/run")[0] == 415
     assert server.check_request("POST", {**host, "Content-Type": "application/json", "X-Admin-Token": "t"},
                                 "/api/run")[0] == 403

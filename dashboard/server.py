@@ -1492,7 +1492,9 @@ def check_request(method, headers, path=""):
     training = is_training_api(path)
     ctype = (headers.get("Content-Type") or "").split(";")[0].strip().lower()
     # the training console uploads datasets (multipart) and sends body-less POSTs (cancel, rollback)
-    allowed = ("application/json", "multipart/form-data", "") if training else ("application/json",)
+    # (/training/api/datasets/upload streams the raw file as application/octet-stream)
+    allowed = (("application/json", "multipart/form-data", "application/octet-stream", "")
+               if training else ("application/json",))
     if ctype not in allowed:
         return 415, "Content-Type must be application/json"
     origin = headers.get("Origin")

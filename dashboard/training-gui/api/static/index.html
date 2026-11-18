@@ -43,6 +43,8 @@ pre{background:#101a2e;color:#d6e2f5;padding:12px;border-radius:var(--r);max-hei
 body[data-mode=capstone] .demo,body[data-mode=demo] .cap{display:none}
 .chk{display:flex;gap:8px;align-items:center;color:var(--ink);margin-top:10px}.chk input{width:auto}
 .hint{color:var(--mute);font-size:13px;margin:2px 0 0 26px}
+button:disabled,input:disabled{opacity:.55;cursor:not-allowed}
+#upstate{margin-top:14px}#upstate p{margin:6px 0 0}progress{width:100%;height:14px;accent-color:var(--accent)}
 @media(max-width:700px){body{flex-direction:column}nav{width:100%;display:flex;gap:6px;flex-wrap:wrap;padding:12px}nav p{display:none}nav h1{width:100%;margin:0}nav button{width:auto}main{padding:16px}}
 </style>
 </head>
@@ -64,8 +66,9 @@ body[data-mode=capstone] .demo,body[data-mode=demo] .cap{display:none}
 <main>
 <section id="data">
   <h2>Data</h2><p class="lead">Upload a labelled CSV and check it before training.</p>
-  <div class="panel"><label for="file">Upload CSV</label><input id="file" type="file" accept=".csv">
-    <button class="act" id="upload">Upload and check</button></div>
+  <div class="panel"><label for="file">Upload a dataset file</label><input id="file" type="file" accept=".csv">
+    <button class="act" id="upload">Upload and check</button><button class="act quiet" id="upcancel" hidden>Cancel upload</button>
+    <div id="upstate" role="status" aria-live="polite" hidden><progress id="upbar" max="100" value="0"></progress><p id="uptext"></p></div></div>
   <div class="panel"><table id="dstab"></table><div id="dsreport"></div></div>
 </section>
 
@@ -119,6 +122,7 @@ body[data-mode=capstone] .demo,body[data-mode=demo] .cap{display:none}
 <script>
 const $=id=>document.getElementById(id);
 let token=sessionStorage.getItem("tok")||"", current=null, timer=null;
+let uploading=null, wantDs=null;   // the upload in progress (an XMLHttpRequest), and the dataset to keep selected in step 2
 const esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 async function api(path,opt={}){
   opt.headers={...(opt.headers||{}),"X-Admin-Token":token};
@@ -132,10 +136,11 @@ async function api(path,opt={}){
 $("signin").onclick=async()=>{token=$("tok").value;try{await api("/datasets");sessionStorage.setItem("tok",token);$("gate").hidden=true;init()}catch(e){$("gerr").textContent="That token was not accepted."}};
 async function init(){const c=await api("/config");document.body.dataset.mode=c.mode;$("file").accept=c.upload_exts.join(",");loadAll()}
 if(token)api("/datasets").then(()=>{$("gate").hidden=true;init()}).catch(()=>{});
-document.querySelectorAll("nav button").forEach(b=>b.onclick=()=>{
-  document.querySelectorAll("nav button").forEach(x=>x.removeAttribute("aria-current"));b.setAttribute("aria-current","true");
-  document.querySelectorAll("main section").forEach(s=>s.hidden=s.id!==b.dataset.tab);
-  loadAll();});
+function goTab(tab){
+  document.querySelectorAll("nav button").forEach(x=>x.dataset.tab===tab?x.setAttribute("aria-current","true"):x.removeAttribute("aria-current"));
+  document.querySelectorAll("main section").forEach(s=>s.hidden=s.id!==tab);
+  loadAll();}
+document.querySelectorAll("nav button").forEach(b=>b.onclick=()=>goTab(b.dataset.tab));
 const pct=v=>v==null?"-":(v*100).toFixed(2)+"%";
 const LBL={f1:"F1",precision:"Precision",recall:"Recall",pr_auc:"PR-AUC",accuracy:"Accuracy",fpr:"False positive rate",false_alarms:"False alarms"};
 const fmt=(k,v)=>v==null?"-":k==="false_alarms"?String(v):pct(v);
@@ -145,21 +150,85 @@ async function loadDatasets(){
   const ds=await api("/datasets");
   $("dstab").innerHTML="<tr><th>File</th><th>Size</th><th></th></tr>"+(ds.length?ds.map(d=>`<tr><td>${esc(d.label||d.name)}</td><td>${d.size_mb==null?"-":d.size_mb+" MB"}</td><td><button class="act quiet" data-v="${esc(d.name)}">Check</button></td></tr>`).join(""):"<tr><td colspan=3>No datasets yet. Upload a CSV above.</td></tr>");
   $("dstab").querySelectorAll("button").forEach(b=>b.onclick=()=>check(b.dataset.v));
+  const keep=wantDs||$("ds").value;   // rebuilding the list must not lose the chosen dataset
   $("ds").innerHTML=ds.map(d=>`<option value="${esc(d.name)}">${esc(d.label||d.name)}</option>`).join("");
+  if(keep&&ds.some(d=>d.name===keep))$("ds").value=keep;
 }
+$("ds").onchange=()=>{wantDs=$("ds").value};
 async function check(name){
+  $("dsreport").innerHTML=`<p>Checking ${esc(name)}...</p>`;
   try{const r=await api("/datasets/"+encodeURIComponent(name)+"/validate");showReport(r)}catch(e){$("dsreport").innerHTML=`<p class=err>${esc(e.message)}</p>`}
 }
 function showReport(r){
-  $("dsreport").innerHTML=`<h3>${esc(r.name)}</h3>${r.rows==null?"":`<p>${r.rows} rows, ${r.columns} columns, ${r.numeric_features.length} numeric features, ${r.missing_pct}% empty cells.</p>`}
+  const stats=`${r.columns} columns, ${r.numeric_features.length} numeric features, ${r.missing_pct}% empty cells`;
+  $("dsreport").innerHTML=`<h3>${esc(r.name)}</h3>${r.columns==null?"":r.rows==null?`<p>${stats} (in the rows checked).</p>`:`<p>${r.rows} rows, ${stats}.</p>`}
   <p>Labels: ${Object.entries(r.class_counts).map(([k,v])=>esc(k)+" "+v).join(", ")||"none found"}</p>
   ${r.errors.map(e=>`<p class=err>Fix this: ${esc(e)}</p>`).join("")}${r.warnings.map(e=>`<p class=warn>${esc(e)}</p>`).join("")}
   ${r.ok?"<p class=up>Ready to train.</p>":""}`;
 }
+// ── Upload: raw file body via XMLHttpRequest (fetch cannot report upload progress) ──
+const fmtBytes=b=>b>=1e9?(b/1e9).toFixed(2)+" GB":b>=1e6?(b/1e6).toFixed(1)+" MB":Math.max(1,Math.round(b/1e3))+" kB";
+const fmtDur=s=>!isFinite(s)?"":s<60?Math.max(1,Math.ceil(s))+" s":Math.ceil(s/60)+" min";
+function upState(text,cls,pct){
+  $("upstate").hidden=false;$("uptext").className=cls||"";$("uptext").textContent=text;
+  if(pct==null)$("upbar").removeAttribute("value");else $("upbar").value=pct;   // no value = busy animation
+}
+function setUploading(on){$("upload").disabled=on;$("file").disabled=on;$("upcancel").hidden=!on}
+function errText(j,x){
+  if(typeof j.detail==="string")return j.detail;
+  if(typeof j.error==="string")return j.error;          // errors from the dashboard proxy itself
+  if(Array.isArray(j.detail))return j.detail.map(d=>d.msg||JSON.stringify(d)).join("; ");
+  return `Server answered ${x.status} ${x.statusText||""}`.trim();
+}
+function sendFile(f){
+  return new Promise((resolve,reject)=>{
+    const x=new XMLHttpRequest();uploading=x;
+    x.open("POST","/training/api/datasets/upload?name="+encodeURIComponent(f.name));
+    x.setRequestHeader("X-Admin-Token",token);x.setRequestHeader("Content-Type","application/octet-stream");
+    const t0=performance.now();
+    x.upload.onprogress=e=>{
+      if(!e.lengthComputable)return;
+      const rate=e.loaded/Math.max((performance.now()-t0)/1000,0.001),left=(e.total-e.loaded)/Math.max(rate,1);
+      upState(`Uploading ${f.name}: ${fmtBytes(e.loaded)} of ${fmtBytes(e.total)} (${Math.floor(e.loaded/e.total*100)}%), ${fmtBytes(rate)}/s, about ${fmtDur(left)} left`,"",e.loaded/e.total*100);
+    };
+    x.upload.onload=()=>upState(`Uploaded ${fmtBytes(f.size)}. Saving and checking the file...`,"",null);
+    x.onload=()=>{
+      let j={};try{j=JSON.parse(x.responseText)}catch(_){}
+      if(x.status===401){sessionStorage.removeItem("tok");$("gate").hidden=false;reject(new Error("Your sign-in expired. Sign in again, then retry the upload."));return}
+      if(x.status<200||x.status>=300){reject(new Error(errText(j,x)));return}
+      resolve(j);
+    };
+    x.onerror=()=>reject(Object.assign(new Error("The connection to the server was lost during the upload. Check the server is still running, then try again."),{lost:true}));
+    x.onabort=()=>reject(Object.assign(new Error("Upload cancelled."),{cancelled:true}));
+    x.send(f);
+  });
+}
 $("upload").onclick=async()=>{
-  const f=$("file").files[0];if(!f)return;const fd=new FormData();fd.append("file",f);
-  try{const r=await api("/datasets",{method:"POST",body:fd});showReport(r);loadDatasets()}catch(e){$("dsreport").innerHTML=`<p class=err>${esc(e.message)}</p>`}
+  if(uploading)return;                                   // one upload at a time
+  const f=$("file").files[0];
+  if(!f){upState("Choose a file first.","err",0);return}
+  setUploading(true);$("dsreport").innerHTML="";
+  upState(`Starting upload of ${f.name} (${fmtBytes(f.size)})...`,"",0);
+  try{
+    const r=await sendFile(f);
+    showReport(r);
+    if(r.ok){                                            // only a file that passed the check moves on to step 2
+      wantDs=r.name;
+      await loadDatasets().catch(()=>{});
+      upState(`${r.name} uploaded and checked. It is selected in step 2.`,"up",100);
+      goTab("train");
+      $("tmsg").innerHTML=`<span class=up>Dataset selected: ${esc(r.name)}</span>`;
+    }else{
+      upState(`${r.name} was uploaded, but the check found problems (listed below). Fix the file and upload it again.`,"err",100);
+      loadDatasets().catch(()=>{});
+    }
+  }catch(e){
+    upState(e.cancelled?"Upload cancelled. Nothing was saved. Choose Upload and check to try again."
+           :e.lost?e.message+" Nothing was saved.":"Upload failed: "+e.message,"err",0);
+  }finally{uploading=null;setUploading(false)}
 };
+$("upcancel").onclick=()=>{if(uploading)uploading.abort()};
+window.addEventListener("beforeunload",e=>{if(uploading){e.preventDefault();e.returnValue=""}});
 $("start").onclick=async()=>{
   try{const j=await api("/train",{method:"POST",body:{dataset:$("ds").value,train_path:$("tp").value,
     n_estimators:+$("ne").value,epochs:+$("ep").value,test_size:+$("ts").value,seed:+$("sd").value,

@@ -37,7 +37,12 @@ def validate_csv(name: str) -> dict:
         out["warnings"].append(f"{n} file(s). The training script checks and labels this data itself; see the run log.")
     else:
         n_max = S.VALIDATE_SAMPLE_ROWS
-        df = pd.read_csv(p, nrows=n_max + 1, low_memory=False)
+        try:
+            df = pd.read_csv(p, nrows=n_max + 1, low_memory=False)
+        except (pd.errors.EmptyDataError, pd.errors.ParserError, UnicodeDecodeError, ValueError) as e:
+            out["errors"].append(f"Could not read this file as CSV: {str(e).splitlines()[0][:200]}")
+            out["ok"] = False
+            return out
         sampled = len(df) > n_max
         if sampled:
             df = df.iloc[:n_max]

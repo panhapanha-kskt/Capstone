@@ -2,7 +2,7 @@
 
 **DNS Traffic Anomaly Detection · ML / model work for Week 7 · written 2026-11-19**
 
-This file lists the eight ML tasks for Week 7, in order. For each task it gives:
+This file lists the Week 7 tasks, in order: nine ML tasks (1–9) and five dashboard, verdict and documentation tasks (10–14) carried over from the Week 6 audits. For each task it gives:
 - why it matters, with sources;
 - what already exists in the code;
 - the steps and commands;
@@ -17,7 +17,7 @@ All time estimates are guesses, not measurements.
 
 ---
 
-## Progress (updated 2026-11-19 23:35)
+## Progress (updated 2026-11-20 00:45)
 
 | Task | Status | Evidence |
 |---|---|---|
@@ -29,6 +29,12 @@ All time estimates are guesses, not measurements.
 | 6 · Drift warning | ❌ not started | feature PSI already exists in `monitor.py`; score PSI and saved bins to add |
 | 7 · Review band | ❌ not started | tiers already exist in the bridge; budget-based band and `/triage` routing to add |
 | 8 · Schema check at start-up | ✅ **done** | `src/dns_detect/models/schema.py`; used by the bridge, `run_pipeline.sh` and `promote_model.sh`; 12 tests |
+| 9 · Automate Part B (seeds → gate → promote) | ❌ not started | added 2026-11-20; `run_candidate_seeds.sh` already trains the seeds and calls the gate, but throws away the gate result (`\|\| true`) and never promotes |
+| 10 · Verdict fixes F1–F5 + F8 | ❌ not started | checked 2026-11-20: test record `deadbeefdeadbeef00` still in `dashboard/data/alert_management.json`; verdicts on unknown alerts accepted; no "clear verdict"; `--demo` does not set the training API to demo mode |
+| 11 · Dashboard real-mode testing | ❌ not started | only demo mode tested; no browser click-through (Chrome on Windows could not reach the WSL server); no Elasticsearch/Kibana export test |
+| 12 · Verdicts → training (plumbing only) | ❌ not started | `export_feedback_labels.py` exports verdicts; training never reads them (flow map gap 23). Needs Task 10 first |
+| 13 · SOC roadmap P0 | ❌ not started | missing: role landing pages, "Assigned to me" / "Unassigned" filters, playbook button, attachments, MITRE tactic × technique page |
+| 14 · Out-of-date docs | ❌ not started | `WEEK6_COMPLETE_REPORT.md` §12 and missing 11-18/19 work; `PATH_B_ISOLATION_FOREST.md` §8 "not yet measured" |
 
 ### Done this week (all pushed to `pathb-production`)
 
@@ -51,6 +57,10 @@ All time estimates are guesses, not measurements.
 1. **You:** Task 2 captures. Ask for the step-by-step capture guide.
 2. **Me (no new data needed):** Task 6 (drift warning) and Task 7 (review band); optionally the 1,000-tree Path A test (needs one 3-seed run, about 15 min).
 3. **After Task 2:** Tasks 3 → 4 → 5 on the new data.
+4. **Quick wins first (no training):** Task 14 (docs, ~30 min) and Task 10 (verdict fixes) — Task 10 must come before any verdict is trusted as a label.
+5. **Me (no new data needed):** Task 9, automate Part B (seeds → gate → promote) so `run_all.sh --retrain` never writes to `models/` without passing the gate.
+6. **You + me:** Task 11 (real-mode dashboard and Kibana tests) needs your Technitium logs and the docker stack running.
+7. **Then:** Task 12 (verdict plumbing), Task 13 (SOC P0 pages).
 
 ---
 
@@ -67,9 +77,15 @@ All time estimates are guesses, not measurements.
 9. [Task 6: drift warning](#9-task-6-drift-warning)
 10. [Task 7: review band](#10-task-7-review-band)
 11. [Task 8: feature-schema check at start-up](#11-task-8-feature-schema-check-at-start-up)
-12. [Not in Week 7](#12-not-in-week-7)
-13. [Checklist](#13-checklist)
-14. [References](#14-references)
+12. [Task 9: automate Part B: seeds, gate and promote](#12-task-9-automate-part-b-seeds-gate-and-promote)
+13. [Task 10: verdict fixes F1–F5 and F8](#13-task-10-verdict-fixes-f1f5-and-f8)
+14. [Task 11: dashboard testing in real mode](#14-task-11-dashboard-testing-in-real-mode)
+15. [Task 12: verdicts into training (plumbing only)](#15-task-12-verdicts-into-training-plumbing-only)
+16. [Task 13: SOC roadmap P0](#16-task-13-soc-roadmap-p0)
+17. [Task 14: out-of-date docs](#17-task-14-out-of-date-docs)
+18. [Not in Week 7](#18-not-in-week-7)
+19. [Checklist](#19-checklist)
+20. [References](#20-references)
 
 ---
 
@@ -129,6 +145,12 @@ Task 8 (schema check) ──► Task 6 (drift) ──► Task 7 (review band)
 | 6 | Drift warning | Task 8 | 2–3 h | none |
 | 7 | Review band | Task 6 | 2 h | none |
 | 8 | Schema check | none | 1 h | none |
+| 9 | Automate Part B | Task 8 (done) | 2–3 h | one 3-seed run to test it, about 15 min |
+| 10 | Verdict fixes F1–F5, F8 | none | 2–3 h | none |
+| 11 | Dashboard real-mode tests | Technitium logs, docker stack | 2–4 h | minutes |
+| 12 | Verdicts → training plumbing | Task 10 | 2 h | none (no retrain until ≥ 50 verdicts) |
+| 13 | SOC P0 pages | Task 10 for the verdict parts | 1–2 days | none |
+| 14 | Out-of-date docs | none | 30–60 min | none |
 
 ---
 
@@ -391,7 +413,183 @@ Use `scripts/capture_dns.sh` (full packets, hourly files) on the resolver or cli
 
 ---
 
-## 12. Not in Week 7
+## 12. Task 9: automate Part B: seeds, gate and promote
+
+**Goal:** after training, the seed runs, the gate and the promote run as one command. A model reaches `models/` **only** if it passes the gate, and a failed smoke test rolls it back.
+
+### 12.1 Why
+
+- Google's MLOps guide describes three levels: level 0 is a manual process; level 1 automates the training pipeline (continuous training) and the delivery of the validated model; level 2 also automates the pipeline's own CI/CD [24]. Today this project is between level 0 and level 1: training (Part A) and detection (Part C) are one command each, but Part B is three commands typed by hand.
+- The same guide says an automated pipeline must include **model validation** before deployment: the new model has to beat the current one on the agreed metrics [24]. Our gate (`compare_models.py` + `config/success_criteria.yaml`) is that check.
+- The ML Test Score asks that a model is checked before it serves, and that a bad model can be rolled back quickly [16]. `promote_model.sh` already archives the old models; a smoke test and an automatic rollback finish the job.
+- Rules of ML: keep the pipeline simple and monitored, and watch for silent failures [21]. Today the gate's result is silently ignored (`|| true`), which is a silent failure.
+- Security detectors are high-stakes (Axelsson's base-rate problem [13]; Arp et al. on pitfalls [22]): a bad model floods the SOC or misses tunnels. So promote is automatic **only behind the gate and only when asked** (`--auto-promote`), and by default the run stops at "ready to promote". This also keeps the project rule *"promote only if I say so"*: the flag is saying so in advance.
+
+### 12.2 What exists
+
+| Piece | State |
+|---|---|
+| Train 3+ seeds into `runs/<name>_s<seed>` | ✅ `scripts/run_candidate_seeds.sh` |
+| Gate over the seeds (vs live model and rule baseline) | ✅ `scripts/compare_models.py`, exit 0 = PASS, 1 = FAIL; already called by `run_candidate_seeds.sh` |
+| Schema check, archive, copy, hash, `PROMOTED.json` | ✅ `scripts/promote_model.sh` |
+| Smoke test | ✅ `scripts/smoke_models.py` (manual) |
+| Gate result used | ❌ thrown away: `compare_models.py ... \|\| true` |
+| Promote after PASS | ❌ never called |
+| Rollback if the smoke test fails | ❌ manual |
+| `run_all.sh --retrain` / `--auto-retrain` | ⚠️ train **straight into `models/`**, bypassing seeds and gate |
+
+### 12.3 Steps
+
+1. **Use the gate result** in `run_candidate_seeds.sh`: replace `|| true` with an `if`, set `GATE=pass|fail`, print it, and write it into `runs/<name>_gate.json` (already written by `--out`).
+2. **Promote on PASS, only when asked.** With `AUTO_PROMOTE=1` (or `--auto-promote`): pick the seed to promote, run `promote_model.sh runs/<name>_s<seed> before_<name>`, then `smoke_models.py`.
+   - Which seed: the one whose fusion false alarms are closest to the seed median (more typical than seed 42 by luck). Record the choice and the reason in `PROMOTED.json`.
+   - Without the flag: print `ready: bash scripts/promote_model.sh runs/<name>_s<seed>` and stop.
+   - On FAIL: print the failed criteria, keep `models/` unchanged, exit non-zero.
+3. **Rollback:** add `scripts/rollback_model.sh` (restore the newest `models/archive/<label>_<ts>/`). Call it automatically if the smoke test fails after an auto-promote.
+4. **Rewire `run_all.sh`:** `--retrain` and `--auto-retrain` call `run_candidate_seeds.sh` (runs/ → gate) instead of `train_models.sh` into `models/`. Pass `--auto-promote` through. Then re-run detection only if a model was actually promoted.
+5. **Lock:** a lock file (`runs/.promote.lock`) so two runs can't promote at the same time; refuse to promote while `run_pipeline.sh` is running.
+6. **Log:** one line per decision in `runs/promotion_log.jsonl` (time, run, gate result, criteria values, promoted yes/no, git commit).
+7. **Tests** (`tests/test_part_b_automation.py`, with stub run folders, no real training):
+   - FAIL gate → `models/` untouched, exit 1;
+   - PASS gate without the flag → `models/` untouched, "ready" printed;
+   - PASS gate with the flag → promoted, `PROMOTED.json` names the run and seed;
+   - smoke failure → rolled back to the archived models;
+   - `run_all.sh --retrain` never writes to `models/` directly.
+8. Update the flow map: steps 13–15 become **Auto** (15 behind the gate); gaps 21–22 closed.
+
+**Commands after this task:**
+
+```bash
+bash scripts/run_all.sh --retrain                  # seeds → gate → stop ("ready to promote" or FAIL)
+bash scripts/run_all.sh --retrain --auto-promote   # seeds → gate → PASS? promote → smoke → (rollback if needed)
+```
+
+**Expected today:** the gate FAILS (the rule baseline has 0 false alarms on the current test set), so nothing is promoted. That is the correct, safe result; auto-promote becomes useful after Task 2's harder data.
+
+**Done when:** one command runs seeds → gate → (promote); a FAIL never touches `models/`; a smoke failure rolls back; `--retrain` no longer writes to `models/` directly; the tests pass; the flow map shows Part B as automatic.
+
+---
+
+## 13. Task 10: verdict fixes F1–F5 and F8
+
+**Goal:** an analyst verdict is only ever stored for a real alert, can be cleared, and is never saved twice or by a rejected request. Verdicts become training labels later (Task 12), so they must be clean first.
+
+**Source:** `docs/Week6/AUDIT_training_label_unlabel_2026-11-18.md` §6 (fixes with exact line numbers and test plans).
+
+### 13.1 Why
+
+- A label that can be written for an alert that never existed, or written twice, is **label noise**; Arp et al. list label inaccuracy as a top pitfall of ML in security [22].
+- Each saved verdict is a training example later. Google's Rules of ML warn that feedback loops and silent data errors are the hardest bugs to find [21].
+- An action that is repeated (double-click, retry) must not change the result twice: the meaning of an *idempotent* request in HTTP [26].
+
+### 13.2 What exists (checked 2026-11-20)
+
+| Fix | What it does | State |
+|---|---|---|
+| F1 (High) | reject verdicts/actions on unknown alerts (404) | ❌ `server.py` `verdict` branch accepts any fingerprint; test record `deadbeefdeadbeef00` still in `dashboard/data/alert_management.json` |
+| F2 (Medium) | "clear verdict" (unlabel) action, audited | ❌ no such action (`VALID_BULK_ACTIONS` has no clear) |
+| F3 (Low/Med) | in-flight guard on Save verdict / action buttons | ❌ |
+| F4 (Low) | same-value re-verdict is a no-op (no new audit entry) | ❌ |
+| F5 (Low) | no management record created for a rejected request | ❌ |
+| F6 | training console: one job at a time, locked writes | ✅ partly: second job → 409 |
+| F7 | show training-console errors | ⚠️ check |
+| F8 (Med) | `--demo` puts the training API in demo mode | ❌ `server.py` sets `STATE.mode = "demo"` but nothing sets the training API's mode, so a demo run could write to `<repo>/models` |
+
+### 13.3 Steps
+
+1. Order from the audit: **F1 → F5 → F2 → F3/F4 → F8 → F7**.
+2. F1: add `alert_known(fp)` (live feed **or** existing record); 404 in `_alert_action`, per-item 404 in `_alerts_bulk`.
+3. Remove the test record `deadbeefdeadbeef00` (back up `alert_management.json` first; log it in the audit log as a cleanup, not a silent edit).
+4. F5: validate before creating a record. F2: `clear_verdict` action (Tier rules as for setting one; audit `VERDICT_CLEARED`; button in `/alerts` and `/triage`). F3: disable the button while the request is in flight. F4: same verdict + same reason → 200, no audit entry.
+5. F8: in the `--demo` branch, set the training API to demo mode **before** it is imported; show the mode in the training UI.
+6. Tests in `tests/test_dashboard_soc.py` / `test_dashboard_triage.py`: unknown fp → 404 and no record; clear works and is audited; double submit → one audit entry; `--demo` → training config `mode: demo` and `<repo>/models` mtime unchanged.
+
+**Done when:** all six fixes are in, the test record is gone, the new tests and the existing 43 dashboard tests pass.
+
+---
+
+## 14. Task 11: dashboard testing in real mode
+
+**Goal:** prove the dashboard works on real alerts from the live models, in a real browser, and exports to Elasticsearch/Kibana.
+
+**Source:** `WEEK6_COMPLETE_REPORT.md` §11 and §14.
+
+### 14.1 Why
+
+- So far only demo mode (fake alerts) and unit tests were run. The ML Test Score asks for an end-to-end test of the whole pipeline with real inputs before production [16].
+- The live models changed on 2026-11-19 (v3_iforest promoted), so real mode now also tests the new Path B end to end.
+
+### 14.2 Steps
+
+1. **Browser click-through** (fixes "Chrome on Windows could not reach the WSL server"): either run `python dashboard/server.py` on Windows, or start it in WSL with `--host 0.0.0.0` and a non-default `ADMIN_TOKEN`, then open `http://<wsl-ip>:<port>` (`wsl hostname -I`). Walk `/triage`, `/alerts`, `/soc`, `/health`: load, filter, open an alert, assign, add a note, set and clear a verdict (after Task 10). Record a checklist with PASS/FAIL and screenshots.
+2. **Real mode on live Technitium logs:** `bash scripts/run_all.sh --skip-train` (uses `models/` = v3_iforest), then start the dashboard **without** `--demo`, watching the pipeline output. Check: alerts appear, `/health` shows model version `v3_iforest`, monitoring and drift fields filled.
+3. **Elasticsearch/Kibana:** `docker compose up` the ELK stack; run the exporter (see `SOC_ML_INTEGRATION.md` §3); check the index exists, document count = alert count, and one Kibana view shows them. Use the Elasticsearch bulk API's per-item errors to confirm nothing was rejected [27].
+4. Write results in `docs/Week7/DASHBOARD_REAL_MODE_TEST.md`; anonymise client IPs and internal domains before committing (project rule).
+
+**Done when:** the four pages pass in a browser, a real-mode run shows v3_iforest alerts, and the Kibana index matches the alert count. Items 10–13 of the Week 6 open list are then closed.
+
+---
+
+## 15. Task 12: verdicts into training (plumbing only)
+
+**Goal:** close flow-map gap 23: analyst verdicts can flow into step 8 (Label), but **no model is trained on them until there are enough**.
+
+### 15.1 Why
+
+- Analyst feedback is the cheapest source of hard, real labels (benign look-alikes the model flags). Transcend and its follow-up show that detectors decay without fresh labels [19][20].
+- But with 2 verdicts (one a test record), training on them would be noise; §18 keeps "retraining on feedback" out of Week 7 until about 50+.
+- Leakage risk: a verdict on a test-set alert must never enter training, or the test score is inflated [11].
+
+### 15.2 Steps
+
+1. Needs Task 10 (clean verdicts).
+2. `export_feedback_labels.py` → `data/feedback/verdict_labels.json` (TP → attack, FP → benign; skip "unsure"; keep alert fingerprint and time).
+3. `train_models.sh --feedback FILE`: step 8 adds these rows with `label_source = "analyst"`; **drop** any row whose time falls in the frozen test window, and print how many were dropped.
+4. Minimum count: refuse `--feedback` below `feedback.min_verdicts` (config, default 50) with a clear message.
+5. Record in the run record: number of verdict rows used, dropped, and the export file's sha256.
+6. Tests: test-window rows dropped; below minimum → refused; labels mapped correctly.
+
+**Done when:** the plumbing and tests exist and the flow map shows gap 23 as "connected, waiting for ≥ 50 verdicts".
+
+---
+
+## 16. Task 13: SOC roadmap P0
+
+**Goal:** the P0 items from `WEEK6_AUDIT_AND_FORTINET_ROADMAP.md` §3.1 that are still missing.
+
+### 16.1 What is missing (checked 2026-11-20)
+
+| # (roadmap) | Item | State |
+|---|---|---|
+| 1 | Role-based landing pages (Tier 1 → `/alerts` mine/unassigned, Tier 2, IR → `/incidents`, Manager → `/soc`) | ❌ |
+| 2 | "Assigned to me" / "Unassigned" quick filters on `/alerts` | ❌ |
+| 3 | "Run playbook" button on an alert (maps to a bulk recipe) | ❌ |
+| 4 | Evidence attachments per alert/incident (16 MB, path-safe) | ❌ |
+| 5 | MITRE tactic × technique matrix page (`/mitre.html`), click → filter `/alerts` | ❌ only a heatmap and per-alert tactic/technique lists exist [28] |
+
+### 16.2 Order
+
+The roadmap's own sequencing: **1, 2, 5** first (analyst value, no new integrations), then **3 + 4 together** (both need `dashboard/data/` to hold files). Each item: tests in the dashboard suites, and a line in the Week 7 report.
+
+**Done when:** the five items work in the browser test of Task 11 and their tests pass.
+
+---
+
+## 17. Task 14: out-of-date docs
+
+**Goal:** the Week 6 documents say what is true now.
+
+| Doc | Wrong now | Fix |
+|---|---|---|
+| `docs/Week6/WEEK6_COMPLETE_REPORT.md` §12 | says "Dashboard (not yet committed)" | it is committed; give the commit |
+| `docs/Week6/WEEK6_COMPLETE_REPORT.md` | no mention of the 2026-11-18/19 work | add a short section: training console, ML improvement research, items 1–5, 3-seed results, v3_iforest promotion, T9 error ranges; link the reports |
+| `docs/Week6/PATH_B_ISOLATION_FOREST.md` §8 | "Not yet measured: … the multi-seed spread" | measured: 3-seed fusion 8.2 ± 0.84 false alarms; 20-seed results in PATH_B_REPORT §5 |
+
+**Done when:** each line is fixed with a date and a link to the evidence.
+
+---
+
+## 18. Not in Week 7
 
 | Item | Why not now |
 |---|---|
@@ -400,10 +598,12 @@ Use `scripts/capture_dns.sh` (full packets, hourly files) on the resolver or cli
 | Evasion test (tools tuned to hide) | do it after Task 2, when there's more than one attack domain to compare |
 | Deep models for Path B | the autoencoder failed (recall 0.0) and is too slow on this machine; the Isolation Forest stays |
 | Large hyperparameter or seed sweeps | the test set is too small; it would tune to noise |
+| SOC roadmap P1 (saved views, watchlists, notifications, report builder, incident timeline, per-IP baselines, integrations page) | Week 8, after the P0 pages (roadmap §3.2) |
+| SOC roadmap P2 (login and roles, SQLite instead of JSON files, dashboard builder, scheduled reports) | platform work; login + roles are needed before any non-localhost use (roadmap §3.3) |
 
 ---
 
-## 13. Checklist
+## 19. Checklist
 
 **Task 1: T4 light**
 - [x] 20 seeds trained and scored (`runs/t4_before_20seeds.*`)
@@ -438,11 +638,36 @@ Use `scripts/capture_dns.sh` (full packets, hourly files) on the resolver or cli
 **Task 8: schema check**
 - [x] `check_model_schema` used by the bridge, `run_pipeline.sh` and `promote_model.sh`; tests (2026-11-19: `src/dns_detect/models/schema.py`, `tests/test_model_schema.py`, 12 tests)
 
+**Task 9: automate Part B**
+- [ ] Gate result used (no `|| true`); PASS/FAIL printed and logged
+- [ ] `--auto-promote`: promote on PASS, smoke test, automatic rollback
+- [ ] `run_all.sh --retrain` / `--auto-retrain` go through `runs/` and the gate, never straight to `models/`
+- [ ] Lock file, `promotion_log.jsonl`, tests; flow map updated
+
+**Task 10: verdict fixes**
+- [ ] F1 unknown alerts → 404; test record `deadbeefdeadbeef00` removed (backed up, audited)
+- [ ] F5, F2 (clear verdict), F3, F4, F8; tests pass with the 43 existing dashboard tests
+
+**Task 11: real-mode testing**
+- [ ] Browser click-through of `/triage`, `/alerts`, `/soc`, `/health`
+- [ ] Real-mode run on live Technitium logs with v3_iforest
+- [ ] Elasticsearch/Kibana export checked against the docker stack; report written (anonymised)
+
+**Task 12: verdicts → training**
+- [ ] `--feedback` in step 8, test-window rows dropped, minimum 50, run record; tests
+
+**Task 13: SOC P0**
+- [ ] Role landing pages; Assigned/Unassigned filters; MITRE matrix page
+- [ ] Playbook button; evidence attachments
+
+**Task 14: docs**
+- [ ] WEEK6_COMPLETE_REPORT §12 and the 11-18/19 work; PATH_B_ISOLATION_FOREST §8
+
 **Each task:** commit on a branch, gate over ≥ 3 seeds where it changes a model, PATH_B_REPORT updated, this checklist ticked.
 
 ---
 
-## 14. References
+## 20. References
 
 All primary sources: papers, standards, official documentation and the tools' own repositories.
 
@@ -469,3 +694,8 @@ All primary sources: papers, standards, official documentation and the tools' ow
 21. M. Zinkevich. *Rules of Machine Learning: Best Practices for ML Engineering.* Google. https://developers.google.com/machine-learning/guides/rules-of-ml
 22. D. Arp et al. *Dos and Don'ts of Machine Learning in Computer Security.* USENIX Security 2022. https://www.usenix.org/conference/usenixsecurity22/presentation/arp
 23. C. J. Clopper, E. S. Pearson. *The use of confidence or fiducial limits illustrated in the case of the binomial.* Biometrika 26(4), 404–413, 1934 (the exact interval used for every FPR and recall range).
+24. Google Cloud. *MLOps: Continuous delivery and automation pipelines in machine learning* (levels 0–2; continuous training; model validation before deployment). Last reviewed 2024-08-28. https://cloud.google.com/architecture/mlops-continuous-delivery-and-automation-pipelines-in-machine-learning
+25. D. Sculley et al. *Hidden Technical Debt in Machine Learning Systems.* NeurIPS 2015. https://papers.nips.cc/paper/5656-hidden-technical-debt-in-machine-learning-systems
+26. R. Fielding, M. Nottingham, J. Reschke (eds.). *HTTP Semantics.* RFC 9110, IETF, 2022, §9.2.2 Idempotent Methods. https://rfc-editor.org/rfc/rfc9110#section-9.2.2
+27. Elastic. *Bulk API* (per-item results and errors). https://www.elastic.co/guide/en/elasticsearch/reference/current/docs-bulk.html
+28. MITRE. *ATT&CK Enterprise Matrix* (tactics × techniques). https://attack.mitre.org/matrices/enterprise/

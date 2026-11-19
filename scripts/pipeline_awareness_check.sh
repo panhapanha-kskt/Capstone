@@ -107,7 +107,7 @@ if warnings:
     print(f"\n{WARN}  ⚠  DATA DRIFT DETECTED — live traffic differs from training data:{NC}")
     for feat, ref_m, live_m, z in warnings:
         print(f"{WARN}     {feat:<30} train_mean={ref_m:.4f}  live_mean={live_m:.4f}  z={z:.1f}{NC}")
-    print(f"{WARN}  Run: ./scripts/train_models.sh --retrain  (only trains on new files){NC}\n")
+    print(f"{WARN}  Run: ./scripts/run_all.sh --retrain  (3 seeds → gate; models/ changes only on PASS){NC}\n")
 else:
     print(f"\n{GREEN}  ✅ Live traffic features match training distribution (no drift){NC}\n")
 PYEOF

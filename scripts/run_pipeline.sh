@@ -118,6 +118,12 @@ MEM_METADATA="$MODELS_DIR/training_metadata.json"
 # ── SETUP ──────────────────────────────────────────────────
 banner
 mkdir -p "$DATA_DIR" "$LOG_DIR"
+# Hold a shared lock while detection runs, so scripts/part_b.py never swaps models/ under it.
+mkdir -p "$PROJECT_ROOT/runs"
+if command -v flock &>/dev/null; then
+  exec 8>"$PROJECT_ROOT/runs/.pipeline.lock"
+  flock -s 8 || true
+fi
 cd "$PROJECT_ROOT"
 
 echo "" | tee -a "$PIPELINE_LOG"
@@ -298,7 +304,11 @@ BRIDGE_ARGS=(
 
 if [[ "$PATH_B_READY" == true ]]; then
   BRIDGE_ARGS+=(--path-b-model "$PATH_B_MODEL")
-  info "Path B: active (Trafficformer reconstruction anomaly detection)"
+  if [[ "$MEM_PATH_B" == *_iforest.pkl ]]; then
+    info "Path B: active (Isolation Forest on per-client 20-query windows)"
+  else
+    info "Path B: active (Trafficformer autoencoder on per-client windows)"
+  fi
 else
   BRIDGE_ARGS+=(--no-path-b)
   warn "Path B: inactive (model not trained — run ./scripts/train_models.sh)"
@@ -367,7 +377,7 @@ except: print('unknown')
 " 2>/dev/null || echo "unknown")
 
 if [[ "$RETRAIN_FLAG" == "yes" ]]; then
-  warn "Monitoring recommends RETRAIN — run ./scripts/train_models.sh --retrain"
+  warn "Monitoring recommends RETRAIN — run ./scripts/run_all.sh --retrain (3 seeds → gate; models/ changes only on PASS)"
 else
   ok "Monitoring: models healthy (no retrain needed)"
 fi
@@ -425,6 +435,6 @@ print(f\"  Samples    : {d.get('total_samples','?')} ({d.get('attack_samples','?
 " 2>/dev/null || true
 fi
 echo ""
-echo -e "${CYAN}  To retrain on new data:${NC}"
-echo -e "  ${BOLD}./scripts/train_models.sh --retrain${NC}"
+echo -e "${CYAN}  To retrain safely (3 seeds → gate → promote only on PASS):${NC}"
+echo -e "  ${BOLD}./scripts/run_all.sh --retrain${NC}   (add --auto-promote to promote automatically)"
 echo ""

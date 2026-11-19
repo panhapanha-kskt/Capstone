@@ -17,7 +17,7 @@ All time estimates are guesses, not measurements.
 
 ---
 
-## Progress (updated 2026-11-20 01:00)
+## Progress (updated 2026-11-20 01:15)
 
 | Task | Status | Evidence |
 |---|---|---|
@@ -29,7 +29,7 @@ All time estimates are guesses, not measurements.
 | 6 · Drift warning | ❌ not started | feature PSI already exists in `monitor.py`; score PSI and saved bins to add |
 | 7 · Review band | ❌ not started | tiers already exist in the bridge; budget-based band and `/triage` routing to add |
 | 8 · Schema check at start-up | ✅ **done** | `src/dns_detect/models/schema.py`; used by the bridge, `run_pipeline.sh` and `promote_model.sh`; 12 tests |
-| 9 · Automate Part B (seeds → gate → promote) | ❌ not started | added 2026-11-20; `run_candidate_seeds.sh` already trains the seeds and calls the gate, but throws away the gate result (`\|\| true`) and never promotes |
+| 9 · Automate Part B (seeds → gate → promote) | ✅ **done** (2026-11-20) | `scripts/part_b.py` (gate result used, median seed, `--auto-promote`, smoke test, rollback, lock, `runs/promotion_log.jsonl`, waits while `run_pipeline.sh` holds `runs/.pipeline.lock`); `scripts/rollback_model.sh`; `run_all.sh --retrain`/`--auto-retrain` never write to `models/` directly; retrains default to the live model's training files and split and stop if any are missing; unsafe `train_models.sh --retrain` advice removed. Real run 2026-11-20: 3 seeds in 13 min, **gate FAIL** (FPR 0.88% vs 0.1%; 10.33 vs 10.00 false alarms; record-type rule F1 1.0), `models/` unchanged. `tests/test_part_b_automation.py` 10 tests |
 | 10 · Verdict fixes F1–F5 + F8 | ✅ **done** (2026-11-20) | F1 unknown alerts → 404 (single and bulk); F2 "Clear verdict" in `/alerts` (drawer + bulk) and `/triage`, audited `VERDICT_CLEARED`; F3 in-flight guards; F4 same verdict = no-op; F5 no records from rejected requests; F8 `--demo` sets the training API to demo mode. Test record removed (backup kept, audited `RECORD_REMOVED`). `tests/test_dashboard_verdicts.py` 12 tests; 56 dashboard + 57 console tests pass |
 | 11 · Dashboard real-mode testing | ❌ not started | only demo mode tested; no browser click-through (Chrome on Windows could not reach the WSL server); no Elasticsearch/Kibana export test |
 | 12 · Verdicts → training (plumbing only) | ❌ not started | `export_feedback_labels.py` exports verdicts; training never reads them (flow map gap 23). Needs Task 10 first |
@@ -639,10 +639,12 @@ The roadmap's own sequencing: **1, 2, 5** first (analyst value, no new integrati
 - [x] `check_model_schema` used by the bridge, `run_pipeline.sh` and `promote_model.sh`; tests (2026-11-19: `src/dns_detect/models/schema.py`, `tests/test_model_schema.py`, 12 tests)
 
 **Task 9: automate Part B**
-- [ ] Gate result used (no `|| true`); PASS/FAIL printed and logged
-- [ ] `--auto-promote`: promote on PASS, smoke test, automatic rollback
-- [ ] `run_all.sh --retrain` / `--auto-retrain` go through `runs/` and the gate, never straight to `models/`
-- [ ] Lock file, `promotion_log.jsonl`, tests; flow map updated
+- [x] Gate result used (no `|| true`); PASS/FAIL printed and logged (2026-11-20)
+- [x] `--auto-promote`: promote on PASS, smoke test, automatic rollback (2026-11-20)
+- [x] `run_all.sh --retrain` / `--auto-retrain` go through `runs/` and the gate, never straight to `models/` (2026-11-20)
+- [x] Lock file, `promotion_log.jsonl`, tests (6 passed); flow map updated (2026-11-20)
+- [x] One real `bash scripts/run_all.sh --retrain`: gate FAIL, `models/` unchanged (2026-11-20)
+- [ ] Copy the 7 Tu 2023 files from the Kali VM so retrains use the live model's full data
 
 **Task 10: verdict fixes**
 - [x] F1 unknown alerts → 404; test record `deadbeefdeadbeef00` removed (backed up, audited) (2026-11-20)

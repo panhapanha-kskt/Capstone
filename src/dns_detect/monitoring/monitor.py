@@ -201,7 +201,7 @@ def run_monitor(live_path: str,
         print("   🔴 RETRAIN RECOMMENDED")
         for r in report["reasons"]:
             print(f"      - {r}")
-        print("\n   Run: ./scripts/train_models.sh --retrain")
+        print("\n   Run: ./scripts/run_all.sh --retrain   (3 seeds → gate; models/ changes only on PASS)")
     else:
         print("   🟢 Models healthy — no retrain needed.")
         if report["reasons"]:

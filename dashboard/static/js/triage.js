@@ -164,10 +164,22 @@
   setInterval(tickSla, 1000);
   function chipStatus(s){ return `<span class="chip ${STATUS_CLS[s] || ""}">${esc(s === "PendingApproval" ? "Pending approval" : s)}</span>`; }
   function chipSev(s){ return `<span class="chip sev-${esc(s)}">${esc(s)}</span>`; }
+  // In-flight guard (audit fix F3): the same request can't be sent again while it is still running,
+  // so a double-click or a repeated key press does not write twice.
+  const inFlight = new Set();
   async function post(url, body){
-    return SOC.apiPOST(url, Object.assign({actor: actor()}, body || {}));
+    if (inFlight.has(url)) throw Object.assign(new Error("Already working on it…"), {inFlight: true});
+    inFlight.add(url);
+    document.body.classList.add("busy");
+    try {
+      return await SOC.apiPOST(url, Object.assign({actor: actor()}, body || {}));
+    } finally {
+      inFlight.delete(url);
+      if (!inFlight.size) document.body.classList.remove("busy");
+    }
   }
   function fail(e){
+    if (e && e.inFlight) return;          // a dropped double-click is not an error
     const d = e && e.data;
     let msg = (e && e.message) || "Action failed";
     if (d && d.missing) msg += ": " + d.missing.map(m=>m.label).join("; ");
@@ -349,6 +361,7 @@
           <button class="btn sec" data-act="release" ${can("release") ? "" : "disabled"}>Release</button>
           <button class="btn" data-act="close" ${can("close") ? "" : "disabled"}>Close…<span class="kbd">x</span></button>
           <button class="btn dng" data-act="escalate" ${can("escalate") ? "" : "disabled"}>Escalate…<span class="kbd">e</span></button>
+          ${v.members.some(m=>m.verdict) ? `<button class="btn sec" data-act="clearverdict" title="Withdraw the verdicts on the alerts shown below; they leave the training export">Clear verdicts</button>` : ""}
         </div>
       </div>
       ${v.source.warning ? `<div class="banner"><span class="warnip">⚠ Shared source.</span> ${esc(v.source.warning)}</div>` : ""}
@@ -491,6 +504,15 @@
       $("e-hyp").value = ""; $("e-rec").value = ""; $("e-err").textContent = "";
       $("dlg-esc").showModal();
       $("e-hyp").focus();
+    } else if (act === "clearverdict"){
+      const fps = v.members.filter(m=>m.verdict).map(m=>m.fp);
+      if (!fps.length) return;
+      if (!window.confirm(`Clear the verdict on ${fps.length} alert(s)? They will be removed from the training export.`)) return;
+      try {
+        const r = await post("/api/alerts/bulk", {fps, action: "clearverdict", payload: {}});
+        toast(`Cleared ${r.succeeded} verdict(s)` + (r.failed ? `, ${r.failed} refused (see the alert for why)` : "") + ".", r.failed > 0);
+        refreshAll(); loadCase(key, true);
+      } catch(e){ fail(e); }
     } else if (act === "approve" || act === "reject"){
       const rid = v.close_request && v.close_request.id;
       if (!rid) return;

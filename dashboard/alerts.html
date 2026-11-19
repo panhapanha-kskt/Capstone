@@ -571,7 +571,7 @@ function RelatedTab({alert, onOpen}){
   <//>`;
 }
 
-function Drawer({alert, analysts, model, onClose, onAction, onOpen, onSuppress, bump, error}){
+function Drawer({alert, analysts, model, onClose, onAction, onOpen, onSuppress, bump, error, busy}){
   const [tab, setTab] = useState("overview");
   const [note, setNote] = useState("");
   const [audit, setAudit] = useState([]);
@@ -644,15 +644,15 @@ function Drawer({alert, analysts, model, onClose, onAction, onOpen, onSuppress, 
           </select>
         </div>
         <div style=${{display:"flex", gap:8, flexWrap:"wrap"}}>
-          <button class="btn" style=${{background:"#2f6fb2"}} disabled=${alert.mgmt?.acknowledged_at}
+          <button class="btn" style=${{background:"#2f6fb2"}} disabled=${busy || alert.mgmt?.acknowledged_at}
             onClick=${()=>onAction("acknowledge").catch(()=>{})}>${alert.mgmt?.acknowledged_at?"✓ Acknowledged":"Acknowledge"}</button>
-          <button class="btn btn-dng" disabled=${alert.status==="Closed"} onClick=${()=>onAction("escalate").catch(()=>{})}>Escalate</button>
-          <button class="btn" style=${{background:"#4caf50"}} disabled=${!canTransition(alert.status,"Resolved")}
+          <button class="btn btn-dng" disabled=${busy || alert.status==="Closed"} onClick=${()=>onAction("escalate").catch(()=>{})}>Escalate</button>
+          <button class="btn" style=${{background:"#4caf50"}} disabled=${busy || !canTransition(alert.status,"Resolved")}
             onClick=${()=>onAction("status",{status:"Resolved"}).catch(()=>{})}>Mark Resolved</button>
-          <button class="btn btn-sec" disabled=${!canTransition(alert.status,"Closed")}
+          <button class="btn btn-sec" disabled=${busy || !canTransition(alert.status,"Closed")}
             onClick=${()=>onAction("status",{status:"Closed"}).catch(()=>{})}>Close</button>
           ${(alert.status==="Resolved"||alert.status==="Closed") ?
-            html`<button class="btn btn-sec" onClick=${()=>onAction("status",{status:"Open"}).catch(()=>{})}>Reopen</button>` : null}
+            html`<button class="btn btn-sec" disabled=${busy} onClick=${()=>onAction("status",{status:"Open"}).catch(()=>{})}>Reopen</button>` : null}
         </div>
         <div class="field"><label>Verdict (exported as a training label)</label>
           <div style=${{display:"flex", gap:6, flexWrap:"wrap"}}>
@@ -661,7 +661,11 @@ function Drawer({alert, analysts, model, onClose, onAction, onOpen, onSuppress, 
               ${VERDICTS.map(([v,l])=>html`<option key=${v} value=${v}>${l}</option>`)}
             </select>
             <input type="text" placeholder="Reason (optional)" value=${vReason} onInput=${e=>setVReason(e.target.value)} style=${{flex:"2 1 180px"}}/>
-            <button class="btn" disabled=${!verdict} onClick=${()=>onAction("verdict",{verdict, reason:vReason}).then(()=>setVReason("")).catch(()=>{})}>Save verdict</button>
+            <button class="btn" disabled=${busy || !verdict} onClick=${()=>onAction("verdict",{verdict, reason:vReason}).then(()=>setVReason("")).catch(()=>{})}>Save verdict</button>
+            ${alert.mgmt?.verdict ? html`<button class="btn btn-sec" disabled=${busy}
+              title="Withdraw this verdict. The alert is removed from the training export."
+              onClick=${()=>{ if (window.confirm("Clear this verdict? The alert will be removed from the training export."))
+                onAction("clearverdict",{reason:vReason||undefined}).then(()=>{ setVerdict(""); setVReason(""); }).catch(()=>{}); }}>Clear verdict</button>` : null}
           </div>
           ${alert.mgmt?.verdict ? html`<div class="dim small">Current: ${VERDICT_LABEL[alert.mgmt.verdict] || alert.mgmt.verdict} by ${alert.mgmt.verdict_by || "—"} · ${fmtDate(alert.mgmt.verdict_at)}</div>` : null}
         </div>
@@ -731,6 +735,7 @@ function BulkMenu({selected, analysts, onClose, onConfirm}){
     if (action === "close")      return selected.filter(a => canTransition(a.status, "Closed")).length;
     if (action === "status")     return selected.filter(a => canTransition(a.status, status)).length;
     if (action === "assign" || action === "verdict") return selected.length;
+    if (action === "clearverdict") return selected.filter(a => a.mgmt && a.mgmt.verdict).length;
     return 0;
   }, [action, status, selected]);
   return html`<div class="modal-back" onClick=${e=>{ if (e.target.classList.contains("modal-back")) onClose(); }}>
@@ -745,6 +750,7 @@ function BulkMenu({selected, analysts, onClose, onConfirm}){
             <option value="escalate">Escalate</option>
             <option value="close">Close (where valid)</option>
             <option value="verdict">Set verdict</option>
+            <option value="clearverdict">Clear verdict</option>
           </select>
         </div>
         ${action==="verdict" ? html`<div class="field"><label>Verdict</label>
@@ -807,7 +813,7 @@ function SuppressModal({req, onClose, onDone}){
     </div></div>`;
 }
 
-function AlertsGrid({alerts, analysts, model, doAction, refresh}){
+function AlertsGrid({alerts, analysts, model, doAction, refresh, busy}){
   const [filters, setFilters] = useState({});
   const [sort, setSort] = useState({key:"severity", dir:-1});
   const [mineOnly, setMineOnly] = useState(false);
@@ -885,15 +891,20 @@ function AlertsGrid({alerts, analysts, model, doAction, refresh}){
     }
   }
 
+  const bulkBusy = useRef(false);
   async function runBulk({action, payload}){
+    if (bulkBusy.current) return;                     // second click while the first is running
     const selected = alerts.filter(a => checked.has(a.fp));
     if (!selected.length) { setBulkOpen(false); return; }
+    bulkBusy.current = true;
     const fps = selected.map(a=>a.fp);
     try {
       const data = await apiPOST("/api/alerts/bulk", {fps, action, payload, actor: currentActor()});
       setBulkResult(data); setBulkOpen(false); setChecked(new Set()); refresh();
     } catch(e){
       setBulkResult({error: e.message}); setBulkOpen(false);
+    } finally {
+      bulkBusy.current = false;
     }
   }
 
@@ -1002,7 +1013,7 @@ function AlertsGrid({alerts, analysts, model, doAction, refresh}){
       onClose=${()=>{ setDetail(null); setDrawerErr(""); }}
       onOpen=${fp=>{ setDetail(fp); setDrawerErr(""); }}
       onSuppress=${(alert, field)=>setSupReq({alert, field})}
-      onAction=${onDrawerAction} bump=${drawerBump} error=${drawerErr}/>
+      onAction=${onDrawerAction} bump=${drawerBump} error=${drawerErr} busy=${busy}/>
   <//>`;
 }
 
@@ -1061,10 +1072,21 @@ function App(){
     return feed.map(enrich);
   }, [state]);
 
+  // In-flight guard (audit fix F3): a second click on the same action for the same alert is dropped
+  // while the first request is running, and the drawer's buttons are disabled until it finishes.
+  const inFlight = useRef(new Set());
+  const [busyCount, setBusyCount] = useState(0);
   const doAction = useCallback(async (fp, action, payload)=>{
-    const body = Object.assign({actor: currentActor()}, payload||{});
-    await apiPOST(`/api/alerts/${encodeURIComponent(fp)}/${action}`, body);
-    refresh();
+    const key = fp + "/" + action;
+    if (inFlight.current.has(key)) return;
+    inFlight.current.add(key); setBusyCount(n=>n+1);
+    try {
+      const body = Object.assign({actor: currentActor()}, payload||{});
+      await apiPOST(`/api/alerts/${encodeURIComponent(fp)}/${action}`, body);
+      refresh();
+    } finally {
+      inFlight.current.delete(key); setBusyCount(n=>n-1);
+    }
   }, [refresh]);
 
   if (!state) return html`<div class="empty" style=${{paddingTop:80}}>Connecting to /api/state…</div>`;
@@ -1081,7 +1103,7 @@ function App(){
       <${SeverityPie} alerts=${alerts}/>
       <${TypeBars} alerts=${alerts}/>
     </div>
-    <${AlertsGrid} alerts=${alerts} analysts=${analysts} model=${model} doAction=${doAction} refresh=${refresh}/>
+    <${AlertsGrid} alerts=${alerts} analysts=${analysts} model=${model} doAction=${doAction} refresh=${refresh} busy=${busyCount>0}/>
   <//>`;
 }
 

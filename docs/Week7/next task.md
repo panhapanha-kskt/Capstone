@@ -17,6 +17,43 @@ All time estimates are guesses, not measurements.
 
 ---
 
+## Progress (updated 2026-11-19 23:35)
+
+| Task | Status | Evidence |
+|---|---|---|
+| 1 · T4 light: seed spread | ✅ **done** | 20 seeds trained and scored. Cause found: the false-alarm domains appear only in the test set. Seed averaging and voting measured. Optional extra, not required: a 1,000-tree Path A. See [PATH_B_REPORT §5](../Week6/PATH_B_REPORT.md) |
+| 2 · Harder data | ❌ not started | **your next job:** captures (normal TXT/MX/SRV + VS Code/CDN; tunnels over A/CNAME on several domains) |
+| 3 · Domain-grouped split | ⏸ waiting for Task 2 | needs ≥ 3 attack domains |
+| 4 · Later-traffic check | ⏸ waiting | needs a fresh normal capture |
+| 5 · T3: 0.1% target + operating point | ⏸ waiting for Tasks 1–3 | — |
+| 6 · Drift warning | ❌ not started | feature PSI already exists in `monitor.py`; score PSI and saved bins to add |
+| 7 · Review band | ❌ not started | tiers already exist in the bridge; budget-based band and `/triage` routing to add |
+| 8 · Schema check at start-up | ✅ **done** | `src/dns_detect/models/schema.py`; used by the bridge, `run_pipeline.sh` and `promote_model.sh`; 12 tests |
+
+### Done this week (all pushed to `pathb-production`)
+
+| Date | Work | Commit |
+|---|---|---|
+| 2026-11-19 | Mentor approval of the Isolation Forest Path B recorded in the Week 6 reports | `e553b8f` |
+| 2026-11-19 | `runs/v3_iforest` copied from the Kali VM (archive SHA-256 verified) and **promoted to `models/`**: autoencoder archived, `MODEL_CARD.md`, `PROMOTED.json`, smoke test 7/7 | `3ed0cce` → `main` `b204085` |
+| 2026-11-19 | **T9 error ranges** for every detector: exact Clopper–Pearson / Wilson, a 1,000-sample domain-cluster bootstrap, and seed spread (`uncertainty.py`, `evaluate_detectors.py`, 9 tests) | `e553b8f` |
+| 2026-11-19 | Week 7 plan written with 23 primary-source references | `683c5f3` |
+| 2026-11-19 | **20-seed run** on `labelled_v3`: fusion 9.85 ± 5.53 false alarms (1–18), recall 100%; gate FAIL (0.1% budget; rule baseline) | `683c5f3` (report) |
+| 2026-11-19 | **T4 cause found:** validation FPR is 0 on all seeds; all Path A false alarms over 20 seeds are 18 benign rows from `vsassets.io` / `io.localdomain`, domains that appear only in the test set | `683c5f3` |
+| 2026-11-19 | **Seed combining measured:** averaging 10 seeds → 6.4 ± 1.1 false alarms; majority vote of 11 → 6.4 ± 1.0; recall stays 100%. About 5–6 false alarms remain; they need data, not tuning | `683c5f3` |
+| 2026-11-19 | **Isolation Forest is the default Path B** everywhere (`train_models.sh`, `path_b_train.py`, `run_multiseed.py`, training console); the autoencoder only on request | `683c5f3` |
+| 2026-11-19 | **Task 8 schema check** at start-up (stops production on any feature mismatch) | `683c5f3` |
+
+**Tests at the end of the day:** 282 ML + 101 dashboard and console tests pass. One test (`test_parent_domain_psl_private_suffixes`) needs `tldextract`, which isn't installed in my workspace.
+
+### Next
+
+1. **You:** Task 2 captures. Ask for the step-by-step capture guide.
+2. **Me (no new data needed):** Task 6 (drift warning) and Task 7 (review band); optionally the 1,000-tree Path A test (needs one 3-seed run, about 15 min).
+3. **After Task 2:** Tasks 3 → 4 → 5 on the new data.
+
+---
+
 ## Contents
 
 1. [Where Week 6 ended](#1-where-week-6-ended)
@@ -371,7 +408,7 @@ Use `scripts/capture_dns.sh` (full packets, hourly files) on the resolver or cli
 **Task 1: T4 light**
 - [x] 20 seeds trained and scored (`runs/t4_before_20seeds.*`)
 - [x] Cause written, with evidence (threshold vs model vs split): PATH_B_REPORT §5.2
-- [ ] Fixes tried one at a time on validation; one chosen; 20-seed after-table (score averaging and voting measured, PATH_B_REPORT §5.3; a 1,000-tree Path A still to test)
+- [x] Fixes tried one at a time (score averaging and voting over the 20 seeds, PATH_B_REPORT §5.3). Optional extra: a 1,000-tree Path A
 - [ ] Setting in `config/settings.yaml`; inference cost noted
 
 **Task 2: harder data**

@@ -39,6 +39,7 @@ to its detailed document.
 13. [Problems hit and lessons](#13-problems-hit-and-lessons)
 14. [Status at the end of Week 6](#14-status-at-the-end-of-week-6)
 15. [Limits and next steps](#15-limits-and-next-steps)
+16. [Update: work on 2026-11-18/19](#16-update-work-on-2026-111819)
 
 ---
 
@@ -330,7 +331,7 @@ python3 -m pytest tests/test_dashboard_soc.py tests/test_dashboard_triage.py -q
 - **Tests:** `tests/test_path_b_iforest.py`.
 - **Evidence:** `docs/Week5/evidence/` (46 result files).
 
-**Dashboard** (not yet committed)
+**Dashboard** (committed 2026-11-17 in `277a12a`, *Week 6: SOC dashboard hardening, ML-to-SOC exporters, Tier 1 triage workbench*; on `main`)
 
 | File | Change |
 |---|---|
@@ -409,3 +410,26 @@ python3 -m pytest tests/test_dashboard_soc.py tests/test_dashboard_triage.py -q
 4. Run the dashboard in real mode on a fresh Kali capture and work the queue as Tier 1 and Tier 2.
 5. Collect verdicts, export them as labels, and measure whether retraining with them lowers the false-positive rate per rule.
 6. Optional: SHAP explanations for the Random Forest; authentication with roles; a database backend.
+
+---
+
+## 16. Update: work on 2026-11-18/19
+
+*Added 2026-11-20. Everything below happened after this report was first written. All of it is committed and merged to `main`.*
+
+| Date | Work | Commit | Details |
+|---|---|---|---|
+| 2026-11-18/19 | **Training console** (`dashboard/training-gui/`): streamed dataset upload with progress, auto-advance to step 2, safer CSV check; no upload size limit; GUI fixes and tests; a second training job is refused (409) | `9b9536d`, `9811f8a`, `670b35b` | [AUDIT_training_label_unlabel_2026-11-18.md](AUDIT_training_label_unlabel_2026-11-18.md) |
+| 2026-11-19 | **ML improvement research** (Phases 0–3): flow map with file:line, findings F1–F8, gaps vs published practice, items 1–8 to choose from | `670b35b` | [ML_IMPROVEMENT_RESEARCH_2026-11-19.md](ML_IMPROVEMENT_RESEARCH_2026-11-19.md) |
+| 2026-11-19 | **ML items 1–5**: run record (git commit, pip freeze, data checksums, split hash, seed); forbidden-feature checks; FPR intervals; twin-free metrics; success criteria written before training + pass/fail gate (`config/success_criteria.yaml`, `scripts/compare_models.py`, `scripts/run_candidate_seeds.sh`); 26 tests | `fcc8db0` | [ML_IMPROVEMENT_IMPLEMENTATION_2026-11-19.md](ML_IMPROVEMENT_IMPLEMENTATION_2026-11-19.md) §1–2 |
+| 2026-11-19 | **3-seed results on `labelled_v3`** (seeds 42/43/44): fusion 10.3 ± 7.4 false alarms (2–16), recall 100% every seed; Path B 22.9% ± 1.3% FPR. **Gate: FAIL** (FPR budget 0.1%; the record-type rule beats the model) | `4f30f09` | same doc §4b; [PATH_B_REPORT.md](PATH_B_REPORT.md) §3.2 |
+| 2026-11-19 | **v3_iforest promoted to `models/`** (mentor approval 2026-11-17): autoencoder archived to `models/archive/`, `MODEL_CARD.md`, `PROMOTED.json` with SHA-256 of every file, smoke test 7/7 | `3ed0cce` → `main` `b204085` | [PATH_B_REPORT.md](PATH_B_REPORT.md) §1 |
+| 2026-11-19 | **T9 error ranges** for every detector: exact Clopper–Pearson / Wilson, 1,000-sample domain-cluster bootstrap, seed spread. Live model: fusion 8 false alarms / 1,168 (0.68%, exact 0.30–1.35%, bootstrap 0.00–2.32%), recall 100%; record-type rule 0 false alarms | `e553b8f` | [PATH_B_REPORT.md](PATH_B_REPORT.md) §2–3 |
+
+**What changed in the Week 6 conclusions:**
+
+- §15 "Next steps" item 1 is done: the Isolation Forest Path B is live.
+- The 5-seed stability result in §6 (fusion 8.2 ± 0.84) holds for `v3`. On `labelled_v3` the spread is much wider (3 seeds: 10.3 ± 7.4; 20 seeds: 9.85 ± 5.53, [PATH_B_REPORT.md](PATH_B_REPORT.md) §5). The cause is two benign domains that appear only in the test set.
+- The simple record-type rule matches or beats every model on the current test set, so harder data is the next priority.
+
+The follow-up work (20-seed T4 run, schema check at start-up, Isolation Forest as the default) and the Week 7 plan are in [../Week7/next task.md](../Week7/next%20task.md).

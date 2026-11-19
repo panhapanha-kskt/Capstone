@@ -34,7 +34,7 @@ All time estimates are guesses, not measurements.
 | 11 · Dashboard real-mode testing | ❌ not started | only demo mode tested; no browser click-through (Chrome on Windows could not reach the WSL server); no Elasticsearch/Kibana export test |
 | 12 · Verdicts → training (plumbing only) | ❌ not started | `export_feedback_labels.py` exports verdicts; training never reads them (flow map gap 23). Needs Task 10 first |
 | 13 · SOC roadmap P0 | ❌ not started | missing: role landing pages, "Assigned to me" / "Unassigned" filters, playbook button, attachments, MITRE tactic × technique page |
-| 14 · Out-of-date docs | ❌ not started | `WEEK6_COMPLETE_REPORT.md` §12 and missing 11-18/19 work; `PATH_B_ISOLATION_FOREST.md` §8 "not yet measured" |
+| 14 · Out-of-date docs | ✅ **done** (2026-11-20) | `WEEK6_COMPLETE_REPORT.md` §12 names commit `277a12a`; new §16 covers the 11-18/19 work; `PATH_B_ISOLATION_FOREST.md` §8 has the measured seed spread (v3 8.2 ± 0.84; labelled_v3 20 seeds 9.85 ± 5.53) |
 
 ### Done this week (all pushed to `pathb-production`)
 
@@ -661,7 +661,7 @@ The roadmap's own sequencing: **1, 2, 5** first (analyst value, no new integrati
 - [ ] Playbook button; evidence attachments
 
 **Task 14: docs**
-- [ ] WEEK6_COMPLETE_REPORT §12 and the 11-18/19 work; PATH_B_ISOLATION_FOREST §8
+- [x] WEEK6_COMPLETE_REPORT §12 and the 11-18/19 work; PATH_B_ISOLATION_FOREST §8 (2026-11-20)
 
 **Each task:** commit on a branch, gate over ≥ 3 seeds where it changes a model, PATH_B_REPORT updated, this checklist ticked.
 

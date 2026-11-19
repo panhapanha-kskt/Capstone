@@ -192,7 +192,11 @@ Read from each run's saved `evaluation_metrics.json` with `scripts/week5_eval.sh
 - The OR rule rose because the Isolation Forest flags more benign windows by itself; the system decides with the fusion, not the OR rule.
 - Roughly 20–25 of the 39 minutes are step 10's comparison Transformer (Path A, not used in any decision), estimated from progress checks during the run. Path B took about a minute.
 
-**Not yet measured:** the fusion weights of v3_iforest, and the multi-seed spread.
+**Multi-seed spread: measured** (updated 2026-11-20).
+- `v3`, 5 seeds (42–46), 2026-11-17: fusion 7–9 false alarms (**mean 8.2, SD 0.84**), recall 1.0 at every seed. See [V3_EVALUATION_RESULTS.md §5c](V3_EVALUATION_RESULTS.md#5c-full-multi-seed-with-path-b-isolation-forest-and-fusion-543).
+- `labelled_v3`, 20 seeds (42–61), 2026-11-19: fusion 9.85 ± 5.53 (1–18), recall 100%; the spread comes from Path A on two benign domains seen only in the test set. See [PATH_B_REPORT.md §5](PATH_B_REPORT.md#5-t4-seed-spread-20-seeds-observed-2026-11-19).
+
+**Not yet measured:** the fusion weights of v3_iforest.
 
 ---
 

@@ -8,6 +8,20 @@ Week 6 progress so far: [WEEK6_PROGRESS_REPORT.md](WEEK6_PROGRESS_REPORT.md) · 
 
 Sources: the Week 5 checklist in [V3_BALANCED_TRAINING.md](../Week5/V3_BALANCED_TRAINING.md) (section 7), the Week 5 report [WEEK5_PROGRESS_REPORT.md](../Week5/WEEK5_PROGRESS_REPORT.md) (section 9.1), and the "not yet verified" list in [WEEK6_AUDIT_AND_FORTINET_ROADMAP.md](WEEK6_AUDIT_AND_FORTINET_ROADMAP.md) (section 1.6).
 
+## Status update 2026-11-19: Path B production tasks
+
+Results go in [PATH_B_REPORT.md](PATH_B_REPORT.md).
+
+| Task | Status |
+|---|---|
+| Mentor approval of the Isolation Forest Path B | ✅ approved 2026-11-17 |
+| T2: promote `runs/v3_iforest` to `models/` | ✅ 2026-11-19: copied from the Kali VM (archive SHA-256 verified), autoencoder archived in `models/archive/`, `models/MODEL_CARD.md`, smoke test 7/7 pass |
+| T9: error ranges for Path B (and every detector) | ✅ 2026-11-19: exact + domain-cluster bootstrap + seed spread; results in PATH_B_REPORT.md §3 (Path B FPR 9.7% on v3, 22.9% ± 1.3% on labelled_v3) |
+| T4: seed spread (2–16 false alarms on `labelled_v3`) | next; the spread comes from Path A's threshold, not Path B |
+| T3: 0.1% false-alarm target | after T4 |
+| T6: research items 6–8 (later traffic, verdict loader, review band + drift) | after T3; item 6 needs a newer benign capture |
+| T7: retraining on analyst feedback | blocked: 2 verdicts exist (one a test record); fewer than the ~50 needed |
+
 ---
 
 ## Contents

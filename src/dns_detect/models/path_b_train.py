@@ -355,6 +355,7 @@ if __name__ == "__main__":
             except Exception:
                 return None, None
 
+        from dns_detect.models.uncertainty import wilson_interval as _wilson, recall_at_fpr as _recall_at
         test_errors = compute_reconstruction_errors(model, x_test)
         test_pred   = (test_errors > threshold).astype(int)
         print(classification_report(yw_test, test_pred, target_names=["benign", "attack"],
@@ -406,6 +407,17 @@ if __name__ == "__main__":
             "pr_auc":    pr_auc,
             "pr_auc_baseline": prevalence,
             "roc_auc":   roc_auc,
+            # Error ranges in the same form as Path A and the fusion (T9). Counted per WINDOW,
+            # so they are not comparable one-to-one with the per-query Path A numbers;
+            # scripts/evaluate_detectors.py reports all detectors per query on the same rows.
+            "false_alarms": ae["false_alarms"],
+            "benign":    ae["benign"],
+            "attack":    ae["attack"],
+            "fpr_ci95":  ae.get("fpr_ci95"),
+            "recall_ci95": ae.get("recall_ci95"),
+            "fpr_wilson95": _wilson(ae["false_alarms"], ae["benign"]),
+            "recall_at_fpr_0.001": _recall_at(yw_test, test_errors, 0.001),
+            "count_unit": "window",
             "threshold": threshold,
             "threshold_method": method,
             "window_size": N_DAYS,

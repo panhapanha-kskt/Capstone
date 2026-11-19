@@ -377,12 +377,12 @@ python3 -m pytest tests/test_dashboard_soc.py tests/test_dashboard_triage.py -q
 | Week 5 Tasks 0–3 (files, comparison, CIC capture 3, leave-one-tool-out) | ✅ |
 | Isolation Forest Path B, `runs/v3_iforest` | ✅ fusion 1.0 / 7 false alarms, 39 min |
 | Multi-seed: Path A (Tasks 4–5) and full system (5.4.3) | ✅ v3 8–9; fusion 7–9, recall 1.0 every seed |
-| Conclusion and `models/` decision (Task 6) | ✅ candidate `runs/v3_iforest`; `models/` unchanged until mentor approval |
+| Conclusion and `models/` decision (Task 6) | ✅ `runs/v3_iforest` promoted to `models/` on 2026-11-19 (autoencoder archived; see `models/MODEL_CARD.md`) |
 | Evidence in git (Task 7), stale docs (Task 9), unit tests (Task 10) | ✅ |
 | Dashboard test (Task 8) | ✅ demo mode; real mode not run |
 | Production hardening, SOC workflow, exporters | ✅ built and tested |
 | Tier 1 triage workbench | ✅ built and tested |
-| Mentor agreement on a non-deep-learning Path B | ❌ |
+| Mentor agreement on a non-deep-learning Path B | ✅ Approved by mentor 2026-11-17 |
 | Browser click-through of the new pages | ❌ |
 | Live Elasticsearch / Kibana export | ❌ |
 | Real-mode dashboard run with `runs/v3_iforest` exporting to Kibana | ❌ |
@@ -394,7 +394,7 @@ python3 -m pytest tests/test_dashboard_soc.py tests/test_dashboard_triage.py -q
 **Limits**
 
 - **No login.** Tier guardrails are a workflow control (the actor is self-declared). Add authentication and HTTPS before any shared deployment.
-- **`models/` still holds the autoencoder Path B.** `/api/model` reports it honestly until `runs/v3_iforest` is promoted.
+- **`models/` now holds `v3_iforest` (Isolation Forest Path B), promoted 2026-11-19.** The autoencoder models are archived in `models/archive/` (not in git).
 - **Threshold drift:** set for 0.1% false alarms on validation data, it gives 0.35–0.59% on later benign traffic (leave-one-tool-out) and 0.6% on the frozen test set.
 - **Lab data limits the checks:** the lab data is all type-A queries with short labels under `lab.local`, so several triage checks show "absent", and Tranco / VirusTotal add nothing there.
 - **"Why it fired"** is a deviation from the client's baseline, not model attribution.
@@ -403,7 +403,7 @@ python3 -m pytest tests/test_dashboard_soc.py tests/test_dashboard_triage.py -q
 
 **Next steps**
 
-1. Ask the mentor to approve the Isolation Forest Path B, then promote `runs/v3_iforest` to `models/`. Check that `/api/model` shows the new type and version.
+1. ~~Ask the mentor to approve the Isolation Forest Path B, then promote `runs/v3_iforest` to `models/`.~~ Done: approved 2026-11-17, promoted 2026-11-19 (`scripts/promote_model.sh`, smoke test `scripts/smoke_models.py` passed 7/7). Still to check: `/api/model` shows `iforest` after a dashboard restart.
 2. Browser click-through of `/triage`, `/alerts`, `/soc` and `/health`; record the results in TESTING_REPORT 5c.
 3. Start the ELK stack, enable the Elasticsearch exporter, check that the document count does not change on a re-run, and build a Kibana view.
 4. Run the dashboard in real mode on a fresh Kali capture and work the queue as Tier 1 and Tier 2.

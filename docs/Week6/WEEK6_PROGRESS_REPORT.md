@@ -165,8 +165,8 @@ The autoencoder remains the default, so earlier runs and saved models are unchan
 | Pipeline run with `runs/v3_iforest` | ❌ |
 | Multi-seed check (Week 5 Tasks 4–5) | ✅ baseline 9–25, v_dnsshell 7–11, v_det 13–36, v3 8–9 (Path A false alarms, 5 seeds) |
 | Full multi-seed with Path B + fusion (5.4.3) | ✅ fusion FA 7–9 (mean 8.2, SD 0.84), recall 1.0 all seeds (2026-11-17) |
-| Conclusion and the replace-`models/` decision (Task 6) | ✅ candidate `runs/v3_iforest`; `models/` kept until mentor approval |
-| Mentor agreement on a non-deep-learning Path B | ❌ |
+| Conclusion and the replace-`models/` decision (Task 6) | ✅ `runs/v3_iforest` promoted to `models/` on 2026-11-19 (autoencoder archived) |
+| Mentor agreement on a non-deep-learning Path B | ✅ Approved by mentor 2026-11-17 |
 | Week 6 dashboard end-to-end test (Task 8) | ✅ demo mode (TESTING_REPORT, 2026-11-17); real mode not yet run |
 | Dashboard production hardening (CSRF, CSP, headers, 10 bug fixes) | ✅ 2026-11-17, [report](WEEK6_SOC_HARDENING_REPORT.md) |
 | SOC workflow (verdicts, MTTA/MTTR/MTTD, ATT&CK heatmap, related alerts, suppression, handover) | ✅ 2026-11-17 |
@@ -184,5 +184,5 @@ In order (commands in [next task.md](next%20task.md)):
 3. ~~Multi-seed check (Tasks 4–5)~~ done: v3 8–9 vs baseline 9–25 false alarms; no difference proven by the non-overlap rule, v3 far more stable. Optional: the full check including Path B and the fusion, now practical with the Isolation Forest.
 4. ~~Conclusion and decision (Task 6)~~ done: candidate `runs/v3_iforest` (same final results as v3, a Path B that works); `models/` stays unchanged until the mentor approves the Isolation Forest Path B.
 5. ~~Save the result files in git (Task 7)~~ done: 46 files in [docs/Week5/evidence/](../Week5/evidence/README.md), including the det and dns_shell unseen-tool results (both 5,000 / 5,000). ~~Fix stale documentation (Task 9)~~ done: RESULTS_COMPARISON.md completed, Week 5 docs corrected, dashboard mapping differences documented, README links and Path B description fixed. Still to do: the rest of the dashboard test (Task 8: page click-through, bulk Execute, real mode); the 409 and restart tests passed.
-6. Ask the mentor to agree that Path B may be a classical machine-learning model.
+6. ~~Ask the mentor to agree that Path B may be a classical machine-learning model.~~ Approved by mentor 2026-11-17; `runs/v3_iforest` promoted to `models/` on 2026-11-19.
 7. ~~Production SOC audit and hardening of the dashboard~~ done 2026-11-17 ([WEEK6_SOC_HARDENING_REPORT.md](WEEK6_SOC_HARDENING_REPORT.md)). Still to do: browser click-through of the new tabs, the Elasticsearch export against the docker-compose stack, and a real-mode run exporting real ML alerts to Kibana.

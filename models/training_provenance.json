@@ -1,43 +1,275 @@
 {
-  "merged_at": "2026-11-17T03:42:02Z",
-  "total_records": 60,
+  "merged_at": "2026-11-14T12:42:42Z",
+  "total_records": 218334,
   "source_files": [
     {
-      "path": "/home/shed/CADT/Capstone/dns-anomaly-detection-lab/Capstone/data/processed/extracted_2026-11-15_1794886920.json",
-      "original": "/home/shed/CADT/Capstone/dns-anomaly-detection-lab/Capstone/data/raw/2026-11-15.log",
+      "path": "data/processed/labeled_tunnels.json",
+      "original": null,
       "type": "json",
-      "records": 53,
-      "checksum": "5c5f856721b63c30"
+      "records": 10000,
+      "checksum": "831aab545e62e154"
     },
     {
-      "path": "/home/shed/CADT/Capstone/dns-anomaly-detection-lab/Capstone/data/processed/extracted_2026-11-14_1794886920.json",
-      "original": "/home/shed/CADT/Capstone/dns-anomaly-detection-lab/Capstone/data/raw/2026-11-14.log",
+      "path": "data/processed/labeled_benign.json",
+      "original": null,
       "type": "json",
-      "records": 7,
-      "checksum": "b0b1f1bf252fc523"
+      "records": 8353,
+      "checksum": "d3ebd6cfe9d53494"
+    },
+    {
+      "path": "data/external/cic/cic_benign_train.json",
+      "original": null,
+      "type": "json",
+      "records": 41275,
+      "checksum": "ef6a7c80b87a701e"
+    },
+    {
+      "path": "data/external/tu2023/tunnels_cobaltstrike.json",
+      "original": null,
+      "type": "json",
+      "records": 15000,
+      "checksum": "324c3a85243abf2e"
+    },
+    {
+      "path": "data/external/tu2023/tunnels_det.json",
+      "original": null,
+      "type": "json",
+      "records": 15000,
+      "checksum": "f526852544456fb5"
+    },
+    {
+      "path": "data/external/tu2023/tunnels_dnscat2.json",
+      "original": null,
+      "type": "json",
+      "records": 15000,
+      "checksum": "28db4418f02af0dc"
+    },
+    {
+      "path": "data/external/tu2023/tunnels_dns_shell.json",
+      "original": null,
+      "type": "json",
+      "records": 15000,
+      "checksum": "7f31de9b028c1ce1"
+    },
+    {
+      "path": "data/external/tu2023/tunnels_iodine.json",
+      "original": null,
+      "type": "json",
+      "records": 15000,
+      "checksum": "e67f9872ce7fb622"
+    },
+    {
+      "path": "data/external/tu2023/tunnels_ozymandns.json",
+      "original": null,
+      "type": "json",
+      "records": 15000,
+      "checksum": "bf2e1a042e4c37ce"
+    },
+    {
+      "path": "data/external/tu2023/benign_alexa.json",
+      "original": null,
+      "type": "json",
+      "records": 68710,
+      "checksum": "ddacdc936a986498"
     }
   ],
   "source_counts": {
-    "json_files": 2,
+    "json_files": 10,
     "csv_files": 0,
     "pcap_converted": 0,
-    "log_converted": 2
+    "log_converted": 0
   },
   "per_source": [
     {
-      "source_file": "2026-11-14.log",
-      "source_type": "log",
-      "rows": 7,
-      "labeled_rows": 0,
+      "source_file": "ALEXA.pcap",
+      "source_type": "pcap",
+      "rows": 68710,
+      "labeled_rows": 68710,
       "attack": 0,
+      "benign": 68710
+    },
+    {
+      "source_file": "benign_dns.pcap",
+      "source_type": "pcap",
+      "rows": 8349,
+      "labeled_rows": 8349,
+      "attack": 0,
+      "benign": 8349
+    },
+    {
+      "source_file": "benign_heavy_1_dns.pcap",
+      "source_type": "pcap",
+      "rows": 23102,
+      "labeled_rows": 23102,
+      "attack": 0,
+      "benign": 23102
+    },
+    {
+      "source_file": "benign_heavy_2_dns.pcap",
+      "source_type": "pcap",
+      "rows": 18173,
+      "labeled_rows": 18173,
+      "attack": 0,
+      "benign": 18173
+    },
+    {
+      "source_file": "cobaltstrike/cobaltstrike_txt_down.pcapng",
+      "source_type": "pcap",
+      "rows": 6500,
+      "labeled_rows": 6500,
+      "attack": 6500,
       "benign": 0
     },
     {
-      "source_file": "2026-11-15.log",
-      "source_type": "log",
-      "rows": 53,
-      "labeled_rows": 0,
-      "attack": 0,
+      "source_file": "cobaltstrike/cobaltstrike_txt_up.pcapng",
+      "source_type": "pcap",
+      "rows": 8500,
+      "labeled_rows": 8500,
+      "attack": 8500,
+      "benign": 0
+    },
+    {
+      "source_file": "det/det_a_up.pcapng",
+      "source_type": "pcap",
+      "rows": 15000,
+      "labeled_rows": 15000,
+      "attack": 15000,
+      "benign": 0
+    },
+    {
+      "source_file": "dns2tcp_key_down.pcapng",
+      "source_type": "pcap",
+      "rows": 2000,
+      "labeled_rows": 2000,
+      "attack": 2000,
+      "benign": 0
+    },
+    {
+      "source_file": "dns2tcp_key_up.pcapng",
+      "source_type": "pcap",
+      "rows": 2000,
+      "labeled_rows": 2000,
+      "attack": 2000,
+      "benign": 0
+    },
+    {
+      "source_file": "dns2tcp_txt_down.pcapng",
+      "source_type": "pcap",
+      "rows": 2000,
+      "labeled_rows": 2000,
+      "attack": 2000,
+      "benign": 0
+    },
+    {
+      "source_file": "dns2tcp_txt_up.pcapng",
+      "source_type": "pcap",
+      "rows": 2000,
+      "labeled_rows": 2000,
+      "attack": 2000,
+      "benign": 0
+    },
+    {
+      "source_file": "dns_shell/dnsshell_txt_down.pcapng",
+      "source_type": "pcap",
+      "rows": 1500,
+      "labeled_rows": 1500,
+      "attack": 1500,
+      "benign": 0
+    },
+    {
+      "source_file": "dns_shell/dnsshell_txt_up.pcapng",
+      "source_type": "pcap",
+      "rows": 13500,
+      "labeled_rows": 13500,
+      "attack": 13500,
+      "benign": 0
+    },
+    {
+      "source_file": "dnscat2/dnscat_aaaa_down.pcapng",
+      "source_type": "pcap",
+      "rows": 8500,
+      "labeled_rows": 8500,
+      "attack": 8500,
+      "benign": 0
+    },
+    {
+      "source_file": "dnscat2/dnscat_aaaa_up.pcapng",
+      "source_type": "pcap",
+      "rows": 6500,
+      "labeled_rows": 6500,
+      "attack": 6500,
+      "benign": 0
+    },
+    {
+      "source_file": "dnsexfiltrator_txt_up.pcap",
+      "source_type": "pcap",
+      "rows": 2000,
+      "labeled_rows": 2000,
+      "attack": 2000,
+      "benign": 0
+    },
+    {
+      "source_file": "iodine/iodine128_private_down.pcapng",
+      "source_type": "pcap",
+      "rows": 2000,
+      "labeled_rows": 2000,
+      "attack": 2000,
+      "benign": 0
+    },
+    {
+      "source_file": "iodine/iodine128_private_up.pcapng",
+      "source_type": "pcap",
+      "rows": 4500,
+      "labeled_rows": 4500,
+      "attack": 4500,
+      "benign": 0
+    },
+    {
+      "source_file": "iodine/iodine32_private_down.pcapng",
+      "source_type": "pcap",
+      "rows": 2000,
+      "labeled_rows": 2000,
+      "attack": 2000,
+      "benign": 0
+    },
+    {
+      "source_file": "iodine/iodine32_private_up.pcapng",
+      "source_type": "pcap",
+      "rows": 3500,
+      "labeled_rows": 3500,
+      "attack": 3500,
+      "benign": 0
+    },
+    {
+      "source_file": "iodine/iodine64_private_down.pcapng",
+      "source_type": "pcap",
+      "rows": 1000,
+      "labeled_rows": 1000,
+      "attack": 1000,
+      "benign": 0
+    },
+    {
+      "source_file": "iodine/iodine64_private_up.pcapng",
+      "source_type": "pcap",
+      "rows": 2000,
+      "labeled_rows": 2000,
+      "attack": 2000,
+      "benign": 0
+    },
+    {
+      "source_file": "ozymandns/ozymandns_txt_down.pcapng",
+      "source_type": "pcap",
+      "rows": 2000,
+      "labeled_rows": 2000,
+      "attack": 2000,
+      "benign": 0
+    },
+    {
+      "source_file": "ozymandns/ozymandns_txt_up.pcapng",
+      "source_type": "pcap",
+      "rows": 13000,
+      "labeled_rows": 13000,
+      "attack": 13000,
       "benign": 0
     }
   ]

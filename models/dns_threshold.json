@@ -1,5 +1,5 @@
 {
-  "threshold": 0.5,
+  "threshold": 0.3372093023255814,
   "decision": "rf_only",
   "features": [
     "query_length",
@@ -22,6 +22,41 @@
   "window_seconds": 300,
   "val_recall": 1.0,
   "val_fpr": 0.0,
-  "dataset_version": "7eeea41b875f49881983475573a8d370efa3e798209dec9053e4b132a2da23ea",
-  "split": "manifest:time_seed42.json"
+  "dataset_version": "30748b4183da84cfafc0c1c9c6de62c90d7811fb78f41b3ed8449d708275f0f1",
+  "split": "manifest:split_manifest.json",
+  "clip": {
+    "quantile": 0.999,
+    "low": [
+      6.0,
+      2.1972,
+      0.0,
+      1.0,
+      3.0,
+      0.0,
+      0.099567,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      1.4,
+      -1.0,
+      -5.1329432567381374
+    ],
+    "high": [
+      251.0,
+      5.163099000000004,
+      1.0,
+      10.0,
+      63.0,
+      0.8154,
+      1.0,
+      5341.79800000001,
+      1.0,
+      229697.31400000042,
+      0.0,
+      1111.5596000000019,
+      94.30332326398786,
+      -1.9245698817207504
+    ]
+  }
 }

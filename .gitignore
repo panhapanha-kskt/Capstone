@@ -68,3 +68,7 @@ DNSTunnel2026/
 
 # Experiment run folders (models, copied training data, run records): keep out of git
 runs/
+
+# Archived live models (moved by scripts/promote_model.sh): kept on disk, not in git
+models/archive/
+models/PROMOTED.json

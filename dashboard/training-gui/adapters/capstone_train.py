@@ -133,7 +133,7 @@ def build_command(params: dict, path: str, retrain: str, run: Path, dataset_name
     cmd = ["bash", "scripts/train_models.sh", "--verbose",
            "--seed", str(params.get("seed", 42)),
            "--n-days", str(params.get("n_days", 20)),
-           "--path-b-model", params.get("path_b_model", "trafficformer"),
+           "--path-b-model", params.get("path_b_model", "iforest"),
            "--retrain" if retrain == "new_only" else "--force-retrain"]
     if path == "A":
         cmd.append("--path-a-only")

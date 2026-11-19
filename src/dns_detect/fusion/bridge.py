@@ -54,6 +54,7 @@ from dns_detect.parsing.dns_parser import (
 )
 from dns_detect.models.path_a import score_frame, MODEL_RF, MODEL_SCALER
 from dns_detect.fusion import stacker
+from dns_detect.models.schema import check_model_schema as _check_schema
 from dns_detect.ingest.labeling import TRUSTED_SOURCES, load_allowlist
 from dns_detect.utils.paths import PROJECT_ROOT, MODELS_DIR
 
@@ -641,6 +642,11 @@ def run_bridge(week3_path: str, output_path: str,
 
     if (allow_missing_path_a or fill_missing_features) and mode != "development":
         raise ValueError("--allow-missing-path-a / --fill-missing-features need development mode (--dev)")
+
+    # Saved model inputs must match the live feature code (Week 7 Task 8): stop in production,
+    # warn in development. Runs before anything is scored.
+    _check_schema(model_dir, path_b_model, check_path_b=bool(path_b_model) and not no_path_b,
+                  strict=(mode == "production"))
 
     raw = pd.DataFrame(records)
     feat = check_features(raw)

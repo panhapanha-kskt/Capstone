@@ -162,9 +162,9 @@ if __name__ == "__main__":
                         help="Window size (records per window)")
     parser.add_argument("--save_name",  type=str, required=True,
                         help="Model save name (models/<save_name>.keras, or <save_name>_iforest.pkl)")
-    parser.add_argument("--model", choices=["trafficformer", "iforest"], default="trafficformer",
-                        help="Path B model: trafficformer (Transformer autoencoder, default) or "
-                             "iforest (Isolation Forest, trains in minutes)")
+    parser.add_argument("--model", choices=["trafficformer", "iforest"], default="iforest",
+                        help="Path B model: iforest (Isolation Forest, default, trains in minutes) or "
+                             "trafficformer (old Transformer autoencoder, kept to reproduce old runs)")
     parser.add_argument("--data_dir",   type=str, default="data",
                         help="Data directory (default: data/)")
     parser.add_argument("--threshold-method", choices=["percentile", "mean_std"],

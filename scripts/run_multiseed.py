@@ -90,7 +90,7 @@ def main():
     ap.add_argument("--seeds", type=int, nargs="+", default=[42, 43, 44, 45, 46])
     ap.add_argument("--out-root", default="models_multiseed")
     ap.add_argument("--skip-path-b", action="store_true", help="Path A only (no Path B, no fusion)")
-    ap.add_argument("--path-b-model", choices=["trafficformer", "iforest"], default="trafficformer",
+    ap.add_argument("--path-b-model", choices=["trafficformer", "iforest"], default="iforest",
                     help="Path B algorithm (iforest trains in minutes, so the full check is practical)")
     ap.add_argument("--out", default=None, help="summary JSON (default: <out-root>/summary.json)")
     ap.add_argument("--allow-heuristic-labels", action="store_true",

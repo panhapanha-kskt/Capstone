@@ -138,7 +138,7 @@ legend{color:var(--mute);font-size:13px;padding:0 4px}
       </div>
       <div class="row cap pipe">
         <div><label for="nd">Window size, Path B (queries)</label><input id="nd" type="number" value="20" min="2"></div>
-        <div><label for="pb">Path B algorithm</label><select id="pb"><option value="trafficformer">Trafficformer (train_models.sh default, slow)</option><option value="iforest">Isolation Forest (minutes)</option></select></div>
+        <div><label for="pb">Path B algorithm</label><select id="pb"><option value="iforest">Isolation Forest (default, minutes)</option><option value="trafficformer">Old autoencoder (slow, only to reproduce old runs)</option></select></div>
         <div><label for="rt">Data to train on</label><select id="rt"><option value="all">All files in the dataset</option><option value="new_only">Only files not trained before</option></select></div>
       </div>
       <div class="row"><div><label for="sd">Random seed</label><input id="sd" type="number" value="42"></div></div>
@@ -511,7 +511,7 @@ async function loadSplits(){
 }
 $("ns").addEventListener("change",()=>{$("sp").disabled=$("ns").checked});
 // The values train_models.sh uses when no option is given (and the console's own defaults)
-const DEFAULTS={tp:"both",pb:"trafficformer",nd:"20",rt:"all",sd:"42",sp:"",ns:false,ah:false,ne:"200",ep:"10",ts:"0.2"};
+const DEFAULTS={tp:"both",pb:"iforest",nd:"20",rt:"all",sd:"42",sp:"",ns:false,ah:false,ne:"200",ep:"10",ts:"0.2"};
 const DEFAULT_NAMES={tp:"models",pb:"Path B algorithm",nd:"window size",rt:"data to train on",sd:"seed",sp:"split",ns:"fresh split",ah:"heuristic labels",ne:"trees",ep:"epochs",ts:"test split"};
 function changedSettings(kind){
   const keys=kind==="feature_table"?["sd"]:document.body.dataset.mode==="demo"?["tp","ne","ep","ts","sd"]:["tp","pb","nd","rt","sd","sp","ns","ah"];

@@ -145,6 +145,8 @@ Test alerts: `91a5916eb0d13747` (Medium, DNS Tunneling, no prior verdict); `8664
 
 ## 6. Proposed fixes (not yet applied)
 
+> **Update 2026-11-20:** F1, F2, F3, F4, F5 and F8 are applied (Week 7 Task 10). Tests: `tests/test_dashboard_verdicts.py`. The test record `deadbeefdeadbeef00` was removed from `dashboard/data/alert_management.json` (backup `*.before-cleanup-*`, audit action `RECORD_REMOVED`). F6 is partly done (a second job gets 409); F7 and F10 are still open.
+
 Nothing below has been applied. Snippets are sketches against the verified lines; adapt names as needed. Suggested order: F1 → F5 → F2 → F3/F4 → F6 → F8 → F7 → F10.
 
 ### F1 — Reject verdicts/actions on unknown alerts (fixes I1 / B16) — High

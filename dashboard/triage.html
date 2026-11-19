@@ -73,6 +73,8 @@
   .tl{display:flex;align-items:flex-end;gap:1px;height:40px}
   .tl span{flex:1;background:var(--blue);min-width:2px}
   @media (max-width:900px){.tri-grid{grid-template-columns:1fr}.tri-col{min-height:50vh}}
+/* audit fix F3: action buttons are inactive while a request is running */
+body.busy .acts .btn, body.busy dialog .btn:not([data-close]){opacity:.55;pointer-events:none}
 </style>
 </head>
 <body>

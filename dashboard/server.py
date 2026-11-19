@@ -189,7 +189,7 @@ ALLOWED_TRANSITIONS = {
     "Resolved":      {"Closed", "Open"},    # Open = Reopen
     "Closed":        {"Open"},               # Open = Reopen
 }
-VALID_BULK_ACTIONS = ("acknowledge", "assign", "status", "escalate", "close", "verdict")
+VALID_BULK_ACTIONS = ("acknowledge", "assign", "status", "escalate", "close", "verdict", "clearverdict")
 VALID_RESPONSE_ACTIONS = (
     "watchlist_ip", "mark_domain", "create_investigation_report",
     "export_evidence", "firewall_block_request", "endpoint_isolation_request",
@@ -210,7 +210,7 @@ ACK_SLA_SECONDS = {"Critical": 15 * 60, "High": 15 * 60, "Medium": 60 * 60, "Low
 
 # Minimum analyst tier per write. Workflow control only: there is no login, so the actor is self-declared.
 PERMISSIONS = {
-    "note": 0, "acknowledge": 1, "assign": 1, "status": 1, "escalate": 1, "verdict": 1,
+    "note": 0, "acknowledge": 1, "assign": 1, "status": 1, "escalate": 1, "verdict": 1, "verdict_clear": 1,
     "claim": 1, "release": 1, "checklist": 1, "case_close": 1, "case_escalate": 1, "handover_ack": 1,
     "incident_create": 1, "bulk": 1,
     "approve": 2, "suppress": 2, "incident_action": 2, "usecase_pref": 2, "force_claim": 2,
@@ -375,7 +375,17 @@ class Store:
 
     def _apply_one_locked(self, fp, action, payload, actor, alert_hint, now):
         """Mutate one alert record in the cache (caller holds self.lock and persists).
-        Returns (http_status, body_dict, audit_entries)."""
+        Returns (http_status, body_dict, audit_entries).
+
+        A rejected request never leaves a new record behind (audit fix F5): if this call created the
+        record and the action fails, the record is removed again before anything is persisted."""
+        created = fp not in self._cache["alerts"]["records"]
+        code, body, entries = self._apply_one_inner(fp, action, payload, actor, alert_hint, now)
+        if code != 200 and created:
+            self._cache["alerts"]["records"].pop(fp, None)
+        return code, body, entries
+
+    def _apply_one_inner(self, fp, action, payload, actor, alert_hint, now):
         rec = self.ensure_alert_record(fp, seed_from_alert=alert_hint)
         old_status = rec["status"]
         audit_entries = []
@@ -463,13 +473,36 @@ class Store:
                                       "request closure from the Triage page for Tier 2 approval",
                              "required_tier": 2}, []
             old_verdict = rec.get("verdict")
+            new_reason = (reason or "").strip() or None
+            if old_verdict == verdict and rec.get("verdict_reason") == new_reason:
+                # same verdict, same reason: nothing changes, nothing is audited (audit fix F4)
+                return 200, {"ok": True, "record": rec, "unchanged": True}, []
             rec["verdict"] = verdict
-            rec["verdict_reason"] = (reason or "").strip() or None
+            rec["verdict_reason"] = new_reason
             rec["verdict_by"] = actor
             rec["verdict_at"] = now
             if payload.get("_approved_by"):
                 rec["verdict_approved_by"] = payload["_approved_by"]
             audit_entries.append(("VERDICT_SET", old_verdict, verdict))
+
+        elif action == "verdict_clear":
+            # Withdraw a verdict (audit fix F2). The alert drops out of the training export.
+            old_verdict = rec.get("verdict")
+            if old_verdict is None:
+                return 409, {"error": "this alert has no verdict to clear"}, []
+            reason = payload.get("reason")
+            if reason is not None and (not isinstance(reason, str)
+                                       or len(reason.encode("utf-8")) > NOTE_MAX_BYTES):
+                return 400, {"error": f"reason must be a string up to {NOTE_MAX_BYTES} bytes"}, []
+            if tier < 2 and rec.get("verdict_by") not in (actor, None):
+                return 403, {"error": "only Tier 2+ or the analyst who set it can clear this verdict",
+                             "required_tier": 2}, []
+            if WORKFLOW["require_verdict"] and rec["status"] in ("Resolved", "Closed"):
+                return 409, {"error": f"reopen this {rec['status']} alert before clearing its verdict "
+                                      "(a verdict is required to resolve or close)"}, []
+            for k in ("verdict", "verdict_reason", "verdict_by", "verdict_at", "verdict_approved_by"):
+                rec[k] = None
+            audit_entries.append(("VERDICT_CLEARED", old_verdict, None))
 
         else:
             return 400, {"error": f"unknown action {action}"}, []
@@ -484,10 +517,10 @@ class Store:
     def apply_alert_action(self, fp, action, payload, actor, alert_hint=None):
         """Apply a validated management action to one alert. Returns (http_status, body_dict).
 
-        action ∈ {status, assign, acknowledge, escalate, note, verdict}."""
+        action ∈ {status, assign, acknowledge, escalate, note, verdict, verdict_clear}."""
         with self.lock:
             code, body, audit_entries = self._apply_one_locked(fp, action, payload, actor, alert_hint, _iso_now())
-            if code != 200:
+            if code != 200 or body.get("unchanged"):
                 return code, body
             self._atomic_write(STORE_FILES["alerts"], self._cache["alerts"])
             for act, old, new in audit_entries:
@@ -507,6 +540,7 @@ class Store:
         now = _iso_now()
         ok, failed = 0, []
         per_alert = len(fps) <= CASE_PER_ALERT_AUDIT_MAX
+        changed = False
         with self.lock:
             for fp in fps:
                 member_ok = True
@@ -520,12 +554,17 @@ class Store:
                             member_ok = False
                         failed.append({"fp": fp, "action": action, "code": code, "error": body.get("error")})
                         continue
+                    if not body.get("unchanged"):
+                        changed = True
                     if per_alert:
                         for act, old, new in entries:
                             self._append_audit(alert_fp=fp, action=act, old=old, new=new, actor=actor,
                                                note=p.get("reason") if action != "note" else p.get("text"),
                                                flush=False)
                 ok += 1 if member_ok else 0
+            if not changed:
+                # nothing was written for any member: leave the file and the audit log alone (F5)
+                return {"ok": ok, "failed": failed}
             self._atomic_write(STORE_FILES["alerts"], self._cache["alerts"])
             self._append_audit(action=audit_action or ("CASE_" + "_".join(a.upper() for a, _ in steps)),
                                actor=actor,
@@ -1536,6 +1575,22 @@ def _find_alert_by_fp(fp):
             if fp_hex(a) == fp:
                 return a
     return None
+
+
+FP_HEX_RE = re.compile(r"^[0-9a-f]{8,32}$")
+
+
+def alert_known(fp, live=None):
+    """True if fp is an alert the dashboard knows (audit fix F1): in the live feed, or it already has
+    a management record (so an alert that has aged out of the feed can still be updated)."""
+    if not isinstance(fp, str) or not FP_HEX_RE.match(fp):
+        return False
+    if live is not None:
+        if fp in live:
+            return True
+    elif _find_alert_by_fp(fp) is not None:
+        return True
+    return STORE.get_alert_mgmt(fp) is not None
 
 
 def _match_event(a, q):
@@ -3059,11 +3114,14 @@ class Handler(BaseHTTPRequestHandler):
             self.send_json(400, body)
             return
         actor = _actor(body)
-        alert_hint = _find_alert_by_fp(fp) or {}
-        if action not in ("acknowledge", "assign", "status", "escalate", "notes", "verdict"):
+        if action not in ("acknowledge", "assign", "status", "escalate", "notes", "verdict", "clearverdict"):
             self.send_json(404, {"error": "unknown action"})
             return
-        action_internal = "note" if action == "notes" else action
+        alert_hint = _find_alert_by_fp(fp) or {}
+        if not alert_hint and STORE.get_alert_mgmt(fp) is None:
+            self.send_json(404, {"error": "unknown alert"})   # audit fix F1
+            return
+        action_internal = {"notes": "note", "clearverdict": "verdict_clear"}.get(action, action)
         denied = authorize(actor, action_internal)
         if denied:
             self.send_json(*denied)
@@ -3091,7 +3149,7 @@ class Handler(BaseHTTPRequestHandler):
             return
         action_map = {"acknowledge": "acknowledge", "assign": "assign",
                       "status": "status", "escalate": "escalate", "close": "status",
-                      "verdict": "verdict"}
+                      "verdict": "verdict", "clearverdict": "verdict_clear"}
         internal = action_map[action]
         denied = authorize(actor, "bulk") or authorize(actor, internal)
         if denied:
@@ -3100,12 +3158,19 @@ class Handler(BaseHTTPRequestHandler):
         p = {k: v for k, v in (payload if isinstance(payload, dict) else {}).items() if not str(k).startswith("_")}
         if action == "close":
             p["status"] = "Closed"
-        fps = [f for f in fps[:200] if isinstance(f, str)]
+        requested = [f for f in fps[:200] if isinstance(f, str)]
         live = {fp_hex(a): a for a in _live_alerts()}
-        res = STORE.apply_case_action(fps, [(internal, p)], actor, None,
-                                      hints={fp: live.get(fp) for fp in fps},
-                                      audit_note=p.get("reason"), audit_action="BULK_" + action.upper())
+        unknown = [f for f in requested if not alert_known(f, live)]           # audit fix F1
+        fps = [f for f in requested if f not in unknown]
+        if fps:
+            res = STORE.apply_case_action(fps, [(internal, p)], actor, None,
+                                          hints={fp: live.get(fp) for fp in fps},
+                                          audit_note=p.get("reason"), audit_action="BULK_" + action.upper())
+        else:
+            res = {"ok": 0, "failed": []}
         errors = {f["fp"]: f for f in res["failed"]}
+        errors.update({f: {"fp": f, "code": 404, "error": "unknown alert"} for f in unknown})
+        fps = requested
         results = [{"fp": fp, "code": errors[fp]["code"] if fp in errors else 200, "ok": fp not in errors,
                     "error": errors[fp]["error"] if fp in errors else None} for fp in fps]
         EXPORTS.trigger()
@@ -3259,6 +3324,9 @@ def main():
         sys.exit("Set a non-default ADMIN_TOKEN before exposing the dashboard beyond localhost.")
     if args.demo:
         STATE.mode = "demo"
+        # Audit fix F8: the training console must not touch <repo>/models in demo mode. Its settings
+        # read TRAINGUI_MODE at import time, so this has to happen before start_training_api().
+        os.environ["TRAINGUI_MODE"] = "demo"
     else:
         if not Path(STATE.watch_dir).is_dir():
             sys.exit(f"Watch folder not found: {STATE.watch_dir}")

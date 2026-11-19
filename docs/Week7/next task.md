@@ -17,7 +17,7 @@ All time estimates are guesses, not measurements.
 
 ---
 
-## Progress (updated 2026-11-20 00:45)
+## Progress (updated 2026-11-20 01:00)
 
 | Task | Status | Evidence |
 |---|---|---|
@@ -30,7 +30,7 @@ All time estimates are guesses, not measurements.
 | 7 · Review band | ❌ not started | tiers already exist in the bridge; budget-based band and `/triage` routing to add |
 | 8 · Schema check at start-up | ✅ **done** | `src/dns_detect/models/schema.py`; used by the bridge, `run_pipeline.sh` and `promote_model.sh`; 12 tests |
 | 9 · Automate Part B (seeds → gate → promote) | ❌ not started | added 2026-11-20; `run_candidate_seeds.sh` already trains the seeds and calls the gate, but throws away the gate result (`\|\| true`) and never promotes |
-| 10 · Verdict fixes F1–F5 + F8 | ❌ not started | checked 2026-11-20: test record `deadbeefdeadbeef00` still in `dashboard/data/alert_management.json`; verdicts on unknown alerts accepted; no "clear verdict"; `--demo` does not set the training API to demo mode |
+| 10 · Verdict fixes F1–F5 + F8 | ✅ **done** (2026-11-20) | F1 unknown alerts → 404 (single and bulk); F2 "Clear verdict" in `/alerts` (drawer + bulk) and `/triage`, audited `VERDICT_CLEARED`; F3 in-flight guards; F4 same verdict = no-op; F5 no records from rejected requests; F8 `--demo` sets the training API to demo mode. Test record removed (backup kept, audited `RECORD_REMOVED`). `tests/test_dashboard_verdicts.py` 12 tests; 56 dashboard + 57 console tests pass |
 | 11 · Dashboard real-mode testing | ❌ not started | only demo mode tested; no browser click-through (Chrome on Windows could not reach the WSL server); no Elasticsearch/Kibana export test |
 | 12 · Verdicts → training (plumbing only) | ❌ not started | `export_feedback_labels.py` exports verdicts; training never reads them (flow map gap 23). Needs Task 10 first |
 | 13 · SOC roadmap P0 | ❌ not started | missing: role landing pages, "Assigned to me" / "Unassigned" filters, playbook button, attachments, MITRE tactic × technique page |
@@ -645,8 +645,8 @@ The roadmap's own sequencing: **1, 2, 5** first (analyst value, no new integrati
 - [ ] Lock file, `promotion_log.jsonl`, tests; flow map updated
 
 **Task 10: verdict fixes**
-- [ ] F1 unknown alerts → 404; test record `deadbeefdeadbeef00` removed (backed up, audited)
-- [ ] F5, F2 (clear verdict), F3, F4, F8; tests pass with the 43 existing dashboard tests
+- [x] F1 unknown alerts → 404; test record `deadbeefdeadbeef00` removed (backed up, audited) (2026-11-20)
+- [x] F5, F2 (clear verdict), F3, F4, F8; tests pass with the existing dashboard tests (56 passed) (2026-11-20)
 
 **Task 11: real-mode testing**
 - [ ] Browser click-through of `/triage`, `/alerts`, `/soc`, `/health`

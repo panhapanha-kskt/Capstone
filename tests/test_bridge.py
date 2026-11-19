@@ -85,6 +85,8 @@ def models(monkeypatch, tmp_path):
     monkeypatch.setattr(bridge, "FALLBACK_QUANTILES", str(tmp_path / "fallback.json"))
     monkeypatch.setattr(bridge, "load_detection_allowlist", lambda: set())
     monkeypatch.setattr(bridge, "_fusion_mode", lambda: "lr")
+    # Stub models are not real artefacts: the schema check has its own tests (test_model_schema.py).
+    monkeypatch.setattr(bridge, "_check_schema", lambda *a, **k: [])
     _install_fake_path_b(monkeypatch)
     return tmp_path
 

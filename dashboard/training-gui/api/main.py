@@ -45,7 +45,7 @@ class TrainRequest(BaseModel):
     test_size: float = 0.2
     # Capstone train_models.sh only
     n_days: int = 20
-    path_b_model: Literal["trafficformer", "iforest"] = "trafficformer"
+    path_b_model: Literal["trafficformer", "iforest"] = "iforest"
     retrain: Literal["all", "new_only"] = "all"
     new_split: bool = False
     split_manifest: str = ""          # a file in data/processed/splits/; "" = train_models.sh default

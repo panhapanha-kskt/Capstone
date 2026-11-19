@@ -25,6 +25,10 @@ for f in "${FILES[@]}"; do
   [[ -f "$RUN/$f" ]] || { echo "✗ $RUN/$f is missing — nothing was changed" >&2; exit 1; }
 done
 
+# The run's saved inputs must match the live feature code before it can go live.
+PYTHONPATH="src${PYTHONPATH:+:$PYTHONPATH}" python3 -m dns_detect.models.schema --models-dir "$RUN" \
+  || { echo "✗ schema check failed for $RUN — nothing was changed" >&2; exit 1; }
+
 mkdir -p "$ARCHIVE"
 shopt -s dotglob nullglob
 for f in "$DEST"/*; do

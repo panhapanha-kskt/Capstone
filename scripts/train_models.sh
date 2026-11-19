@@ -105,7 +105,7 @@ FORCE_RETRAIN=false
 PATH_A_ONLY=false
 PATH_B_ONLY=false
 PATH_B_MODEL="dns_trafficformer"
-PATH_B_TYPE="trafficformer"   # Path B algorithm: trafficformer (autoencoder) or iforest (Isolation Forest)
+PATH_B_TYPE="iforest"   # Path B algorithm: iforest (Isolation Forest, default since 2026-11-19) or trafficformer (old autoencoder)
 N_DAYS=20
 CUSTOM_DATA_DIR=""
 PCAP_LABEL=""          # provenance label applied to every query in input pcaps (0/1)
@@ -143,11 +143,11 @@ Training:
   --retrain           Train only on files not trained before (skips the rest)
   --force-retrain     Retrain on all given data
   --path-a-only       Train only Path A (RF + GBT)
-  --path-b-only       Train only Path B (Trafficformer)
+  --path-b-only       Train only Path B
   --n-days N          Path B window size in queries (default: 20)
   --model-name NAME   Path B model save name (default: dns_trafficformer)
-  --path-b-model T    Path B algorithm: trafficformer (Transformer autoencoder, default)
-                      or iforest (Isolation Forest — trains in minutes instead of hours)
+  --path-b-model T    Path B algorithm: iforest (Isolation Forest, default; trains in minutes)
+                      or trafficformer (old Transformer autoencoder; slow, kept to reproduce old runs)
   --seed N            Seed for Path A, Path B and a fresh split (default: 42)
 
 Split (one split for Path A, Path B and fusion — saved as <models>/split_manifest.json):

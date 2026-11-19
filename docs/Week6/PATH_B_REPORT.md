@@ -20,7 +20,7 @@ Every table has the one-line **record-type rule** (TXT/KEY/NULL) as a baseline, 
 | Mentor approval of the Isolation Forest Path B | ✅ 2026-11-17 |
 | T2 Promote `runs/v3_iforest` to `models/` | ✅ 2026-11-19 |
 | T9 Error ranges for Path B and every detector | ✅ 2026-11-19 |
-| T4 Seed spread | next; the cause is Path A's threshold on two benign domains (§3.4) |
+| T4 Seed spread | ✅ cause found and fixes measured (§5); setting still to choose |
 | T3 0.1% false-alarm target | after T4 |
 | T6 Items 6–8 | after T3; item 6 needs a newer benign capture |
 | T7 Retraining on feedback | blocked: 2 verdicts, one a test record (stop condition: < 50) |
@@ -132,3 +132,66 @@ Recall was 100% on every detector and seed.
 - There's no "later normal traffic" set on this machine (T6 item 6 needs one).
 - Splits are time-ordered per class but **not grouped by domain** in the default pipeline, so near-duplicate rows of a domain can sit in train and test (see the twin-free numbers in `ML_IMPROVEMENT_IMPLEMENTATION_2026-11-19.md`).
 - Path B's per-query FPR depends on how a window's score is assigned to queries (each window scores its last query); the first 19 queries of a client get no Path B score.
+
+---
+
+## 5. T4: seed spread (20 seeds, Observed 2026-11-19)
+
+All runs use `labelled_v3`: same data, same frozen split (sha256 `ff91ee2e…`), seeds 42–61, Isolation Forest Path B. Raw output: `runs/t4_before_20seeds.{json,md}`, `runs/labelled_v3_iforest_gate.json`.
+
+### 5.1 Before: one model per seed
+
+False alarms out of 1,168 benign test rows.
+
+| Detector | False alarms (mean ± sd) | Min–max | FPR | Recall |
+|---|---|---|---|---|
+| Fusion | 9.85 ± 5.53 | 1–18 | 0.84% ± 0.47% | 100% every seed |
+| Path A | 8.60 ± 5.34 | 1–18 | 0.74% ± 0.46% | 100% every seed |
+| Path B | 268.3 ± 13.3 | 246–287 | 22.97% ± 1.14% | 100% every seed |
+| Record-type rule | 0 | 0–0 | 0.00% | 100% |
+
+**Gate (20 seeds): FAIL.**
+- Passed: seeds, same split, recall floor, recall and false alarms vs the current `models/` (9.85 vs 10.00 on the same rows).
+- Failed: the FPR budget (0.84% vs 0.1%) and the rule baseline (record-type F1 1.0 on every seed).
+
+### 5.2 Cause: the model, on benign domains it never saw (not the threshold)
+
+| Check | Result |
+|---|---|
+| Validation false-alarm rate | **0.0% on all 20 seeds** (7,357 benign validation rows): validation is perfectly separable, so the threshold has nothing to calibrate against |
+| Path A threshold across seeds | 0.48 ± 0.05 (0.34–0.55); 0.5 on most seeds (the middle of the empty gap) |
+| Threshold vs test false alarms | correlation 0.29; seeds with the same threshold 0.5 range from 4 to 18 false alarms |
+| Where the false alarms are | over the 20 seeds, Path A raised 172 false alarms on only **18 distinct benign rows**: 12 `vsassets.io`, 6 `io.localdomain` |
+| Those domains in train / validation / test | `vsassets.io` 0 / 0 / 24 rows; `io.localdomain` 0 / 0 / 10 rows: **test only** |
+| What they are | VS Code extension downloads (`<publisher>.gallerycdn.vsassets.io`) and the same names with the resolver's search suffix (`….vsassets.io.localdomain`): long, random-looking subdomains |
+| Unseen benign domains in the test set | 12 of 33 test benign domains never appear in training |
+
+**Conclusion:** the spread is training randomness in how each Random Forest scores a few unfamiliar benign names, not the threshold position. Choosing the threshold on more validation rows can't help, because validation already has 0 false alarms. Allowlisting the two domains would be tuning to the test set, so it isn't done.
+
+### 5.3 Fixes tried (Path A, using the 20 existing models, no retraining)
+
+Each row combines K seed models, drawn at random 300 times. Thresholds are each seed's own **validation** threshold (score averaging uses their mean); nothing is chosen on the test set.
+
+| Method | K | False alarms (mean ± sd) | Min–max | Recall |
+|---|---|---|---|---|
+| Single model (before) | 1 | 8.60 ± 5.34 | 1–18 | 100% |
+| Average Path A score | 3 | 7.29 ± 2.66 | 4–16 | 100% |
+| Average Path A score | 5 | 6.90 ± 1.90 | 5–14 | 100% |
+| Average Path A score | 10 | 6.41 ± 1.06 | 5–11 | 100% |
+| Majority vote | 5 | 7.30 ± 2.65 | 4–18 | 100% |
+| Majority vote | 11 | 6.36 ± 1.04 | 5–13 | 100% |
+| Fusion, majority vote | 11 | 8.47 ± 2.73 | 6–14 | 100% |
+
+**What it shows:**
+- **Combining seeds removes most of the spread** (sd 5.3 → about 1 at K = 10–11). The **mean** falls only from 8.6 to about 6.4, with a floor of about 5–6 false alarms that every combination keeps. Those are the `vsassets.io` / `io.localdomain` rows that most seeds find tunnel-like.
+- **Fixing the floor needs data:** benign CDN and extension-download names in training. That's Week 7 Task 2.
+- **Cost:** Path A inference about K× slower, and training K× longer.
+- A Random Forest is itself an average of trees, so **one forest with K × 200 trees** should behave close to the K-seed average at the same cost and with one model file. That's **not tested yet**; it needs one training setting (`n_estimators`) and a 3–5-seed run.
+
+### 5.4 Decision
+
+| Item | Status |
+|---|---|
+| Chosen method | **not set yet.** Candidate: Path A with 1,000 trees (≈ 5-seed average); test over ≥ 3 seeds and keep it only if the seed sd falls as in §5.3 at acceptable training time |
+| Why not ship score averaging now | it needs 5–10 model copies in `models/` and changes to the loader; one bigger forest is simpler if it works |
+| The real fix | Week 7 Task 2 (harder, more varied benign data) and Task 3 (domain-grouped split) |

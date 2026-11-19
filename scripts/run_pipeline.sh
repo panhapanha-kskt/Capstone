@@ -216,6 +216,11 @@ python3 -c "from dns_detect.config import settings" 2>/dev/null || \
   fail "dns_detect package not importable (check PYTHONPATH and src/dns_detect/)"
 ok "dns_detect package ready"
 
+# Saved model inputs must match the live feature code (Week 7 Task 8).
+python3 -m dns_detect.models.schema --models-dir "$MODELS_DIR" --path-b-model "$PATH_B_MODEL" 2>&1 | tee -a "$PIPELINE_LOG"
+[[ ${PIPESTATUS[0]} -eq 0 ]] || fail "Model schema check failed — the models in $MODELS_DIR do not match this code"
+ok "model schema matches the code"
+
 # Check DNS logs
 SKIP_WEEK3=false
 if [[ ! -d "$DNS_LOG_DIR" ]]; then

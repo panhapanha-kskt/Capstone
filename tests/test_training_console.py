@@ -393,7 +393,7 @@ def test_step_2_is_a_confirm_page_with_train_models_defaults(page):
     assert '<details class="panel" id="adv">' in train                # settings closed by default
     for gone in ('id="ev"', 'id="fts"', 'id="mem"'):                  # fixed by the train_models.sh standard
         assert gone not in page
-    assert 'const DEFAULTS={tp:"both",pb:"trafficformer",nd:"20",rt:"all",sd:"42",sp:""' in page
+    assert 'const DEFAULTS={tp:"both",pb:"iforest",nd:"20",rt:"all",sd:"42",sp:""' in page
     check = page[page.index("async function check(name,btn)"):page.index("function showReport")]
     assert 'if(r.ok){setSelected(r.name);go("#/train?dataset="' in check   # a passed check opens step 2
 

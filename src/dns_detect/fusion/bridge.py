@@ -9,7 +9,8 @@ Flow (python -m dns_detect.fusion.bridge --week3 ... --output ...):
   2. Path A (RF + GBT soft-vote, path_a.score_frame) → ml_score_A / ml_label_A.
      Missing Path A model: production raises ModelUnavailableError; development with
      --allow-missing-path-a marks every record "degraded" (NaN score, never benign by default).
-  3. Path B (Trafficformer, path_b_predict.score_records, per-client windows) → ml_score_B.
+  3. Path B (Isolation Forest or Trafficformer autoencoder, path_b_predict.score_records,
+     per-client windows) → ml_score_B.
      Only the LAST record of each window gets a score; the rest are NaN with has_score_B = 0.
      Path B's API is positional, so its output is checked against the bridge's rows
      (length + client_ip order) before it is attached by row_id.
@@ -250,7 +251,7 @@ def run_path_a(week3_json_path: str = None, df: pd.DataFrame = None) -> pd.DataF
     Returns a frame with row_id, ml_score_A, ml_label_A, ml_verdict_A. Raises
     ModelUnavailableError when a model file is missing.
     """
-    print("\n── Path A: RF + Gradient Boosting (8-feature tree ensemble) ──")
+    print("\n── Path A: Random Forest (+ Gradient Boosting when it helps) ──")
     missing = [m for m in (MODEL_RF, MODEL_SCALER) if not os.path.exists(m)]
     if missing:
         raise ModelUnavailableError(
@@ -290,7 +291,7 @@ def run_path_b(week3_json_path: str, save_name: str, model_dir: str = None):
     from dns_detect.models.path_b_predict import score_records   # TensorFlow is loaded only here
     if model_dir is None:
         model_dir = str(MODELS_DIR)
-    print("\n── Path B: Trafficformer (multi-feature, per-client sequences) ─")
+    print("\n── Path B: anomaly model on per-client query windows ──────────")
     scores, anomalies, covered, _thr = score_records(week3_json_path, save_name, model_dir)
     covered = np.asarray(covered, dtype=bool)
     n_total = len(scores)

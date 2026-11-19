@@ -5,13 +5,16 @@
 #    TRAIN (steps 1–11)  → train_models.sh   (auto-skips if models exist)
 #    DETECT (steps 12–16)→ run_pipeline.sh   (extract → ML → rules → monitor)
 #    RETRAIN TRIGGER (17)→ reads monitoring verdict (manual by default)
+#  --retrain / --auto-retrain never write to models/ directly: they train 3 seeds into runs/,
+#  run the gate and promote only with --auto-promote (scripts/part_b.py).
 #
 #  This is a thin wrapper — it does NOT reimplement any pipeline logic.
 #
 #  Usage:
 #    ./scripts/run_all.sh                       # train-if-needed → detect → monitor
-#    ./scripts/run_all.sh --retrain             # smart retrain on new data, then detect
-#    ./scripts/run_all.sh --force-retrain       # full retrain, then detect
+#    ./scripts/run_all.sh --retrain             # 3 seeds into runs/ → gate → "ready" or FAIL, then detect
+#    ./scripts/run_all.sh --retrain --auto-promote   # ... and promote on PASS (smoke test + rollback)
+#    ./scripts/run_all.sh --force-retrain       # same as --retrain (candidates always train on all given data)
 #    ./scripts/run_all.sh --skip-train          # detect only (models must already exist)
 #    ./scripts/run_all.sh --zscore 2.5          # custom Z-score threshold for detection
 #    ./scripts/run_all.sh --force-retrain --path-b-model iforest \
@@ -65,6 +68,7 @@ WITH_ATTACK=false
 ATTACK_ARGS=""
 SKIP_TRAIN=false
 AUTO_RETRAIN=false
+AUTO_PROMOTE=0
 ZSCORE_THRESHOLD=2.0
 declare -a TRAIN_ARGS=()   # retrain flags passed through to train_models.sh
 declare -a MODEL_ARGS=()   # model/label options passed through to train_models.sh (also on --auto-retrain)
@@ -82,11 +86,12 @@ show_help() {
   echo "  --with-infra           Bring up Technitium+ELK via docker compose first"
   echo "  --with-attack \"ARGS\"   Build + run attacks/attack with ARGS, then feed its logs"
   echo "                         (Kali/root — raw sockets). Copies new logs into data/raw/"
-  echo "  --retrain              Smart retrain on NEW data only, then detect"
-  echo "  --force-retrain        Full retrain on ALL data, then detect"
+  echo "  --retrain              Train 3 seeds into runs/ → gate → report, then detect (never writes models/)"
+  echo "  --force-retrain        Same as --retrain"
+  echo "  --auto-promote         With --retrain/--auto-retrain: promote the median seed if the gate passes"
   echo "  --skip-train           Detect only (models must already exist in models/)"
   echo "  --zscore N             Z-score threshold for detection (default: 2.0)"
-  echo "  --auto-retrain         If monitoring recommends it, retrain + re-detect once"
+  echo "  --auto-retrain         If monitoring recommends it, run the same retrain → gate (→ promote)"
   echo "  --help                 Show this help"
   echo ""
   echo -e "${BOLD}Training options${NC} (passed to train_models.sh; see ./scripts/train_models.sh --help):"
@@ -137,11 +142,36 @@ while [[ $# -gt 0 ]]; do
       DATA_ARGS+=(--files "${FILE_LIST[@]}") ;;
     --skip-train)    SKIP_TRAIN=true;                 shift ;;
     --auto-retrain)  AUTO_RETRAIN=true;               shift ;;
+    --auto-promote)  AUTO_PROMOTE=1;                  shift ;;
     --zscore)        ZSCORE_THRESHOLD="${2:-2.0}";    shift 2 ;;
     --help|-h)       show_help ;;
     *) warn "Unknown option: $1 (ignored)"; shift ;;
   esac
 done
+
+# Part B: train 3 seeds into runs/ → gate → (promote) → smoke test. Never writes to models/ directly.
+PART_B_CODE=0
+run_part_b() {
+  local name files="" i
+  name="retrain_$(date +%Y%m%d_%H%M%S)"
+  for ((i = 0; i < ${#DATA_ARGS[@]}; i++)); do          # --files from the command line become the training files
+    [[ "${DATA_ARGS[$i]}" == --files ]] && files="${DATA_ARGS[*]:$((i + 1))}"
+  done
+  [[ ${#DATA_ARGS[@]} -gt 0 && -z "$files" ]] && warn "--data-dir is not used by Part B; pass --files instead (using the default training bundle)"
+  [[ ${#MODEL_ARGS[@]} -gt 0 ]] && warn "Model options are fixed by run_candidate_seeds.sh in Part B; ignored: ${MODEL_ARGS[*]}"
+  set +e
+  RUN_NAME="$name" AUTO_PROMOTE="$AUTO_PROMOTE" FILES="$files" bash "$SCRIPT_DIR/run_candidate_seeds.sh"
+  PART_B_CODE=$?
+  set -e
+  case "$PART_B_CODE" in
+    0)  ok "Gate PASS — new model promoted and smoke-tested" ;;
+    10) ok "Gate PASS — ready to promote (command above, or re-run with --auto-promote)" ;;
+    1)  warn "Gate FAIL — models/ unchanged (report: runs/${name}_gate.json)" ;;
+    2)  warn "Smoke test failed after promote — rolled back to the previous models" ;;
+    4)  warn "Retrain not started: training data or split missing (see above) — models/ unchanged" ;;
+    *)  fail "Part B stopped (code $PART_B_CODE)" ;;
+  esac
+}
 
 banner
 START_TIME=$(date +%s)
@@ -249,6 +279,9 @@ if [[ "$SKIP_TRAIN" == true ]]; then
   [[ -f "$MODELS_DIR/dns_tunnel_rf.pkl" ]] || \
     fail "No trained models in models/ — cannot --skip-train. Run without it first."
   ok "Using existing models in models/"
+elif [[ "$RETRAIN_GIVEN" == true ]]; then
+  stage "RETRAIN — 3 seeds into runs/ → gate → promote (Part B)"
+  run_part_b
 else
   stage "TRAIN (steps 1–11) — train_models.sh"
   # --files must stay last: train_models.sh reads every following word as a file
@@ -286,10 +319,12 @@ except Exception:
 if [[ "$RETRAIN_FLAG" == "yes" ]]; then
   if [[ "$AUTO_RETRAIN" == true ]]; then
     warn "Monitoring recommends retrain — auto-retraining (--auto-retrain)"
-    "$SCRIPT_DIR/train_models.sh" --retrain "${MODEL_ARGS[@]+"${MODEL_ARGS[@]}"}" || fail "Auto-retrain failed"
-    info "Re-running detection on freshly retrained models ..."
-    "$SCRIPT_DIR/run_pipeline.sh" --zscore "$ZSCORE_THRESHOLD" || fail "Post-retrain detection failed"
-    ok "Auto-retrain + re-detect complete"
+    run_part_b
+    if [[ "$PART_B_CODE" == 0 ]]; then
+      info "Re-running detection on the newly promoted models ..."
+      "$SCRIPT_DIR/run_pipeline.sh" --zscore "$ZSCORE_THRESHOLD" || fail "Post-retrain detection failed"
+      ok "Auto-retrain + re-detect complete"
+    fi
   else
     warn "Monitoring RECOMMENDS RETRAIN."
     echo -e "    Run: ${BOLD}./scripts/run_all.sh --retrain${NC}   (or add --auto-retrain)"

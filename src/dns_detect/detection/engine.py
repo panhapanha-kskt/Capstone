@@ -333,7 +333,7 @@ class RuleBasedDNSDetector:
         # ── NEW ML RULES ──────────────────────────────────────────────
         self.ml_label_rule = {
             'name':        'ML Model Attack Detection',
-            'description': 'ML ensemble (RF + Transformer + Trafficformer) flagged this query',
+            'description': 'ML fusion (Path A Random Forest + Path B anomaly model + rules) flagged this query',
             'severity':    'High',
             'tactics':     ['CommandAndControl', 'Exfiltration'],
             'techniques':  ['T1572', 'T1568', 'T1048'],
@@ -904,7 +904,7 @@ class RuleBasedDNSDetector:
             },
             'ml_detection': {
                 'enabled': self.has_ml_scores,
-                'source':  'ml_bridge.py (Path A: RF+Transformer + Path B: Trafficformer)',
+                'source':  'ml_bridge.py (Path A: Random Forest + Path B: anomaly model, learned fusion)',
             },
             'threat_intelligence': {
                 'enabled': self.mdt_integration is not None and all([
@@ -1012,7 +1012,7 @@ Examples:
     print("   Rule 1–4: Microsoft Sentinel rules")
     print("   Z-score:  NetSleuthXplorer statistical detection")
     if detector.has_ml_scores:
-        print("   Rule 5–6: ML detection (Path A: RF+Transformer, Path B: Trafficformer)")
+        print("   Rule 5–6: ML detection (Path A: Random Forest, Path B: anomaly model, learned fusion)")
     else:
         print("   Rule 5–6: INACTIVE — run ml_bridge.py to enable ML detection")
 

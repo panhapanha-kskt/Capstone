@@ -55,6 +55,48 @@ instead of emitting unscored records. For demos without trained fusion, run the 
 (or set `bridge_mode: development`); records that fall back are marked `fusion_method = or_fallback` /
 `degraded`. See `docs/research/BRIDGE_V2_IMPLEMENTATION_REPORT.md`.
 
+## One-command operation
+
+`scripts/soc.sh` starts and supervises the whole SOC in the background as two independent services:
+the **Detector** (push listener on :8787 + `dashboard/server.py` watch loop and dashboard on :9000) and the
+**Learner** (`scripts/learner.py`), which trains a candidate only on one of three triggers. They are linked only
+by `models/` and the gate (`scripts/compare_models.py` + `config/success_criteria.yaml`). Run it from WSL/Linux:
+
+```bash
+cd /mnt/c/Programming-CTF/Capstone
+bash scripts/soc.sh up               # start both (a second `up` starts nothing twice)
+bash scripts/soc.sh status           # state, PID, uptime, restarts; last trigger; last gate result;
+                                     # live model + hash; any "ready to promote" with its command
+bash scripts/soc.sh logs learner -f  # or: logs detector / logs
+bash scripts/soc.sh restart learner  # restarting one service never touches the other
+bash scripts/soc.sh down             # clean stop; exit 1 if stray processes are left
+```
+
+- **Settings:** `config/soc.yaml` (commented; another file with `SOC_CONFIG=...`). State in `runs/soc/`, logs in
+  `logs/soc/` (rotated, 10 MB x 5). Each service restarts on its own with backoff (2 s doubling to 300 s).
+- **Triggers (the only three):** (b) new Kali captures in `data/processed/week7` listed in `SHA256SUMS`,
+  (c) 50 or more settled analyst verdicts since the last run, (a) 3 distinct monitoring reports in a row with
+  `retrain_recommended` and something new to train on. New DNS log lines never start training. After every run:
+  24 h cooldown, at most 2 runs a day, one at a time, training at `nice -n 10`. Every learner decision is one
+  JSON line with `"source": "learner"` in `runs/promotion_log.jsonl`.
+- **Promoting stays manual by default.** When the gate passes, `status` shows "ready to promote" and the command,
+  e.g. `python3 scripts/part_b.py --name soc_captures_<time> --seeds "42 43 44" --auto-promote` (gate, promote,
+  smoke test, automatic rollback). Automatic promotion happens only with `bash scripts/soc.sh up --auto-promote`
+  or `auto_promote: true` in `config/soc.yaml`, at most once a week, and never while a detection run holds
+  `runs/.pipeline.lock`.
+- **Shadow check before every promote** (`part_b.py --shadow`, on by default via `config/soc.yaml` `shadow:`):
+  the candidate scores the traffic the detector last processed, *without alerting*, and must agree with the live
+  model on >= 95% of rows and not flag more than 1.5x as many (+20). A candidate that passes the frozen test set
+  but behaves differently on today's traffic is held back (exit 5, report in `runs/<run>_shadow.json`). This is
+  the "online validation before serving" step of Google's MLOps level 1.
+- **Stays manual, by design:** collecting attack data in the Kali lab (`scripts/lab_capture.sh`), labelling
+  (analyst verdicts in the dashboard), and approving a promotion.
+- **WSL notes:** services use the venv in `config/soc.yaml` `python:` (default `/home/Panha/dns-venv/bin/python3`,
+  falling back to `$VIRTUAL_ENV`, then `python3`). No sudo and no systemd units are used. WSL may shut the distro
+  down when no terminal is open; if the services stop, set `instanceIdleTimeout=-1` under `[wsl2]` in
+  `%UserProfile%\.wslconfig` (or keep a terminal open). Technitium/Docker is not managed by `soc.sh`.
+- Details, known gaps and how to roll it back: [docs/Week7/SOC_BUILD_NOTE_2026-11-20.md](docs/Week7/SOC_BUILD_NOTE_2026-11-20.md).
+
 ## Project Structure
 
 ```

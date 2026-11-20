@@ -48,7 +48,10 @@ How it works:
 - Each run calls `scripts/train_models.sh` with `DNS_DETECT_MODELS_DIR=gui_data/runs/<run>/model`, so the live `models/` folder is not touched while training.
 - One-path runs (Path A or B only) and "only files not trained before" start from a copy of the current `models/`, so the script finds the other path and its file registry.
 - Datasets: upload .csv .json .log .pcap .pcapng, or put files or folders (symlinks work) in `gui_data/datasets/`. "Project default" means the script scans `data/raw/`.
-- Promote moves the old `models/` folder to `gui_data/backups/` and copies the new one in. Restart `run_pipeline.sh` or the monitor afterwards.
+- Promote (Capstone mode) goes through `scripts/part_b.py`: it gathers every run trained the same way (needs >= 3
+  seeds), runs the project gate, waits for detection to be idle, promotes with `scripts/promote_model.sh` (the old
+  set goes to `models/archive/`), smoke-tests and rolls back by itself if that fails. "Confirm to override" cannot
+  skip the gate. Roll back uses `scripts/rollback_model.sh`.
 - Metrics are read from `evaluation_metrics.json` using the names in the top of `adapters/capstone_train.py`. Check the Runs page after your first run; if a metric shows "-", fix its name there.
 - False alarm counts are only comparable between runs that share the same test split (keep "fresh split" off).
 

@@ -1021,7 +1021,7 @@ def model_info(models_dir=None):
 FEEDBACK_FIELDS = ("fp", "label", "verdict", "verdict_reason", "verdict_by", "verdict_at", "status",
                    "rule", "severity", "client_ip", "domain", "alert_time", "query_time",
                    "ml_score_A", "ml_score_B", "ml_combined_score", "ml_confidence", "ml_threat_score",
-                   "model_version", "in_live_feed", "demo")
+                   "row_id", "query_row_time", "model_version", "in_live_feed", "demo")
 VERDICT_TO_LABEL = {"true_positive": 1, "false_positive": 0, "fp_model_logic": 0, "fp_bad_data": 0,
                     "benign_positive": 0, "duplicate": None, "undetermined": None}
 
@@ -1047,6 +1047,7 @@ def feedback_rows():
             "ml_score_A": d.get("ml_score_A"), "ml_score_B": d.get("ml_score_B"),
             "ml_combined_score": d.get("ml_combined_score"), "ml_confidence": d.get("ml_confidence"),
             "ml_threat_score": d.get("ml_threat_score"),
+            "row_id": d.get("row_id"), "query_row_time": d.get("query_time"),
             "model_version": version, "in_live_feed": bool(a), "demo": bool(d.get("demo")),
         })
     rows.sort(key=lambda r: r.get("verdict_at") or "")

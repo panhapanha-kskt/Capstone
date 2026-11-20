@@ -17,7 +17,7 @@ All time estimates are guesses, not measurements.
 
 ---
 
-## Progress (updated 2026-11-20 01:15)
+## Progress (updated 2026-11-20 09:30)
 
 | Task | Status | Evidence |
 |---|---|---|
@@ -32,7 +32,7 @@ All time estimates are guesses, not measurements.
 | 9 · Automate Part B (seeds → gate → promote) | ✅ **done** (2026-11-20) | `scripts/part_b.py` (gate result used, median seed, `--auto-promote`, smoke test, rollback, lock, `runs/promotion_log.jsonl`, waits while `run_pipeline.sh` holds `runs/.pipeline.lock`); `scripts/rollback_model.sh`; `run_all.sh --retrain`/`--auto-retrain` never write to `models/` directly; retrains default to the live model's training files and split and stop if any are missing; unsafe `train_models.sh --retrain` advice removed. Real run 2026-11-20: 3 seeds in 13 min, **gate FAIL** (FPR 0.88% vs 0.1%; 10.33 vs 10.00 false alarms; record-type rule F1 1.0), `models/` unchanged. `tests/test_part_b_automation.py` 10 tests |
 | 10 · Verdict fixes F1–F5 + F8 | ✅ **done** (2026-11-20) | F1 unknown alerts → 404 (single and bulk); F2 "Clear verdict" in `/alerts` (drawer + bulk) and `/triage`, audited `VERDICT_CLEARED`; F3 in-flight guards; F4 same verdict = no-op; F5 no records from rejected requests; F8 `--demo` sets the training API to demo mode. Test record removed (backup kept, audited `RECORD_REMOVED`). `tests/test_dashboard_verdicts.py` 12 tests; 56 dashboard + 57 console tests pass |
 | 11 · Dashboard real-mode testing | ❌ not started | only demo mode tested; no browser click-through (Chrome on Windows could not reach the WSL server); no Elasticsearch/Kibana export test |
-| 12 · Verdicts → training (plumbing only) | ❌ not started | `export_feedback_labels.py` exports verdicts; training never reads them (flow map gap 23). Needs Task 10 first |
+| 12 · Verdicts → training (plumbing only) | ✅ **done** (2026-11-20); ⏳ waiting for ≥ 50 verdicts | `scripts/export_feedback_labels.py` joins each verdict to its query (alert `row_id`) → `data/feedback/verdict_labels.json` with detection-time window features; `train_models.sh --feedback FILE` → `dns_detect/ingest/feedback.py` (labels TP→1, benign/FP→0, skips undetermined/duplicate/demo; one row per alert; drops rows in the frozen test set; min 50, max 5000 in `config/settings.yaml`); `analyst` is a trusted label source; counts + SHA-256 in `run_record.json`. `tests/test_feedback_training.py` 13 tests; full suite 354 passed |
 | 13 · SOC roadmap P0 | ❌ not started | missing: role landing pages, "Assigned to me" / "Unassigned" filters, playbook button, attachments, MITRE tactic × technique page |
 | 14 · Out-of-date docs | ✅ **done** (2026-11-20) | `WEEK6_COMPLETE_REPORT.md` §12 names commit `277a12a`; new §16 covers the 11-18/19 work; `PATH_B_ISOLATION_FOREST.md` §8 has the measured seed spread (v3 8.2 ± 0.84; labelled_v3 20 seeds 9.85 ± 5.53) |
 
@@ -656,7 +656,7 @@ The roadmap's own sequencing: **1, 2, 5** first (analyst value, no new integrati
 - [ ] Elasticsearch/Kibana export checked against the docker stack; report written (anonymised)
 
 **Task 12: verdicts → training**
-- [ ] `--feedback` in step 8, test-window rows dropped, minimum 50, run record; tests
+- [x] `--feedback` in step 8, frozen-test rows dropped, minimum 50, run record; tests (2026-11-20)
 
 **Task 13: SOC P0**
 - [ ] Role landing pages; Assigned/Unassigned filters; MITRE matrix page

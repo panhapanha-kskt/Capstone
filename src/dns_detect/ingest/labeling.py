@@ -58,7 +58,7 @@ except ImportError:  # pragma: no cover - python-dateutil is in requirements.txt
     def _parse_dt(v):
         return _dt.fromisoformat(str(v).replace("Z", "+00:00"))
 
-TRUSTED_SOURCES = {"file", "provenance", "manifest"}
+TRUSTED_SOURCES = {"file", "provenance", "manifest", "analyst"}   # analyst = SOC verdicts (ingest/feedback.py)
 # Labels that are NOT independent ground truth. "heuristic" = the bridge's attack_count >= 1
 # fallback (fusion/bridge.py --label-only --allow-heuristic-labels). Kept as-is when a labeled
 # file is relabeled, so they are never laundered into a trusted source.

@@ -100,10 +100,14 @@ def build_record(out, provenance=None, split=None, seed=None, merged=None) -> di
     }
 
 
-def write_record(out, provenance=None, split=None, seed=None, merged=None, copy_merged=False) -> Path:
+def write_record(out, provenance=None, split=None, seed=None, merged=None, copy_merged=False,
+                 feedback_report=None) -> Path:
     out = Path(out)
     out.mkdir(parents=True, exist_ok=True)
     rec = build_record(out, provenance, split, seed, merged)
+    # Analyst verdicts used by this run (train_models.sh --feedback): counts, drops, input hash.
+    rec["analyst_feedback"] = (json.loads(Path(feedback_report).read_text(encoding="utf-8"))
+                               if feedback_report and Path(feedback_report).is_file() else None)
     if copy_merged and merged and Path(merged).is_file():
         dst = out / Path(merged).name
         shutil.copy2(merged, dst)
@@ -121,9 +125,10 @@ def main(argv=None):
     ap.add_argument("--seed", type=int)
     ap.add_argument("--merged", help="merged labelled data used for training")
     ap.add_argument("--copy-merged", action="store_true", help="also copy --merged into the run folder")
+    ap.add_argument("--feedback-report", help="feedback_report.json from train_models.sh --feedback")
     a = ap.parse_args(argv)
     prov = a.provenance or str(Path(a.out) / "training_provenance.json")
-    path = write_record(a.out, prov, a.split, a.seed, a.merged, a.copy_merged)
+    path = write_record(a.out, prov, a.split, a.seed, a.merged, a.copy_merged, a.feedback_report)
     rec = json.loads(path.read_text())
     g = rec["git"]
     print(f"  Run record -> {path}  (commit {str(g.get('commit'))[:10]}"

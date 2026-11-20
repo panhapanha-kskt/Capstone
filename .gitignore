@@ -72,3 +72,4 @@ runs/
 # Archived live models (moved by scripts/promote_model.sh): kept on disk, not in git
 models/archive/
 models/PROMOTED.json
+data/external/tu2023/

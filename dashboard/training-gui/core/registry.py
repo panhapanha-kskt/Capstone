@@ -1,5 +1,12 @@
-"""Model versions. Training never touches production; only promote() does."""
-import json, shutil
+"""Model versions. Training never touches production; only promote() does.
+
+Capstone mode (audit C2): Promote and Roll back go through the same door as the pipeline's
+Part B — scripts/part_b.py runs the project gate (>= 3 seeds, beats current + rule baselines),
+waits for no detection run, promotes with promote_model.sh (archives the old models/, never
+moves models/archive/), smoke-tests and rolls back by itself if the smoke test fails.
+"Confirm to override" can't skip that gate. Demo mode keeps the simple folder copy.
+"""
+import json, re, shlex, shutil, subprocess
 from datetime import datetime, timezone
 from . import settings as S
 from . import jobs
@@ -85,6 +92,66 @@ def compare(candidate: str) -> dict:
             "deployable": _deployable(cand)}
 
 
+PART_B_CODES = {
+    1: "Not promoted: the project gate failed (see the gate report). models/ is unchanged.",
+    2: "Promoted, but the smoke test failed, so the previous models were put back.",
+    3: "Not promoted: detection is running or another promote is in progress (or an error). Try again shortly.",
+    4: "Not promoted: training data for the gate is missing.",
+}
+
+
+def _seedless(params):
+    return {k: v for k, v in (params or {}).items() if k not in ("seed", "random_state")}
+
+
+def _siblings(reg, m):
+    """Deployable runs trained the same way as m (same data, path, params apart from the seed)."""
+    out = [x for x in reg["models"] if _deployable(x) and x["dataset"] == m["dataset"]
+           and x.get("train_path") == m.get("train_path") and _seedless(x["params"]) == _seedless(m["params"])
+           and (jobs._dir(x["run_id"]) / "model").is_dir()]
+    return out or [m]
+
+
+def _shell():
+    """(flavor, path converter) for running the project's bash scripts, WSL-aware on Windows."""
+    try:
+        from adapters.capstone_train import bash_flavor, to_shell_path
+        flavor = bash_flavor()
+        return lambda p: to_shell_path(p, flavor)
+    except Exception:
+        return str
+
+
+def _run_project(script_cmd: str):
+    """Run a command in the project root through bash. Returns (exit code, output)."""
+    conv = _shell()
+    cmd = f"cd {shlex.quote(conv(S.PROJECT_DIR))} && {script_cmd}"
+    r = subprocess.run(["bash", "-c", cmd], capture_output=True, text=True, encoding="utf-8",
+                       errors="replace", timeout=3 * 3600)
+    return r.returncode, (r.stdout + r.stderr)[-4000:]
+
+
+def _run_part_b(name: str, model_dirs: list):
+    conv = _shell()
+    runs = " ".join(f"--run {shlex.quote(conv(d))}" for d in model_dirs)
+    return _run_project(f"python3 scripts/part_b.py --name {shlex.quote(name)} --auto-promote {runs}")
+
+
+def _promote_capstone(reg, m):
+    group = _siblings(reg, m)
+    dirs = [jobs._dir(x["run_id"]) / "model" for x in group]
+    code, out = _run_part_b(f"console_{m['version']}", dirs)
+    if code != 0:
+        hint = (f" Only {len(group)} matching run(s); the gate needs >= 3 seeds — train the same "
+                "dataset/settings with 2 more seeds, then Promote again.") if len(group) < 3 else ""
+        raise RuntimeError(PART_B_CODES.get(code, f"Not promoted (part_b exit {code}).") + hint
+                           + "\n" + "\n".join(out.strip().splitlines()[-8:]))
+    # part_b picks the median-seed run; record that one as production.
+    hit = re.search(r"promoted (\S+)", out)
+    chosen = next((x for x in group if hit and x["run_id"] in hit.group(1)), m)
+    return chosen
+
+
 def _deploy(m):
     src = jobs._dir(m["run_id"]) / "model"
     if not src.exists():
@@ -107,10 +174,14 @@ def promote(version: str, force: bool = False) -> dict:
         raise RuntimeError(f"{version} was trained by the feature-table trainer on pre-aggregated features. The live "
                            "detection pipeline loads Path A/B models, so it can't be promoted. Its model files are in "
                            f"the run folder runs/{m['run_id']}/model.")
-    warnings = compare(version)["warnings"]
-    if warnings and not force:
-        raise RuntimeError("Not promoted: " + " ".join(warnings) + " Confirm to override.")
-    _deploy(m)
+    if S.MODE == "capstone":
+        m = _promote_capstone(reg, m)   # gate + lock + smoke test; force can't skip it
+        version = m["version"]
+    else:
+        warnings = compare(version)["warnings"]
+        if warnings and not force:
+            raise RuntimeError("Not promoted: " + " ".join(warnings) + " Confirm to override.")
+        _deploy(m)
     reg["history"].append({"version": version, "at": datetime.now(timezone.utc).isoformat(timespec="seconds")})
     reg["production"] = version
     _save(reg)
@@ -121,9 +192,15 @@ def rollback() -> dict:
     reg = sync()
     if len(reg["history"]) < 2:
         raise RuntimeError("No earlier production version to roll back to.")
+    prev = _get(reg, reg["history"][-2]["version"])
+    if S.MODE == "capstone":
+        # Same door as Part B: restore the newest models/archive/ folder; nothing is deleted.
+        code, out = _run_project("bash scripts/rollback_model.sh")
+        if code != 0:
+            raise RuntimeError("Roll back failed; models/ unchanged.\n" + out.strip()[-800:])
+    else:
+        _deploy(prev)
     reg["history"].pop()
-    prev = _get(reg, reg["history"][-1]["version"])
-    _deploy(prev)
     reg["production"] = prev["version"]
     _save(reg)
     return {"production": prev["version"]}

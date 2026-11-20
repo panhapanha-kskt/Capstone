@@ -35,6 +35,7 @@ while getopts "o:i:r:" opt; do
 done
 
 mkdir -p "$OUT"
+# -Z root: tcpdump normally drops to the "tcpdump" user, which cannot write into a root-owned folder.
 echo "[*] capturing DNS on $IFACE → $OUT (new file every ${ROTATE}s, Ctrl-C to stop)"
-exec tcpdump -i "$IFACE" -s 0 -n -G "$ROTATE" \
+exec tcpdump -Z root -i "$IFACE" -s 0 -n -G "$ROTATE" \
   -w "$OUT/dns_$(hostname)_%Y-%m-%dT%H-%M-%S.pcap" 'port 53'

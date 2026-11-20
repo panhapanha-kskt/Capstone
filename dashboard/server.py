@@ -50,6 +50,19 @@ if str(HERE) not in sys.path:
     sys.path.insert(0, str(HERE))
 import evidence  # noqa: E402  (dashboard/evidence.py, stdlib only)
 import exporters  # noqa: E402  (dashboard/exporters.py, stdlib only)
+import importlib.util as _ilu  # noqa: E402
+
+
+def _load_pipeline_lock():
+    """src/dns_detect/utils/pipeline_lock.py, loaded by path (stdlib only, no package imports)."""
+    spec = _ilu.spec_from_file_location(
+        "pipeline_lock", Path(__file__).resolve().parent.parent / "src/dns_detect/utils/pipeline_lock.py")
+    mod = _ilu.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    return mod
+
+
+PIPELINE_LOCK = _load_pipeline_lock()
 DATA = ROOT / "data" / "processed"
 RAW = ROOT / "data" / "raw"
 MODELS = ROOT / "models"
@@ -1100,6 +1113,13 @@ def run_pipeline(zscore, custom_cmd):
         STATE.status, STATE.error, STATE.step = "running", "", "Copy logs"
         STATE.bump()
     t0 = time.time()
+    # Audit H1: hold the detection lock for the whole run so a promote (part_b.py / the
+    # training console) never swaps models/ halfway through scoring.
+    with PIPELINE_LOCK.detection_running(ROOT / "runs") as beat:
+        _run_pipeline_locked(zscore, custom_cmd, env, t0, beat)
+
+
+def _run_pipeline_locked(zscore, custom_cmd, env, t0, beat):
     try:
         sync_logs(STATE.watch_dir)
         if custom_cmd:
@@ -1111,6 +1131,7 @@ def run_pipeline(zscore, custom_cmd):
                 raise RuntimeError("custom command failed:\n" + tail(r.stdout + r.stderr))
         else:
             for name, cmd, fatal in pipeline_steps(zscore):
+                beat()
                 with STATE.lock:
                     STATE.step = name
                     STATE.bump()

@@ -22,7 +22,7 @@ All time estimates are guesses, not measurements.
 | Task | Status | Evidence |
 |---|---|---|
 | 1 · T4 light: seed spread | ✅ **done** | 20 seeds trained and scored. Cause found: the false-alarm domains appear only in the test set. Seed averaging and voting measured. Optional extra, not required: a 1,000-tree Path A. See [PATH_B_REPORT §5](../Week6/PATH_B_REPORT.md) |
-| 2 · Harder data | ❌ not started | **your next job:** captures (normal TXT/MX/SRV + VS Code/CDN; tunnels over A/CNAME on several domains) |
+| 2 · Harder data | 🔄 in progress (2026-11-20) | A1 (iodine over A) and A2 (iodine over CNAME) recorded on Kali. Automated: `scripts/lab_capture.sh` (Kali: capture → convert → sha256, one command per capture; tunnel server in a Docker container) and `scripts/train_new_data.sh` (checksums → file list → record-type rule check → EDA → 3 seeds → gate); `tests/test_lab_scripts.py` 6 tests. Still to record: A3, A4, B1–B3 |
 | 3 · Domain-grouped split | ⏸ waiting for Task 2 | needs ≥ 3 attack domains |
 | 4 · Later-traffic check | ⏸ waiting | needs a fresh normal capture |
 | 5 · T3: 0.1% target + operating point | ⏸ waiting for Tasks 1–3 | — |

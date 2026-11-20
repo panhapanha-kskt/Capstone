@@ -3,6 +3,7 @@
 
     python3 scripts/part_b.py --name labelled_v3_iforest --seeds "42 43 44"                  # stop at "ready"
     python3 scripts/part_b.py --name labelled_v3_iforest --seeds "42 43 44" --auto-promote   # promote on PASS
+    python3 scripts/part_b.py --name console_v7 --run R1 --run R2 --run R3 --auto-promote    # explicit folders
 
 Exit codes: 0 promoted · 10 gate PASS, waiting for you to promote · 1 gate FAIL (models/ untouched)
             2 promoted but the smoke test failed, rolled back · 3 another promote is running, or an error.
@@ -10,7 +11,10 @@ Tests swap the real commands for stubs with PART_B_GATE / PART_B_PROMOTE / PART_
 """
 import argparse
 import datetime
-import fcntl
+try:
+    import fcntl  # POSIX only
+except ImportError:  # Windows: the training console runs this script through bash/WSL instead
+    fcntl = None
 import json
 import os
 import shlex
@@ -21,6 +25,8 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
 PY = sys.executable
+sys.path.insert(0, str(ROOT / "src" / "dns_detect" / "utils"))
+import pipeline_lock  # noqa: E402  (stdlib only; shared with the dashboard, audit H1)
 
 
 def command(env_name, default):
@@ -55,32 +61,36 @@ def log(runs_dir, **row):
 
 
 def pipeline_running(runs_dir):
-    """True if run_pipeline.sh is running right now: it holds a shared lock on runs/.pipeline.lock
-    for as long as it runs, so an exclusive lock can't be taken. Don't swap models under it."""
-    with open(runs_dir / ".pipeline.lock", "a") as f:
-        try:
-            fcntl.flock(f, fcntl.LOCK_EX | fcntl.LOCK_NB)
-        except BlockingIOError:
-            return True
-        fcntl.flock(f, fcntl.LOCK_UN)
-        return False
+    """True if detection is running right now (run_pipeline.sh's flock, or the dashboard's
+    heartbeat in runs/.pipeline.readers/). Don't swap models under it."""
+    return pipeline_lock.pipeline_running(runs_dir)
 
 
 def main(argv=None):
     ap = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     ap.add_argument("--name", required=True, help="run name: folders are <runs-dir>/<name>_s<seed>")
-    ap.add_argument("--seeds", required=True, help='e.g. "42 43 44"')
+    ap.add_argument("--seeds", help='e.g. "42 43 44"  (or give the folders with --run)')
+    ap.add_argument("--run", action="append", default=[],
+                    help="explicit run folder, one per seed (repeat); used instead of --seeds")
     ap.add_argument("--auto-promote", action="store_true", help="promote on PASS (you agree in advance)")
     ap.add_argument("--runs-dir", default=str(ROOT / "runs"))
     ap.add_argument("--models-dir", default=str(ROOT / "models"))
     a = ap.parse_args(argv)
     runs_dir, models_dir = Path(a.runs_dir), Path(a.models_dir)
     runs_dir.mkdir(parents=True, exist_ok=True)
-    runs = [str(runs_dir / f"{a.name}_s{s}") for s in a.seeds.split()]
+    if a.run:
+        runs = [str(Path(x)) for x in a.run]
+    elif a.seeds:
+        runs = [str(runs_dir / f"{a.name}_s{s}") for s in a.seeds.split()]
+    else:
+        ap.error("give --seeds or at least one --run")
     report_path = runs_dir / f"{a.name}_gate.json"
 
     # Lock: two runs can never promote at the same time (released automatically when the process ends).
     lock = open(runs_dir / ".promote.lock", "w")
+    if fcntl is None:
+        print("✗ part_b.py needs a POSIX system (Linux/WSL) for its promote lock")
+        return 3
     try:
         fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
     except BlockingIOError:

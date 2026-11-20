@@ -51,17 +51,42 @@ def detection_running(runs_dir):
             marker.unlink()
 
 
+def _pid_alive(pid):
+    try:
+        os.kill(pid, 0)
+    except ProcessLookupError:
+        return False
+    except PermissionError:
+        return True
+    except OSError:
+        return True
+    return True
+
+
 def active_readers(runs_dir, now=None):
-    """Heartbeat files younger than STALE_SECONDS."""
+    """Heartbeat files younger than STALE_SECONDS whose process is still alive.
+
+    A detection process killed by SIGTERM/SIGKILL never reaches the `finally` that removes its
+    marker (dashboard/server.py has no signal handler), so a marker from THIS host whose pid is
+    gone is treated as stale at once and removed; markers from other hosts (a Windows-hosted
+    dashboard seen through WSL) still rely on the STALE_SECONDS age rule.
+    """
     now = time.time() if now is None else now
     rd = _readers(runs_dir)
     if not rd.is_dir():
         return []
+    host = socket.gethostname()
     out = []
     for f in rd.iterdir():
         try:
-            if now - f.stat().st_mtime < STALE_SECONDS:
-                out.append(f.name)
+            if now - f.stat().st_mtime >= STALE_SECONDS:
+                continue
+            parts = f.name.rsplit("-", 2)           # <host>-<pid>-<id>
+            if len(parts) == 3 and parts[0] == host and parts[1].isdigit() and not _pid_alive(int(parts[1])):
+                with contextlib.suppress(OSError):
+                    f.unlink()
+                continue
+            out.append(f.name)
         except OSError:
             pass
     return out

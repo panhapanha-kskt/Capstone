@@ -166,3 +166,20 @@ def test_console_rollback_uses_rollback_script(registry, monkeypatch):
     monkeypatch.setattr(registry, "_run_project", lambda cmd: (calls.append(cmd), (0, "ok"))[1])
     assert registry.rollback() == {"production": "v1"}
     assert calls == ["bash scripts/rollback_model.sh"]
+
+
+def test_heartbeat_of_a_dead_process_on_this_host_is_ignored(tmp_path):
+    """A dashboard killed mid-run (SIGTERM/SIGKILL skips its cleanup) must not block promotes for 20 min."""
+    import socket
+    import subprocess
+    rd = tmp_path / ".pipeline.readers"
+    rd.mkdir()
+    p = subprocess.Popen([sys.executable, "-c", "pass"])
+    p.wait()
+    (rd / f"{socket.gethostname()}-{p.pid}-abc123").write_text(str(time.time()))   # fresh, but pid is gone
+    assert not lock.pipeline_running(tmp_path)
+    assert not (rd / f"{socket.gethostname()}-{p.pid}-abc123").exists()
+    (rd / f"otherhost-{p.pid}-abc123").write_text(str(time.time()))                 # other host: age rule only
+    assert lock.pipeline_running(tmp_path)
+    (rd / f"{socket.gethostname()}-{os.getpid()}-live01").write_text(str(time.time()))
+    assert lock.pipeline_running(tmp_path)

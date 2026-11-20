@@ -94,7 +94,9 @@ $CHECK_ONLY && exit 0
 # 4. EDA ──────────────────────────────────────────────────────────
 mapfile -t FILES < "$LIST"
 say "EDA report (data/processed/eda_data_report.html)"
-bash scripts/train_models.sh --eda-only --force-retrain --files "${FILES[@]}"
+# DNS_DETECT_MODELS_DIR: --eda-only still runs the merge, which rewrites <models dir>/training_provenance.json;
+# point it at a scratch run folder so the live models/ is never written here (only promote_model.sh may).
+DNS_DETECT_MODELS_DIR="runs/${RUN_NAME}_eda" bash scripts/train_models.sh --eda-only --force-retrain --files "${FILES[@]}"
 
 # 5. seeds + gate ────────────────────────────────────────────────
 mkdir -p runs
@@ -106,4 +108,4 @@ if [[ ! -f "$FIRST/evaluation_metrics.json" ]]; then
 fi
 say "remaining seeds on the same split + gate"
 RUN_NAME="$RUN_NAME" SEEDS="$SEEDS" SPLIT="$FIRST/split_manifest.json" FILES="${FILES[*]}" \
-  AUTO_PROMOTE="${AUTO_PROMOTE:-0}" bash scripts/run_candidate_seeds.sh
+  AUTO_PROMOTE="${AUTO_PROMOTE:-0}" SHADOW="${SHADOW:-0}" bash scripts/run_candidate_seeds.sh

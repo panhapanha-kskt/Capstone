@@ -547,3 +547,21 @@ New:
 
 Not verified / not used: LSB init-script exit-code conventions (soc.sh's `status` exit 3 is our own choice); whether
 WSL keeps a distro alive for background-only processes; whether BFQ/mq-deadline apply to WSL2's virtual disk.
+
+---
+
+## F. Review against the Phase 1 map and the hard rules (lead, 2026-11-20)
+
+The research agent worked from a partial repo snapshot. I checked its "verify on the branch" items against the live repo:
+
+| Item | Finding on the branch | Effect on the design |
+|---|---|---|
+| D-8 feedback rows and the test split | `src/dns_detect/ingest/feedback.py` drops verdict rows whose id is in the base manifest's `test` set (lines 163–165); `train_models.sh --feedback` and `settings.yaml feedback:` exist (Task 12, merged) | Trigger (c) is safe for the gate. No change. |
+| D-9 `--new-split` in `train_new_data.sh` | It **is** a fresh time-ordered split, on purpose: the new captures are the newest rows and land in the test set; all 3 seeds then share that split | Expected. The gate compares candidate vs `models/` on that new split. Documented, no change. |
+| D-10 `RUN_NAME` | `train_new_data.sh` and `run_candidate_seeds.sh` both honour `RUN_NAME` | The learner links runs to part_b log lines by name. |
+| D-7 exit 3 meaning | Logged decision `"not promoted: run_pipeline.sh is running"` = detection busy; a held `.promote.lock` prints "another Part B run is promoting" and logs nothing; `"promote failed, models/ unchanged"` = error | Retry only on the first two; everything else is an error + cooldown. |
+| D-15 readers of `promotion_log.jsonl` | Only `scripts/part_b.py` (writer) and `tests/test_part_b_automation.py` (reads its own tmp log) | Learner lines with `"source":"learner"` in the same file are safe. Criterion 4 met without a second log. |
+| D-11 probe-then-promote gap | Real: `part_b.py` probes the detection lock, then promotes. Criterion 4 says "never while a detection run holds the lock" | **Recommend fixing in Phase 3** (needs your OK, see question 3): part_b takes `flock -x` on `runs/.pipeline.lock` (non-blocking) and holds it through promote + smoke test. On POSIX the dashboard's `LOCK_SH` then waits until the swap is done, which closes the gap. About 10 lines, backup first. |
+| Hard rule "don't rewrite data/" | The learner itself writes nothing in `data/`. The existing scripts still write `data/processed/*` and `data/feedback/*` as today | Covered by map assumption 4. |
+| Hard rule "reuse Part B scripts" | Learner calls only `train_new_data.sh`, `run_candidate_seeds.sh`, `export_feedback_labels.py` and `part_b.py` (promote retry) | OK. Edits proposed only as pass-throughs: `run_candidate_seeds.sh` FEEDBACK, and optionally `part_b.py` (D-11). |
+| D-13 latency probes in `data/raw` | Appending `soc-probe-*.invalid` lines is what the listener always does, but it is your data | Asked as question 4 below. Alternative: run the live check on a scratch copy of the repo under WSL `~/`. |

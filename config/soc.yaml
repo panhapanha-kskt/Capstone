@@ -1,0 +1,81 @@
+# One-command operation: bash scripts/soc.sh up | down | restart | status | logs
+# Design: docs/Week7/SOC_AUTOMATION_RESEARCH_2026-11-20.md (section C). Safe defaults: nothing is
+# promoted automatically, training starts only on the three triggers below, at most twice a day.
+# Relative paths are from the repo root. Another file can be used with SOC_CONFIG=path/to/file.yaml
+# (keys left out there keep the defaults in src/dns_detect/soc/config.py).
+
+# Interpreter for every service. If this file does not exist: $VIRTUAL_ENV/bin/python3, then python3
+# on PATH (soc.sh status / the supervisor logs show which one is used). SOC_PYTHON overrides it.
+python: /home/Panha/dns-venv/bin/python3
+
+state_dir: runs/soc               # supervisor locks/PIDs, state/<child>.json, learner_state.json (new files only)
+log_dir: logs/soc                 # <child>.log, supervisor-<svc>.log, train_<RUN>.log
+log_rotate: {max_bytes: 10485760, backups: 5}   # 10 MB x 5 per log, rotated by the supervisor
+keep_train_logs: 20               # newest logs/soc/train_*.log kept
+
+paths:
+  runs_dir: runs                  # promotion_log.jsonl, .promote.lock, .pipeline.lock live here
+  models_dir: models              # only read (hashed) by soc; written only by part_b.py -> promote_model.sh
+
+detector:                         # Part 1: always on. Two children, each restarted on its own.
+  listener:                       # Technitium PushLogger -> data/raw/<date>.log
+    cmd: ["{python}", "scripts/technitium_push_listener.py", "--port", "8787"]
+    health_url: http://127.0.0.1:8787/healthz
+  dashboard:                      # watch loop + SOC dashboard. Add "--host", "0.0.0.0" only with a real ADMIN_TOKEN.
+    cmd: ["{python}", "dashboard/server.py", "--port", "9000"]
+    health_url: http://127.0.0.1:9000/api/health
+  technitium_url: http://127.0.0.1:5380   # status only; Docker/Technitium is NOT managed by soc.sh
+  nice: 0
+  stop_timeout_s: 15              # SIGTERM to the child's process group, then SIGKILL after this
+
+learner:                          # Part 2: trains only on a trigger
+  cmd: ["{python}", "scripts/learner.py"]
+  heartbeat_stale_s: 180          # no heartbeat for this long -> learner counted as hung and restarted
+  stop_timeout_s: 30
+  promote_grace_s: 180            # on stop, wait this long while runs/.promote.lock is held
+
+health: {interval_s: 15, timeout_s: 5, startup_grace_s: 90, fail_threshold: 4}
+restart_backoff: {base_s: 2, max_s: 300, reset_after_healthy_s: 120}   # 2, 4, 8 ... 300 s
+
+poll_interval_s: 60               # how often the learner looks at the triggers
+cooldown_minutes: 1440            # 24 h after ANY training run (pass, fail, data missing, aborted)
+max_runs_per_day: 2               # action limit: training runs started in any 24 h
+training_priority: {nice: 10, ionice_class: 3}   # ionice only if `ionice -c3 true` works (no-op on /mnt/c)
+
+triggers:                         # the ONLY three ways a training run starts; priority captures > verdicts > drift
+  drift:                          # (a) data/processed/monitoring_report.json says retrain_recommended
+    enabled: true
+    report: data/processed/monitoring_report.json
+    consecutive_reports: 3        # 3 distinct reports (by sha256) in a row; re-reading the same one does not count
+    edge_triggered: true          # fire once; re-arm only after a report with retrain_recommended: false
+    require_new_data: true        # also need >=1 untrained capture or settled verdict (never retrain on the same files)
+  captures:                       # (b) new Kali lab captures (scripts/lab_capture.sh)
+    enabled: true
+    dir: data/processed/week7
+    pattern: "*.json"
+    require_sha256sums: true      # only files listed in SHA256SUMS whose checksum matches
+    settle_seconds: 120           # file must be unchanged this long (copy finished)
+  verdicts:                       # (c) analyst verdicts in the dashboard
+    enabled: true
+    store: dashboard/data/alert_management.json   # SOC_DASHBOARD_DATA_DIR moves it, as for dashboard/server.py
+    min_new_verdicts: 50          # = config/settings.yaml feedback.min_verdicts
+    verdict_settle_minutes: 60    # a verdict younger than this may still change: not counted yet
+    export_url: http://127.0.0.1:9000              # scripts/export_feedback_labels.py --url
+    feedback_file: data/feedback/verdict_labels.json   # what export writes; passed as FEEDBACK=... to run_candidate_seeds.sh
+
+train:
+  seeds: "42 43 44"
+  split: null                     # null = run_candidate_seeds.sh default (the live model's split)
+
+shadow:                           # online validation before promote (scripts/shadow_check.py, part_b.py --shadow):
+  enabled: true                   # the candidate scores the traffic the detector last processed, without alerting
+  max_rate_increase: 0.5          # candidate may flag at most live_flags x 1.5 ...
+  max_new_flags_abs: 20           #   ... + 20 rows (allowance when the live model flags almost nothing)
+  min_agreement: 0.95             # candidate and live labels must agree on >= 95% of rows
+  min_rows: 200                   # fewer scored rows -> no verdict (reported, promote goes on the gate alone)
+
+auto_promote: false               # true = part_b.py --auto-promote on gate PASS. Or: soc.sh up --auto-promote
+max_auto_promotions_per_week: 1
+promote_retry:                    # only with auto-promote, only when part_b says detection/promote is busy
+  interval_s: 120
+  max_attempts: 15                # 30 min > the 20-min heartbeat staleness in pipeline_lock.py

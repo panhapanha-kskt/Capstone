@@ -68,6 +68,9 @@ DNSTunnel2026/
 
 # Experiment run folders (models, copied training data, run records): keep out of git
 runs/
+# scripts/soc.sh state, backups and logs (runs/soc is inside runs/, logs/soc inside logs/; listed explicitly)
+runs/soc/
+logs/soc/
 
 # Archived live models (moved by scripts/promote_model.sh): kept on disk, not in git
 models/archive/

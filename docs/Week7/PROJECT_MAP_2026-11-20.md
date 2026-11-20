@@ -177,3 +177,10 @@ All from WSL/Kali: `cd /mnt/c/Programming-CTF/Capstone && source ~/Capstone/.ven
 4. **Promote refused because detection is running (exit 3):** retry gate+promote every poll until it gets a quiet moment (max N tries), or just log and leave it as "ready to promote" for you?
 5. The 7 Tu2023 training files exist only on the Kali VM, so any trigger on Windows/WSL ends with exit 4 (data missing) until you copy them. Learner then logs it and enters cooldown — acceptable?
 6. Should the training console (inside the dashboard) be blocked from training while the learner trains? Both write the same `data/processed/merged_*` files.
+
+## Confirmed by the user (2026-11-20 16:34)
+
+- WSL distro `kali-linux` (WSL 2), logged in as **root**; `/etc/wsl.conf` has `[boot] systemd=true` and PID 1 is `systemd`.
+- Project venv: **`/home/Panha/dns-venv`** (Python 3.13.12; pandas, scikit-learn, joblib, PyYAML import OK).
+  `/home/Panha/venv` (the default active one) lacks pandas; `/root/Capstone/.venv` does not exist.
+- `/home/Panha/Capstone` is an older partial copy (no `scripts/`); the project to run is `/mnt/c/Programming-CTF/Capstone`.

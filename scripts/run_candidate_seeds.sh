@@ -6,6 +6,7 @@
 #   ./scripts/run_candidate_seeds.sh                         # same data + split as the live model, seeds 42 43 44
 #   RUN_NAME=x SEEDS="42 43 44 45 46" SPLIT=path/to/split.json ./scripts/run_candidate_seeds.sh
 #   FILES="a.json b.json" ./scripts/run_candidate_seeds.sh   # other training files (on purpose)
+#   FEEDBACK=data/feedback/verdict_labels.json ./scripts/run_candidate_seeds.sh   # + analyst verdicts, every seed
 #
 # Default training files = models/training_provenance.json (what the live model learned from), and
 # default split = models/split_manifest.json (the live model's frozen test rows). So a retrain is never
@@ -47,6 +48,7 @@ if [[ ${#missing[@]} -gt 0 ]]; then
 fi
 
 export PYTHONUNBUFFERED=1
+feedback=(); [[ -n "${FEEDBACK:-}" ]] && feedback=(--feedback "$FEEDBACK")   # unset: command unchanged
 mkdir -p runs
 cp -f "$SPLIT" "runs/${RUN_NAME}_split.json"
 start=$(date +%s)
@@ -56,7 +58,7 @@ for s in $SEEDS; do
   echo "• seed $s → $out"
   mkdir -p "$out"
   DNS_DETECT_MODELS_DIR="$out" bash scripts/train_models.sh --seed "$s" --n-days 20 --path-b-model iforest \
-    --force-retrain --split-manifest "runs/${RUN_NAME}_split.json" --files "${FILES[@]}"
+    --force-retrain --split-manifest "runs/${RUN_NAME}_split.json" --files "${FILES[@]}" ${feedback[@]+"${feedback[@]}"}
 done
 echo "• trained in $(( ($(date +%s) - start) / 60 )) min"
 
@@ -64,4 +66,5 @@ echo "• trained in $(( ($(date +%s) - start) / 60 )) min"
 # 0 promoted · 10 PASS, ready to promote · 1 FAIL (models/ unchanged) · 2 rolled back · 3 busy/error.
 promote_flag=()
 [[ "${AUTO_PROMOTE:-0}" == 1 ]] && promote_flag=(--auto-promote)
+[[ "${SHADOW:-0}" == 1 ]] && promote_flag+=(--shadow)   # SHADOW=1: shadow check on current traffic before promote
 python3 scripts/part_b.py --name "$RUN_NAME" --seeds "$SEEDS" "${promote_flag[@]+"${promote_flag[@]}"}"

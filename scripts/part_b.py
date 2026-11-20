@@ -6,8 +6,11 @@
     python3 scripts/part_b.py --name console_v7 --run R1 --run R2 --run R3 --auto-promote    # explicit folders
 
 Exit codes: 0 promoted · 10 gate PASS, waiting for you to promote · 1 gate FAIL (models/ untouched)
-            2 promoted but the smoke test failed, rolled back · 3 another promote is running, or an error.
-Tests swap the real commands for stubs with PART_B_GATE / PART_B_PROMOTE / PART_B_SMOKE / PART_B_ROLLBACK.
+            2 promoted but the smoke test failed, rolled back · 3 another promote is running, or an error
+            5 --shadow: shadow check FAIL (candidate behaves differently on current traffic; models/ untouched).
+--shadow runs scripts/shadow_check.py on the chosen seed after the gate and before promoting: the candidate
+scores the traffic the detector last processed, without alerting, and must agree with the live model.
+Tests swap the real commands for stubs with PART_B_GATE / PART_B_PROMOTE / PART_B_SMOKE / PART_B_ROLLBACK / PART_B_SHADOW.
 """
 import argparse
 import datetime
@@ -66,6 +69,21 @@ def pipeline_running(runs_dir):
     return pipeline_lock.pipeline_running(runs_dir)
 
 
+def hold_detection_off(runs_dir):
+    """Exclusive, non-blocking flock on runs/.pipeline.lock, and no live detection heartbeat.
+    Returns the open lock file (keep it open while models/ is swapped), or None if detection is running."""
+    fh = open(runs_dir / ".pipeline.lock", "a")
+    try:
+        fcntl.flock(fh, fcntl.LOCK_EX | fcntl.LOCK_NB)
+    except BlockingIOError:
+        fh.close()
+        return None
+    if pipeline_lock.active_readers(runs_dir):  # e.g. a Windows-hosted dashboard (heartbeat only)
+        fh.close()
+        return None
+    return fh
+
+
 def main(argv=None):
     ap = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     ap.add_argument("--name", required=True, help="run name: folders are <runs-dir>/<name>_s<seed>")
@@ -73,6 +91,8 @@ def main(argv=None):
     ap.add_argument("--run", action="append", default=[],
                     help="explicit run folder, one per seed (repeat); used instead of --seeds")
     ap.add_argument("--auto-promote", action="store_true", help="promote on PASS (you agree in advance)")
+    ap.add_argument("--shadow", action="store_true",
+                    help="after the gate, score the candidate on current traffic and compare with the live model")
     ap.add_argument("--runs-dir", default=str(ROOT / "runs"))
     ap.add_argument("--models-dir", default=str(ROOT / "models"))
     a = ap.parse_args(argv)
@@ -109,19 +129,47 @@ def main(argv=None):
     seed, med = pick_seed(report)
     run = seed["run"]
     why = f"seed {seed.get('seed')}: {seed['candidate']['false_alarms']} false alarms (median {med})"
+
+    # Shadow check (online validation): the candidate must behave like the live model on CURRENT traffic,
+    # not only on the frozen test rows. A no-verdict (exit 4: no live traffic yet) is reported, not fatal.
+    if a.shadow:
+        sh = subprocess.run(command("PART_B_SHADOW", [PY, str(ROOT / "scripts/shadow_check.py")])
+                            + ["--candidate", run, "--name", a.name], cwd=ROOT)
+        if sh.returncode == 1:
+            log(runs_dir, name=a.name, runs=runs, gate="PASS", shadow="FAIL", promoted=False, chosen=run, why=why,
+                decision="shadow check failed, kept current models")
+            print(f"✗ shadow check FAIL: models/ unchanged. Report: {runs_dir / (a.name + '_shadow.json')}")
+            return 5
+        if sh.returncode == 0:
+            why += "; shadow PASS"
+        else:
+            print(f"! shadow check gave no verdict (exit {sh.returncode}); continuing on the gate result alone")
+            why += f"; shadow no-verdict ({sh.returncode})"
+
     if not a.auto_promote:
         log(runs_dir, name=a.name, runs=runs, gate="PASS", promoted=False, chosen=run, why=why,
             decision="ready, waiting for approval")
         print(f"✓ gate PASS. Ready: bash scripts/promote_model.sh {run}   ({why})")
         return 10
 
-    if pipeline_running(runs_dir):
+    # Keep detection out for the whole promote → smoke test → rollback, not just at the start: an
+    # EXCLUSIVE lock on runs/.pipeline.lock (run_pipeline.sh and the dashboard take it shared, so a
+    # detection run that starts now waits for us), and no fresh detection heartbeat.
+    hold = hold_detection_off(runs_dir)
+    if hold is None:
         log(runs_dir, name=a.name, gate="PASS", promoted=False, chosen=run, why=why,
             decision="not promoted: run_pipeline.sh is running")
         print("✗ run_pipeline.sh is running; not swapping models under it. Promote later with:\n"
               f"  bash scripts/promote_model.sh {run}")
         return 3
+    try:
+        return promote_and_smoke(a, run, why, runs_dir, models_dir)
+    finally:
+        hold.close()  # closing the file releases the lock
 
+
+def promote_and_smoke(a, run, why, runs_dir, models_dir):
+    """promote_model.sh → smoke test → rollback_model.sh if the smoke test fails. Caller holds the lock."""
     # Promote (promote_model.sh runs the schema check and archives the old models first).
     if subprocess.run(command("PART_B_PROMOTE", ["bash", str(ROOT / "scripts/promote_model.sh")])
                       + [run, f"before_{a.name}"], cwd=ROOT).returncode != 0:

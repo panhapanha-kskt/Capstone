@@ -55,6 +55,31 @@ def _row_id(row):
     except (TypeError, ValueError):
         return None
 
+# ── Alert caps (audit C1) ─────────────────────────────────────────────
+# Each rule keeps at most N alerts so the dashboard stays usable. Rows used to
+# be taken oldest-first and the rest dropped silently, so a real attack late
+# in the day could produce no alert once a noisy morning filled the cap.
+# Now rows are ranked strongest-score first, newest first on ties, and every
+# dropped row is counted in one "N more" summary alert.
+ALERT_CAPS = {'rule3': 100, 'rule4': 50, 'rule5': 200, 'rule6': 200}
+
+
+def _prioritise(df, score_cols, cap):
+    """Return (top `cap` rows ranked by score desc then newest, dropped rows)."""
+    keys, asc = [], []
+    for c in score_cols:
+        if c in df.columns:
+            keys.append(c); asc.append(False)
+    work = df
+    if 'timestamp' in df.columns:
+        work = df.assign(_ts_sort=pd.to_datetime(df['timestamp'], errors='coerce', utc=True))
+        keys.append('_ts_sort'); asc.append(False)
+    if keys:
+        work = work.sort_values(keys, ascending=asc, kind='mergesort', na_position='last')
+    work = work.drop(columns=['_ts_sort'], errors='ignore')
+    return work.head(cap), work.iloc[cap:]
+
+
 class MDTIIntegration:
     """Microsoft Defender Threat Intelligence API Integration"""
 
@@ -603,6 +628,8 @@ class RuleBasedDNSDetector:
         if len(tunneling_df) == 0:
             return []
 
+        tunneling_df, dropped = _prioritise(
+            tunneling_df, ['ml_threat_score', 'entropy', 'query_length'], ALERT_CAPS['rule3'])
         alerts = []
         for _, row in tunneling_df.iterrows():
             reasons = []
@@ -635,8 +662,8 @@ class RuleBasedDNSDetector:
                 techniques  = self.tunneling_rule['techniques'],
             )
             alerts.append(alert)
-            if len(alerts) >= 100:
-                break
+        extra = self._overflow_alert(self.tunneling_rule, dropped, ALERT_CAPS['rule3'])
+        if extra: alerts.append(extra)
 
         print(f"   🚨 Alerts generated: {len(alerts)}")
         return alerts
@@ -662,6 +689,7 @@ class RuleBasedDNSDetector:
             timestamp=('timestamp', 'first'),
         ).reset_index()
 
+        grouped, dropped = _prioritise(grouped, ['subdomain_depth'], ALERT_CAPS['rule4'])
         alerts = []
         for _, row in grouped.iterrows():
             alert = self.create_alert(
@@ -681,8 +709,8 @@ class RuleBasedDNSDetector:
                 techniques  = self.subdomain_rule['techniques'],
             )
             alerts.append(alert)
-            if len(alerts) >= 50:
-                break
+        extra = self._overflow_alert(self.subdomain_rule, dropped, ALERT_CAPS['rule4'])
+        if extra: alerts.append(extra)
 
         print(f"   🚨 Alerts generated: {len(alerts)}")
         return alerts
@@ -708,6 +736,7 @@ class RuleBasedDNSDetector:
         if len(ml_df) == 0:
             return []
 
+        ml_df, dropped = _prioritise(ml_df, ['ml_combined_score'], ALERT_CAPS['rule5'])
         alerts = []
         for _, row in ml_df.iterrows():
             confidence = str(row.get('ml_confidence', 'UNKNOWN'))
@@ -739,8 +768,8 @@ class RuleBasedDNSDetector:
                 techniques  = self.ml_label_rule['techniques'],
             )
             alerts.append(alert)
-            if len(alerts) >= 200:
-                break
+        extra = self._overflow_alert(self.ml_label_rule, dropped, ALERT_CAPS['rule5'])
+        if extra: alerts.append(extra)
 
         print(f"   🚨 Alerts generated: {len(alerts)}")
         return alerts
@@ -777,6 +806,7 @@ class RuleBasedDNSDetector:
         if len(high_df) == 0:
             return []
 
+        high_df, dropped = _prioritise(high_df, ['ml_threat_score'], ALERT_CAPS['rule6'])
         alerts = []
         for _, row in high_df.iterrows():
             score    = float(row['ml_threat_score'])
@@ -804,11 +834,44 @@ class RuleBasedDNSDetector:
                 techniques  = self.ml_score_rule['techniques'],
             )
             alerts.append(alert)
-            if len(alerts) >= 200:
-                break
+        extra = self._overflow_alert(self.ml_score_rule, dropped, ALERT_CAPS['rule6'])
+        if extra: alerts.append(extra)
 
         print(f"   🚨 Alerts generated: {len(alerts)}")
         return alerts
+
+    def _overflow_alert(self, rule, dropped, cap, severity_col=None):
+        """One summary alert for rows beyond the cap (never drop silently)."""
+        n = len(dropped)
+        if n == 0:
+            return None
+        top_domains = (dropped['domain'].value_counts().head(10).to_dict()
+                       if 'domain' in dropped.columns else {})
+        top_clients = (dropped['client_ip'].value_counts().head(10).to_dict()
+                       if 'client_ip' in dropped.columns else {})
+        times = (pd.to_datetime(dropped['timestamp'], errors='coerce', utc=True).dropna()
+                 if 'timestamp' in dropped.columns else pd.Series([], dtype='datetime64[ns, UTC]'))
+        print(f"   ⚠ Cap {cap} reached — {n} more rows summarised in one overflow alert")
+        return self.create_alert(
+            rule_name   = rule['name'],
+            rule_source = rule['source'],
+            severity    = 'High',
+            client_ip   = 'multiple',
+            domain      = 'multiple',
+            details     = {
+                'overflow':       True,
+                'suppressed':     int(n),
+                'cap':            int(cap),
+                'top_domains':    {str(k): int(v) for k, v in top_domains.items()},
+                'top_clients':    {str(k): int(v) for k, v in top_clients.items()},
+                'first_time':     str(times.min()) if len(times) else '',
+                'last_time':      str(times.max()) if len(times) else '',
+            },
+            description = (f"{n} more {rule['name']} hits beyond the {cap}-alert cap "
+                           f"(lower-ranked; see details.top_domains)"),
+            tactics     = rule['tactics'],
+            techniques  = rule['techniques'],
+        )
 
     def create_alert(self, rule_name, rule_source, severity, client_ip,
                      domain, details, description, tactics, techniques):

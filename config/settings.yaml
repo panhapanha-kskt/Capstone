@@ -99,6 +99,11 @@ evaluation:
   seeds: [42, 43, 44, 45, 46]
   splits_dir: "data/processed/splits"
 
+# Analyst verdicts as training rows (train_models.sh --feedback, src/dns_detect/ingest/feedback.py)
+feedback:
+  min_verdicts: 50     # fewer usable verdicts → training refuses to start
+  max_rows: 5000       # at most this many verdict rows (most recent kept)
+
 detection:
   zscore_threshold: 2.0
   nxdomain_threshold: 200

@@ -114,6 +114,7 @@ BASE_MANIFEST="$PROJECT_ROOT/data/processed/splits/time_seed42.json"   # base sp
 NEW_SPLIT=false
 BASE_EXPLICIT=false
 declare -a EXTRA_FILES=()
+FEEDBACK_FILE=""          # --feedback: analyst verdicts (scripts/export_feedback_labels.py)
 
 # ── ARG PARSING ────────────────────────────────────────────
 show_help() {
@@ -164,6 +165,12 @@ Fusion:
 Output:
   --verbose, -v       Also stream the full training output (always written to logs/)
   --allow-heuristic-labels  EXPERIMENTAL: train even if some labels are heuristic / weak_behavioral
+
+Analyst feedback:
+  --feedback FILE     Add SOC analyst verdicts as labelled rows (data/feedback/verdict_labels.json from
+                      scripts/export_feedback_labels.py). Checked first: needs >= feedback.min_verdicts
+                      (50) usable verdicts, one row per alert, rows in the frozen test set dropped,
+                      at most feedback.max_rows (5000). Counts and the file hash go into the run record.
   --help, -h          Show this help
 
 Labels come from data/attack_manifest.csv when it exists, otherwise from heuristics.
@@ -190,6 +197,7 @@ while [[ $# -gt 0 ]]; do
     --verbose|-v)     VERBOSE=true;           shift ;;
     --eda-only)       EDA_ONLY=true;          shift ;;
     --allow-heuristic-labels) ALLOW_HEURISTIC_LABELS=true; shift ;;
+    --feedback)       FEEDBACK_FILE="${2:?--feedback needs a file}"; shift 2 ;;
     --files)
       shift
       while [[ $# -gt 0 && "$1" != --* ]]; do
@@ -384,6 +392,25 @@ if [[ -n "$CUSTOM_DATA_DIR" ]]; then
     \( -iname "*.csv" -o -iname "*.json" -o -iname "*.pcap" \
        -o -iname "*.pcapng" -o -iname "*.log" \) \
     -print0 2>/dev/null)
+fi
+
+# Analyst verdicts (Week 7 Task 12): checked, then added as one more labelled JSON file. Their
+# label_source is "analyst" (trusted), so step 8 keeps their labels; new rows never go to test.
+FEEDBACK_REPORT=""
+if [[ -n "$FEEDBACK_FILE" ]]; then
+  [[ -f "$FEEDBACK_FILE" ]] || fail "Feedback file not found: $FEEDBACK_FILE"
+  FEEDBACK_CHECKED="$DATA_DIR/feedback_checked.json"
+  FEEDBACK_REPORT="$DATA_DIR/feedback_report.json"
+  FB_ARGS=(--input "$FEEDBACK_FILE" --output "$FEEDBACK_CHECKED" --report "$FEEDBACK_REPORT")
+  [[ "$NEW_SPLIT" == false && -f "$BASE_MANIFEST" ]] && FB_ARGS+=(--base-manifest "$BASE_MANIFEST")
+  if FB_LINE=$(PYTHONPATH="$PROJECT_ROOT/src${PYTHONPATH:+:$PYTHONPATH}" python3 -m dns_detect.ingest.feedback "${FB_ARGS[@]}" 2>"$TRAIN_LOG.feedback"); then
+    read -r FB_USED FB_ATTACK FB_BENIGN FB_DROPPED <<< "$FB_LINE"
+    EXTRA_FILES+=("$FEEDBACK_CHECKED")
+    later "Analyst feedback: $FB_USED verdict rows added ($FB_ATTACK attack, $FB_BENIGN benign; $FB_DROPPED dropped) → ${FEEDBACK_REPORT#"$PROJECT_ROOT"/}"
+  else
+    fail "Analyst feedback not used — $(tail -n 1 "$TRAIN_LOG.feedback")"
+  fi
+  cat "$TRAIN_LOG.feedback" >> "$TRAIN_LOG" 2>/dev/null || true
 fi
 
 for f in "${EXTRA_FILES[@]+"${EXTRA_FILES[@]}"}"; do
@@ -880,6 +907,7 @@ PYEOF
 # rewritten by every run; the live models/ folder only gets the record.
 RECORD_ARGS=(--out "$MODELS_DIR" --provenance "$MEM_PROVENANCE" --split "$MEM_SPLIT" --seed "$SEED"
              --merged "$MERGED_LABELED")
+[[ -n "$FEEDBACK_REPORT" && -f "$FEEDBACK_REPORT" ]] && RECORD_ARGS+=(--feedback-report "$FEEDBACK_REPORT")
 if [[ "$(cd "$MODELS_DIR" && pwd -P)" != "$(cd "$PROJECT_ROOT/models" 2>/dev/null && pwd -P)" ]]; then
   RECORD_ARGS+=(--copy-merged)
 fi

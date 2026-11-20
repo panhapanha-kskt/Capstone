@@ -46,6 +46,15 @@ from dateutil.parser import parse
 # (UNCHANGED from original Week 4)
 # ============================================
 
+
+def _row_id(row):
+    """The bridge's row_id (position in week3_features_all.json), or None."""
+    try:
+        v = row.get('row_id')
+        return int(v) if v is not None and v == v else None
+    except (TypeError, ValueError):
+        return None
+
 class MDTIIntegration:
     """Microsoft Defender Threat Intelligence API Integration"""
 
@@ -609,6 +618,8 @@ class RuleBasedDNSDetector:
                 client_ip   = row.get('client_ip', 'unknown'),
                 domain      = row.get('domain', 'unknown'),
                 details     = {
+                    'row_id':            _row_id(row),      # links a verdict back to its query (Task 12)
+                    'query_time':        str(row.get('timestamp', '')),
                     'query_length':      int(row.get('query_length', 0)),
                     'entropy':           float(row.get('entropy', 0)),
                     'length_threshold':  length_threshold,
@@ -709,6 +720,8 @@ class RuleBasedDNSDetector:
                 client_ip   = row.get('client_ip', 'unknown'),
                 domain      = row.get('domain', 'unknown'),
                 details     = {
+                    'row_id':              _row_id(row),
+                    'query_time':          str(row.get('timestamp', '')),
                     'ml_score_A':          float(row.get('ml_score_A', 0)),
                     'ml_score_B':          float(row.get('ml_score_B', 0)),
                     'ml_combined_score':   float(row.get('ml_combined_score', 0)),
@@ -776,6 +789,8 @@ class RuleBasedDNSDetector:
                 client_ip   = row.get('client_ip', 'unknown'),
                 domain      = row.get('domain', 'unknown'),
                 details     = {
+                    'row_id':            _row_id(row),
+                    'query_time':        str(row.get('timestamp', '')),
                     'ml_threat_score':   score,
                     'score_threshold':   threshold,
                     'ml_score_A':        float(row.get('ml_score_A', 0)),

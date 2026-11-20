@@ -182,6 +182,14 @@ def add_window_features(df: pd.DataFrame, window_seconds: int = WINDOW_SECONDS) 
     out["qpm_client_5m"] = qpm
     out["iat_std_5m"] = iat
     out["tunnel_rr_share_5m"] = rr
+    # Analyst verdict rows (ingest/feedback.py) arrive without the traffic around them, so they carry
+    # the window values computed at detection time, by this same function on the full pipeline input.
+    if "analyst_window" in out.columns:
+        for pos, w in enumerate(out["analyst_window"].to_numpy()):
+            if isinstance(w, dict):
+                for c in FEATURES_WINDOW:
+                    if c in w and w[c] is not None:
+                        out.iloc[pos, out.columns.get_loc(c)] = float(w[c])
     return out
 
 

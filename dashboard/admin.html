@@ -1,0 +1,228 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>DNS Detect | Admin</title>
+  <link rel="stylesheet" href="/static/css/workspace.css">
+</head>
+<body>
+  <div class="workspace">
+    <aside class="sidebar">
+      <div class="brand">
+        <div class="brand-mark">D</div>
+        <div><div class="brand-name">DNS Detect</div><div class="brand-mode">Admin workspace</div></div>
+      </div>
+      <nav class="nav">
+        <a class="active" href="/"><span class="nav-icon">⌂</span><span>Overview</span></a>
+        <a href="/customer"><span class="nav-icon">◫</span><span>Customer dashboard</span></a>
+        <div class="nav-section">CUSTOMERS</div>
+        <a href="#customers"><span class="nav-icon">♙</span><span>Customer accounts</span></a>
+        <a href="#subscriptions"><span class="nav-icon">◇</span><span>Subscriptions</span></a>
+        <a href="#activation"><span class="nav-icon">⌨</span><span>Activation keys</span></a>
+        <div class="nav-section">DELIVERY</div>
+        <a href="#releases"><span class="nav-icon">↓</span><span>Software releases</span></a>
+        <a href="#installations"><span class="nav-icon">⌘</span><span>Installations</span></a>
+        <div class="nav-section">OPERATIONS</div>
+        <a href="/alerts"><span class="nav-icon">⚠</span><span>Alerts</span></a>
+        <a href="/events"><span class="nav-icon">◉</span><span>Events</span></a>
+        <a href="/devices"><span class="nav-icon">≋</span><span>Sources & collection</span></a>
+        <div class="nav-section">MANAGEMENT</div>
+        <a href="/health"><span class="nav-icon">♥</span><span>System health</span></a>
+        <a href="/training"><span class="nav-icon">⚙</span><span>Model training</span></a>
+        <a href="/incidents"><span class="nav-icon">▤</span><span>Incidents</span></a>
+      </nav>
+      <div class="sidebar-foot">
+        <div class="sidebar-user"><div class="avatar">SA</div><div><div>Super admin</div><small>DNS Detect</small></div></div>
+      </div>
+    </aside>
+
+    <div class="main">
+      <header class="topbar">
+        <div class="topbar-title">Admin console</div>
+        <div class="topbar-actions">
+          <input class="search" id="globalSearch" placeholder="Search customers or alerts">
+          <button class="icon-button" title="Notifications">●</button>
+          <div class="avatar">SA</div>
+        </div>
+      </header>
+
+      <main class="content">
+        <div class="page-heading">
+          <div><h1>Customer overview</h1><p>Monitor customer environments and DNS detection health.</p></div>
+          <div class="last-updated" id="lastUpdated">Connecting...</div>
+        </div>
+
+        <section class="kpis kpis-8" id="kpis"></section>
+
+        <div class="grid-2" id="customers">
+          <section class="card">
+            <div class="card-head"><h2>Customers</h2><button id="refreshBtn">Refresh</button></div>
+            <div class="table-wrap">
+              <table>
+                <thead><tr><th>Customer</th><th>Status</th><th>Alerts</th><th>Queries</th><th>Last seen</th><th></th></tr></thead>
+                <tbody id="customerRows"></tbody>
+              </table>
+            </div>
+          </section>
+
+          <section class="card">
+            <div class="card-head"><h2>System health</h2><a href="/health">View details</a></div>
+            <div id="systemHealth"></div>
+          </section>
+        </div>
+
+        <div class="grid-2">
+          <section class="card">
+            <div class="card-head"><h2>Recent alerts</h2><a href="/alerts">View all alerts</a></div>
+            <div id="alertFeed"></div>
+          </section>
+
+          <section class="card">
+            <div class="card-head"><h2>Query activity</h2><span class="last-updated">Latest runs</span></div>
+            <div class="chart" id="queryChart"></div>
+            <div class="chart-labels" id="chartLabels"></div>
+          </section>
+        </div>
+
+        <div class="grid-3" id="subscriptions">
+          <section class="card">
+            <div class="card-head"><h2>Subscriptions</h2><a href="#customers">Manage</a></div>
+            <div class="system-row"><div><div class="system-name">Enterprise</div><div class="system-detail">Active customer plans</div></div><strong id="enterpriseCount">1</strong></div>
+            <div class="system-row"><div><div class="system-name">Expiring soon</div><div class="system-detail">Requires account review</div></div><span class="status-pill status-warning">0</span></div>
+          </section>
+          <section class="card" id="activation">
+            <div class="card-head"><h2>Activation keys</h2><button type="button">Create key</button></div>
+            <div class="system-row"><div><div class="system-name">Active keys</div><div class="system-detail">Licensed installations</div></div><strong>1</strong></div>
+            <div class="system-row"><div><div class="system-name">Available activations</div><div class="system-detail">Remaining server capacity</div></div><strong>4</strong></div>
+          </section>
+          <section class="card" id="releases">
+            <div class="card-head"><h2>Software releases</h2><button type="button">Manage releases</button></div>
+            <div class="system-row"><div><div class="system-name">Detection agent</div><div class="system-detail">Latest release status</div></div><span class="status-pill status-healthy">Available</span></div>
+            <div class="system-row"><div><div class="system-name">Server package</div><div class="system-detail">Deployment package</div></div><span class="status-pill status-info">Managed</span></div>
+          </section>
+        </div>
+
+        <section class="card" id="installations">
+          <div class="card-head"><h2>Customer installations</h2><a href="/devices">Open source inventory</a></div>
+          <div class="table-wrap">
+            <table>
+              <thead><tr><th>Customer</th><th>Installation</th><th>Component</th><th>Status</th><th>Last heartbeat</th><th>Version</th></tr></thead>
+              <tbody id="installationRows"></tbody>
+            </table>
+          </div>
+        </section>
+      </main>
+    </div>
+  </div>
+
+  <script>
+    "use strict";
+    let customerData = [];
+    let allCustomerData = [];
+    let stateData = {};
+    const esc = value => String(value ?? "").replace(/[&<>"']/g, c => ({ "&":"&amp;", "<":"&lt;", ">":"&gt;", '"':"&quot;", "'":"&#39;" }[c]));
+    const fmt = value => new Intl.NumberFormat().format(Number(value || 0));
+    const statusClass = status => status === "Healthy" ? "status-healthy" : status === "Warning" ? "status-warning" : status === "Critical" ? "status-critical" : "status-info";
+
+    function relTime(value) {
+      if (!value) return "Never";
+      const seconds = value > 1e10 ? (value - Date.now()) / 1000 : Date.now()/1000 - value;
+      if (value > 1e10) {
+        const diff = (value - Date.now()) / 1000;
+        return diff < 60 ? "just now" : diff < 3600 ? `${Math.floor(diff/60)}m ago` : diff < 86400 ? `${Math.floor(diff/3600)}h ago` : `${Math.floor(diff/86400)}d ago`;
+      }
+      if (seconds < 60) return "just now";
+      if (seconds < 3600) return `${Math.floor(seconds/60)}m ago`;
+      if (seconds < 86400) return `${Math.floor(seconds/3600)}h ago`;
+      return `${Math.floor(seconds/86400)}d ago`;
+    }
+
+    function render() {
+      const health = stateData.health || {};
+      const totals = stateData.totals || {};
+      const pipeline = stateData.pipeline || {};
+      const sev = totals.by_severity || {};
+      const customerCount = customerData.length;
+
+      document.getElementById("kpis").innerHTML = `
+        <article class="kpi"><div class="kpi-label">Customers monitored</div><div class="kpi-value">${customerCount}</div><div class="kpi-foot"><span class="trend-up">All connected</span></div></article>
+        <article class="kpi"><div class="kpi-label">Active alerts</div><div class="kpi-value">${fmt(totals.alerts)}</div><div class="kpi-foot">${fmt(totals.new_alerts || 0)} new in this feed</div></article>
+        <article class="kpi"><div class="kpi-label">Critical & high</div><div class="kpi-value">${fmt((sev.Critical || 0) + (sev.High || 0))}</div><div class="kpi-foot">Requires immediate review</div></article>
+        <article class="kpi"><div class="kpi-label">Queries analyzed</div><div class="kpi-value">${fmt(totals.queries)}</div><div class="kpi-foot">${pipeline.runs || 0} pipeline runs</div></article>
+        <article class="kpi"><div class="kpi-label">Active subscriptions</div><div class="kpi-value">${customerCount}</div><div class="kpi-foot">${customerCount ? "No overdue accounts" : "No active accounts"}</div></article>
+        <article class="kpi"><div class="kpi-label">Server installations</div><div class="kpi-value">${fmt((stateData.sources || []).length)}</div><div class="kpi-foot">From collection inventory</div></article>
+        <article class="kpi"><div class="kpi-label">Activation keys</div><div class="kpi-value">1</div><div class="kpi-foot">1 active · 4 available</div></article>
+        <article class="kpi"><div class="kpi-label">Infrastructure status</div><div class="kpi-value">${esc(health.band || "Unknown")}</div><div class="kpi-foot">${esc(pipeline.status || "Unknown")} pipeline</div></article>`;
+
+      document.getElementById("customerRows").innerHTML = customerData.map(customer => `
+        <tr>
+          <td><div class="customer-cell"><div class="customer-logo">${esc(customer.name.charAt(0))}</div><div><strong>${esc(customer.name)}</strong><small>${esc(customer.plan)} plan · ${esc(customer.id)}</small></div></div></td>
+          <td><span class="status-pill ${statusClass(customer.status)}">${esc(customer.status)}</span></td>
+          <td>${fmt(customer.alerts)}</td><td>${fmt(customer.queries)}</td>
+          <td>${esc(relTime(customer.last_seen))}</td>
+          <td><div class="table-actions"><a class="tiny-button" href="/customer?id=${encodeURIComponent(customer.id)}">Open</a><a class="tiny-button" href="/alerts">Alerts</a></div></td>
+        </tr>`).join("") || `<tr><td colspan="6">No customers found</td></tr>`;
+
+      document.getElementById("systemHealth").innerHTML = `
+        <div class="system-row"><div><div class="system-name">Detection pipeline</div><div class="system-detail">${esc(pipeline.step || "Idle")}</div></div><span class="status-pill ${statusClass(health.band)}">${esc(health.band || "Unknown")}</span></div>
+        <div class="system-row"><div><div class="system-name">Collection</div><div class="system-detail">${esc(stateData.sources?.length ? stateData.sources.join(", ") : "No source reported")}</div></div><span class="status-pill ${pipeline.status === "error" ? "status-critical" : "status-healthy"}">${esc(pipeline.status || "Unknown")}</span></div>
+        <div class="system-row"><div><div class="system-name">Latest run</div><div class="system-detail">${pipeline.last_duration != null ? `${pipeline.last_duration.toFixed(1)} seconds` : "Not available"}</div></div><span class="status-pill status-info">${fmt(pipeline.runs || 0)} runs</span></div>
+        <div class="system-row"><div><div class="system-name">Retraining</div><div class="system-detail">${health.retrain_recommended ? "Recommendation available" : "No recommendation"}</div></div><span class="status-pill ${health.retrain_recommended ? "status-warning" : "status-healthy"}">${health.retrain_recommended ? "Review" : "Normal"}</span></div>`;
+
+      const feed = stateData.feed || [];
+      document.getElementById("alertFeed").innerHTML = feed.slice(0, 6).map(alert => {
+        const severity = String(alert.severity || "Low").toLowerCase();
+        return `<div class="alert-row"><span class="severity severity-${severity}">${esc(alert.severity || "Low")}</span><div><div class="alert-name">${esc(alert.rule || "DNS alert")}</div><div class="alert-meta">${esc(alert.client || "Unknown client")} · ${esc(alert.domain || "Unknown domain")}</div></div><span class="alert-time">${esc(relTime(alert.time ? new Date(alert.time).getTime()/1000 : null))}</span></div>`;
+      }).join("") || `<div class="system-detail">No recent alerts.</div>`;
+
+      const history = (stateData.history || []).slice(-18);
+      const max = Math.max(1, ...history.map(point => point.queries || 0));
+      document.getElementById("queryChart").innerHTML = history.map((point, index) => {
+        const height = 24 + ((point.queries || 0) / max) * 176;
+        return `<div class="bar ${index === history.length-1 ? "alert":""}" title="${esc(fmt(point.queries))} queries" style="height:${height}px"></div>`;
+      }).join("") || `<div class="system-detail" style="align-self:center;width:100%;text-align:center">No query history yet.</div>`;
+      document.getElementById("chartLabels").innerHTML = history.length ? `<span>Earlier</span><span>Latest run</span>` : "";
+
+      document.getElementById("enterpriseCount").textContent = fmt(customerCount);
+      document.getElementById("installationRows").innerHTML = customerData.map(customer => `
+        <tr>
+          <td><strong>${esc(customer.name)}</strong></td>
+          <td>${esc(customer.id)}-server-01</td>
+          <td>DNS Detection Server</td>
+          <td><span class="status-pill ${statusClass(customer.status)}">${esc(customer.pipeline_status || customer.status)}</span></td>
+          <td>${esc(relTime(customer.last_seen))}</td>
+          <td>v1.0</td>
+        </tr>`).join("") || `<tr><td colspan="6"><div class="empty-note">No installations reported.</div></td></tr>`;
+
+      document.getElementById("lastUpdated").textContent = `Updated ${new Date().toLocaleTimeString([], {hour:"2-digit", minute:"2-digit", second:"2-digit"})}`;
+    }
+
+    async function refresh() {
+      try {
+        const [customersResponse, stateResponse] = await Promise.all([
+          fetch("/api/customers", {cache:"no-store"}),
+          fetch("/api/state", {cache:"no-store"})
+        ]);
+        const [customers, state] = await Promise.all([customersResponse.json(), stateResponse.json()]);
+        allCustomerData = customers.records || [];
+        customerData = allCustomerData;
+        stateData = state;
+        render();
+      } catch (error) {
+        document.getElementById("lastUpdated").textContent = "Dashboard server unavailable";
+      }
+    }
+
+    document.getElementById("refreshBtn").addEventListener("click", refresh);
+    document.getElementById("globalSearch").addEventListener("input", event => {
+      const query = event.target.value.trim().toLowerCase();
+      customerData = allCustomerData.filter(customer => customer.name.toLowerCase().includes(query) || customer.id.toLowerCase().includes(query));
+      render();
+      if (!query) refresh();
+    });
+    refresh();
+    setInterval(refresh, 5000);
+  </script>
+</body>
+</html>

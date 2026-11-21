@@ -1,0 +1,194 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>DNS Detect | Customer Dashboard</title>
+  <link rel="stylesheet" href="/static/css/workspace.css">
+</head>
+<body>
+  <div class="workspace">
+    <aside class="sidebar">
+      <div class="brand">
+        <div class="brand-mark">C</div>
+        <div><div class="brand-name">Capstone Lab</div><div class="brand-mode">Customer workspace</div></div>
+      </div>
+      <nav class="nav">
+        <a class="active" href="/customer"><span class="nav-icon">⌂</span><span>Overview</span></a>
+        <a href="#traffic"><span class="nav-icon">⌁</span><span>DNS protection</span></a>
+        <a href="#alerts"><span class="nav-icon">⚠</span><span>Threat alerts</span></a>
+        <a href="#history"><span class="nav-icon">◷</span><span>Historical trends</span></a>
+        <div class="nav-section">SUBSCRIPTION</div>
+        <a href="#subscription"><span class="nav-icon">◇</span><span>Plan & usage</span></a>
+        <a href="#downloads"><span class="nav-icon">↓</span><span>Software downloads</span></a>
+        <a href="#activation"><span class="nav-icon">⌨</span><span>Activation keys</span></a>
+        <div class="nav-section">SUPPORT</div>
+        <a href="#reports"><span class="nav-icon">≡</span><span>Reports</span></a>
+        <a href="#settings"><span class="nav-icon">⚙</span><span>Settings</span></a>
+        <a href="/"><span class="nav-icon">⌘</span><span>Admin console</span></a>
+      </nav>
+      <div class="sidebar-foot">
+        <div class="sidebar-user"><div class="avatar">CL</div><div><div>Customer admin</div><small>Capstone Lab</small></div></div>
+      </div>
+    </aside>
+
+    <div class="main">
+      <header class="topbar">
+        <div class="topbar-title">Customer security dashboard</div>
+        <div class="topbar-actions">
+          <button class="button" id="downloadReport">Download report</button>
+          <div class="avatar">CL</div>
+        </div>
+      </header>
+
+      <main class="content">
+        <div class="page-heading">
+          <div><h1>Security overview</h1><p>DNS traffic protection status and threat activity.</p></div>
+          <div class="last-updated" id="customerUpdated">Connecting...</div>
+        </div>
+
+        <section class="kpis" id="customerKpis"></section>
+
+        <div class="grid-2" id="traffic">
+          <section class="card">
+            <div class="card-head"><h2>DNS query activity</h2><span class="status-pill status-info" id="coverageStatus">Monitoring</span></div>
+            <div class="chart" id="customerChart"></div>
+            <div class="chart-labels"><span>Earlier runs</span><span>Latest</span></div>
+          </section>
+
+          <section class="card">
+            <div class="card-head"><h2>Protection status</h2><a href="/health">Details</a></div>
+            <div id="protectionStatus"></div>
+          </section>
+        </div>
+
+        <div class="grid-2" id="alerts">
+          <section class="card">
+            <div class="card-head"><h2>Threat alerts</h2><a href="/alerts">Manage alerts</a></div>
+            <div id="customerAlerts"></div>
+          </section>
+
+          <section class="card" id="history">
+            <div class="card-head"><h2>Alert severity</h2><span class="last-updated">Latest result</span></div>
+            <div id="severitySummary"></div>
+          </section>
+        </div>
+
+        <div class="grid-2" id="reports">
+          <section class="card">
+            <div class="card-head"><h2>Reports</h2></div>
+            <div class="system-row"><div><div class="system-name">Latest security report</div><div class="system-detail">CSV export from current dashboard data</div></div><button class="tiny-button" id="downloadInline">Download</button></div>
+          </section>
+          <section class="card" id="settings">
+            <div class="card-head"><h2>Account settings</h2></div>
+            <div class="system-row"><div><div class="system-name">Notifications</div><div class="system-detail">Threat and pipeline status notifications</div></div><span class="status-pill status-healthy">Enabled</span></div>
+            <div class="system-row"><div><div class="system-name">Data retention</div><div class="system-detail">Managed by your administrator</div></div><span class="status-pill status-info">Default</span></div>
+          </section>
+        </div>
+
+        <div class="grid-3" id="subscription">
+          <section class="card">
+            <div class="card-head"><h2>Subscription</h2><span class="status-pill status-healthy">Enterprise</span></div>
+            <div class="progress-meta"><span>DNS query allowance</span><strong id="queryAllowance">Live usage</strong></div>
+            <div class="usage-track"><div class="usage-bar" id="queryUsage" style="width:68%"></div></div>
+            <div class="system-detail" style="margin-top:10px">Renewal and billing details are managed by the DNS Detect team.</div>
+          </section>
+
+          <section class="card" id="activation">
+            <div class="card-head"><h2>Activation key</h2><span class="status-pill status-healthy">Active</span></div>
+            <div class="key-box"><span class="key-value" id="activationKey">CSTP-LAB-••••-2026</span><button class="tiny-button" id="copyActivation" type="button">Copy</button></div>
+            <div class="system-detail" style="margin-top:10px">Installed 1 of 5 allowed servers</div>
+          </section>
+
+          <section class="card" id="downloads">
+            <div class="card-head"><h2>Software downloads</h2></div>
+            <div class="action-card">
+              <div class="action-icon">↓</div>
+              <div><h3>DNS Detection Agent</h3><p>Windows, Linux, and container packages</p><a class="tiny-button" href="/devices">View releases</a></div>
+            </div>
+          </section>
+        </div>
+      </main>
+    </div>
+  </div>
+
+  <script>
+    "use strict";
+    let latestState = {};
+    const esc = value => String(value ?? "").replace(/[&<>"']/g, c => ({ "&":"&amp;", "<":"&lt;", ">":"&gt;", '"':"&quot;", "'":"&#39;" }[c]));
+    const fmt = value => new Intl.NumberFormat().format(Number(value || 0));
+    const statusClass = status => status === "Healthy" ? "status-healthy" : status === "Warning" ? "status-warning" : status === "Critical" ? "status-critical" : "status-info";
+
+    function render(state) {
+      latestState = state;
+      const totals = state.totals || {};
+      const health = state.health || {};
+      const pipeline = state.pipeline || {};
+      const sev = totals.by_severity || {};
+      const high = (sev.High || 0) + (sev.Critical || 0);
+
+      document.getElementById("customerKpis").innerHTML = `
+        <article class="kpi"><div class="kpi-label">Protection status</div><div class="kpi-value">${esc(health.band || "Unknown")}</div><div class="kpi-foot">${esc(pipeline.status || "No pipeline status")}</div></article>
+        <article class="kpi"><div class="kpi-label">DNS queries analyzed</div><div class="kpi-value">${fmt(totals.queries)}</div><div class="kpi-foot">Across the latest detection data</div></article>
+        <article class="kpi"><div class="kpi-label">Active threats</div><div class="kpi-value">${fmt(totals.alerts)}</div><div class="kpi-foot">${fmt(totals.new_alerts || 0)} new alerts</div></article>
+        <article class="kpi"><div class="kpi-label">High severity</div><div class="kpi-value">${fmt(high)}</div><div class="kpi-foot">${high ? "Review recommended" : "No high-severity alerts"}</div></article>`;
+
+      document.getElementById("protectionStatus").innerHTML = `
+        <div class="system-row"><div><div class="system-name">DNS detection</div><div class="system-detail">${esc(pipeline.step || "Idle")}</div></div><span class="status-pill ${statusClass(health.band)}">${esc(health.band || "Unknown")}</span></div>
+        <div class="system-row"><div><div class="system-name">Collection sources</div><div class="system-detail">${esc((state.sources || []).length ? state.sources.join(", ") : "No source reported")}</div></div><span class="status-pill status-info">${fmt((state.sources || []).length)}</span></div>
+        <div class="system-row"><div><div class="system-name">ML detection</div><div class="system-detail">${totals.ml_active ? "Enabled" : "Status unavailable"}</div></div><span class="status-pill ${totals.ml_active ? "status-healthy" : "status-info"}">${totals.ml_active ? "Active" : "Unknown"}</span></div>
+        <div class="system-row"><div><div class="system-name">Latest run</div><div class="system-detail">${pipeline.last_run_at ? new Date(pipeline.last_run_at * 1000).toLocaleString() : "Never"}</div></div><span class="status-pill status-info">${fmt(pipeline.runs || 0)} runs</span></div>`;
+
+      document.getElementById("customerAlerts").innerHTML = (state.feed || []).slice(0, 7).map(alert => {
+        const severity = String(alert.severity || "Low").toLowerCase();
+        return `<div class="alert-row"><span class="severity severity-${severity}">${esc(alert.severity || "Low")}</span><div><div class="alert-name">${esc(alert.rule || "DNS alert")}</div><div class="alert-meta">${esc(alert.domain || "Unknown domain")} · ${esc(alert.client || "Unknown client")}</div></div><span class="alert-time">${esc(alert.time || "")}</span></div>`;
+      }).join("") || `<div class="system-detail">No threat alerts detected.</div>`;
+
+      document.getElementById("severitySummary").innerHTML = Object.entries(sev).map(([name, count]) => `
+        <div class="system-row"><div><div class="system-name">${esc(name)}</div><div class="system-detail">Detected alerts</div></div><span class="severity severity-${name.toLowerCase()}">${fmt(count)}</span></div>`).join("") || `<div class="system-detail">No severity data available.</div>`;
+
+      const history = (state.history || []).slice(-18);
+      const max = Math.max(1, ...history.map(point => point.queries || 0));
+      document.getElementById("customerChart").innerHTML = history.map((point, index) => {
+        const height = 24 + ((point.queries || 0) / max) * 176;
+        return `<div class="bar ${index === history.length-1 ? "alert":""}" title="${esc(fmt(point.queries))} queries" style="height:${height}px"></div>`;
+      }).join("") || `<div class="system-detail" style="align-self:center;width:100%;text-align:center">No activity history yet.</div>`;
+
+      document.getElementById("customerUpdated").textContent = `Updated ${new Date().toLocaleTimeString([], {hour:"2-digit", minute:"2-digit", second:"2-digit"})}`;
+      document.getElementById("queryAllowance").textContent = fmt(totals.queries) + " queries";
+    }
+
+    function downloadCsv() {
+      const rows = [["customer","rule","severity","client","domain","time"]];
+      (latestState.feed || []).forEach(alert => rows.push(["Capstone Lab", alert.rule || "", alert.severity || "", alert.client || "", alert.domain || "", alert.time || ""]));
+      const csv = rows.map(row => row.map(value => `"${String(value).replace(/"/g,'""')}"`).join(",")).join("\n");
+      const url = URL.createObjectURL(new Blob([csv], {type:"text/csv"}));
+      const link = document.createElement("a");
+      link.href = url; link.download = "capstone-lab-security-report.csv"; link.click();
+      URL.revokeObjectURL(url);
+    }
+
+    async function refresh() {
+      try {
+        const response = await fetch("/api/state", {cache:"no-store"});
+        render(await response.json());
+      } catch (error) {
+        document.getElementById("customerUpdated").textContent = "Dashboard server unavailable";
+      }
+    }
+    document.getElementById("downloadReport").addEventListener("click", downloadCsv);
+    document.getElementById("downloadInline").addEventListener("click", downloadCsv);
+    document.getElementById("copyActivation").addEventListener("click", async event => {
+      const key = document.getElementById("activationKey").textContent;
+      try {
+        await navigator.clipboard.writeText(key);
+        event.currentTarget.textContent = "Copied";
+      } catch (_) {
+        event.currentTarget.textContent = "Copy unavailable";
+      }
+    });
+    refresh();
+    setInterval(refresh, 5000);
+  </script>
+</body>
+</html>

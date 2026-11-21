@@ -899,7 +899,9 @@ def build_state():
 # ──────────────────────────────────────────────────────────────
 MAX_BODY_BYTES = 64 * 1024   # 64 KiB per POST
 PAGE_ROUTES = {
-    "/": "index.html", "/index.html": "index.html",
+    "/": "admin.html", "/admin": "admin.html",
+    "/customer": "customer.html", "/customer.html": "customer.html",
+    "/classic": "index.html", "/index.html": "index.html",
     "/soc": "soc.html", "/soc.html": "soc.html",
     "/usecases": "usecases.html", "/usecases.html": "usecases.html",
     "/alerts": "alerts.html", "/alerts.html": "alerts.html",
@@ -1184,6 +1186,28 @@ class Handler(BaseHTTPRequestHandler):
 
         if path == "/api/state":
             self.send_json(200, build_state())
+            return
+
+        if path == "/api/customers":
+            state = build_state()
+            health = state.get("health", {})
+            totals = state.get("totals", {})
+            pipeline = state.get("pipeline", {})
+            customers = [{
+                "id": "capstone-lab",
+                "name": "Capstone Lab",
+                "plan": "Enterprise",
+                "status": health.get("band", "Unknown"),
+                "health_reasons": health.get("reasons", []),
+                "alerts": totals.get("alerts", 0),
+                "queries": totals.get("queries", 0),
+                "new_alerts": totals.get("new_alerts", 0),
+                "mode": state.get("mode", "live"),
+                "pipeline_status": pipeline.get("status", "unknown"),
+                "last_run_at": pipeline.get("last_run_at"),
+                "last_seen": state.get("now"),
+            }]
+            self.send_json(200, {"records": customers})
             return
 
         if path == "/api/analysts":

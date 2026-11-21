@@ -290,7 +290,7 @@ async function refreshStatus(){
     const running=jobs.filter(j=>j.status==="running").length;
     setStep("runs",jobs.length?(running?"todo":"done"):"todo",running?`${running} running`:jobs.length?`${jobs.length} run${jobs.length>1?"s":""}`:"No runs yet");
     const cands=models.filter(m=>!m.is_production&&m.deployable!==false).length,live=models.find(m=>m.is_production);
-    setStep("models",live?"done":"todo",`${cands} candidate${cands===1?"":"s"}${live?` · live ${live.version}`:""}`);
+    setStep("models",live?"done":"todo",`${cands} candidate${cands===1?"":"s"}${live?(live.version==="live"?" · live model in models/":` · live ${live.version}`):""}`);
   }catch(e){/* the step page itself shows the error; status stays as it was */ if(e.status!==401)console.warn("status:",e.message)}
 }
 function stopPolling(){if(st.poll){clearInterval(st.poll);st.poll=null}}
@@ -629,13 +629,13 @@ async function viewModels(route){
 }
 function drawModels(sel){
   const ms=st.models||[],s=st.status||{};
-  $("livebox").innerHTML=s.production?`<b>Live in production (champion): ${esc(s.production)}</b>`:"No production model yet. Promote a candidate to make it live.";
+  $("livebox").innerHTML=s.production?`<b>Live in production (champion): ${esc(s.production)}</b>`:"No production model yet (nothing in models/). Promote a candidate to make it live.";
   $("rollback").disabled=!s.previous;
   $("rollback").textContent=s.previous?`Roll back to ${s.previous}`:"Roll back (no earlier version)";
   if(!ms.length){$("modlist").innerHTML=`<p>No models yet. A model appears here when a training run finishes with metrics.</p><a class="act" href="#/runs">See runs →</a>`;return}
-  $("modlist").innerHTML=`<table><tr><th scope="col">Version</th><th scope="col">Run</th><th scope="col">Dataset</th><th scope="col">F1</th><th scope="col">False alarms</th><th scope="col">Role</th><th scope="col"><span hidden>Actions</span></th></tr>`+
+  $("modlist").innerHTML=`<table><tr><th scope="col">Version</th><th scope="col">Run</th><th scope="col">Dataset</th><th scope="col">F1</th><th scope="col">False alarms</th><th scope="col">FPR</th><th scope="col">Role</th><th scope="col"><span hidden>Actions</span></th></tr>`+
     ms.slice().reverse().map(m=>`<tr class="${m.version===sel?"sel":""}"><td>${esc(m.version)}</td><td><a href="#/runs/${enc(m.run_id)}">${esc(m.run_id)}</a></td><td>${esc(dsName(m.dataset))}</td>
-      <td>${pct(m.metrics.f1)}</td><td>${m.metrics.fpr!=null?pct(m.metrics.fpr):m.metrics.false_alarms??"-"}</td>
+      <td>${pct(m.metrics.f1)}</td><td>${m.metrics.false_alarms??"-"}</td><td>${m.metrics.fpr!=null?pct(m.metrics.fpr):"-"}</td>
       <td>${m.is_production?'<span class="tag prod">✓ production (champion)</span>':m.deployable===false?'<span class="tag cand">feature-table model (compare only)</span>':'<span class="tag cand">candidate (challenger)</span>'}</td>
       <td>${m.is_production?"":`<a href="#/models/${enc(m.version)}">Compare →</a>`}</td></tr>`).join("")+"</table>";
 }
@@ -662,7 +662,7 @@ async function compare(v){
     try{
       try{await api("/models/"+enc(v)+"/promote",{method:"POST",body:{force:false}})}
       catch(e){
-        if(e.status!==409||!c.warnings.length)throw e;
+        if(e.status!==409||!c.warnings.length||document.body.dataset.mode!=="demo")throw e;   // Capstone: the gate decides, no override
         if(!confirm(`${e.message}\n\nPromote ${v} anyway?`)){$("pmsg").innerHTML=`<span class=muted>Not promoted.</span>`;return}
         await api("/models/"+enc(v)+"/promote",{method:"POST",body:{force:true}});
       }

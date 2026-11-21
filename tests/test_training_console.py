@@ -42,6 +42,7 @@ def clean(monkeypatch):
         shutil.rmtree(p)
     S.REGISTRY.unlink(missing_ok=True)
     monkeypatch.setattr(S, "MODE", "capstone")
+    monkeypatch.setattr(S, "PRODUCTION", Path(tempfile.mkdtemp(prefix="traingui_prod_")))   # no live model
     monkeypatch.setattr(S, "REQUIRE_LABEL", False)
     monkeypatch.setattr(S, "VALIDATE_SAMPLE_ROWS", 200_000)
     yield
@@ -474,3 +475,53 @@ def test_run_log_is_read_as_utf8():
                                             "started": "2026-11-19T00:00:00+00:00", "pid": 999999}))
     (d / "train.log").write_bytes("Training DNS models · log ✓ → done\n".encode("utf-8"))
     assert jobs.tail_log(d.name) == "Training DNS models · log ✓ → done"
+
+
+# ── 2026-11-21: the live model in models/ counts as production; siblings = one run per seed, scoreable ──
+def _reg_run(version, seed, scoreable=True):
+    rid = f"run_{version}"
+    d = S.RUNS / rid / "model"
+    d.mkdir(parents=True, exist_ok=True)
+    if scoreable:
+        (d / "merged_features_labeled.json").write_text("[]")
+        (d / "split_manifest.json").write_text("{}")
+    return {"version": version, "run_id": rid, "created": "", "dataset": "d", "train_path": "both",
+            "params": {"seed": seed, "n": 5}, "metrics": {"f1": 0.9}, "trainer": "pipeline"}
+
+
+def test_siblings_one_run_per_seed_and_only_scoreable(monkeypatch):
+    monkeypatch.setattr(jobs, "list_jobs", lambda n=500: [])
+    reg = {"models": [_reg_run("v1", 42, scoreable=False), _reg_run("v2", 42), _reg_run("v3", 43),
+                      _reg_run("v4", 42)], "production": None, "history": []}
+    S.REGISTRY.write_text(json.dumps(reg))
+    got = sorted(x["version"] for x in registry._siblings(registry._load(), reg["models"][3]))
+    assert got == ["v3", "v4"], "v1 (not scoreable) and v2 (older seed-42 run) must not be counted"
+
+
+def test_live_models_folder_is_shown_as_production(monkeypatch, tmp_path):
+    monkeypatch.setattr(jobs, "list_jobs", lambda n=500: [])
+    prod = tmp_path / "models"
+    prod.mkdir()
+    (prod / "evaluation_metrics.json").write_text(json.dumps(
+        {"fusion": {"test": {"learned_lr": {"f1": 0.99, "precision": 0.98, "recall": 1.0, "fpr": 0.006, "false_alarms": 8}}}}))
+    (prod / "PROMOTED.json").write_text(json.dumps({"source_run": "runs/v3_iforest", "promoted_at": "2026-11-19T08:03:12+00:00"}))
+    monkeypatch.setattr(S, "PRODUCTION", prod)
+    S.REGISTRY.write_text(json.dumps({"models": [_reg_run("v2", 42)], "production": None, "history": []}))
+    ms = registry.list_models()
+    live = [m for m in ms if m["is_production"]]
+    assert len(live) == 1 and live[0]["run_id"] == "runs/v3_iforest" and live[0]["metrics"]["false_alarms"] == 8
+    assert "runs/v3_iforest" in registry.status()["production"]
+    cmp = registry.compare("v2")
+    assert cmp["production"] == "live" and any(r["production"] is not None for r in cmp["rows"])
+
+
+def test_promote_refuses_a_run_the_gate_cannot_score(monkeypatch):
+    monkeypatch.setattr(jobs, "list_jobs", lambda n=500: [])
+    S.REGISTRY.write_text(json.dumps({"models": [_reg_run("v1", 42, scoreable=False)], "production": None, "history": []}))
+    monkeypatch.setattr(registry, "_run_part_b", lambda *a: pytest.fail("part_b must not run for an unscoreable run"))
+    with pytest.raises(RuntimeError, match="can't go through the gate"):
+        registry.promote("v1", force=True)
+
+
+def test_page_has_no_override_prompt_in_capstone_mode():
+    assert 'document.body.dataset.mode!=="demo")throw e' in PAGE.read_text(encoding="utf-8")

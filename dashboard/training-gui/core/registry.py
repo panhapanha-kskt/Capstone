@@ -24,6 +24,30 @@ def _load():
     return {"models": [], "production": None, "history": []}
 
 
+LIVE_VERSION = "live"   # the model in <repo>/models, whoever promoted it (part_b.py, promote_model.sh, console)
+
+
+def _live_model():
+    """Capstone mode: the model in models/ as a registry entry, read from PROMOTED.json + evaluation_metrics.json.
+    The registry only remembers console promotions; part_b.py / run_all.sh promote too, so models/ is the truth."""
+    if S.MODE != "capstone" or not (S.PRODUCTION / "evaluation_metrics.json").is_file():
+        return None
+    try:
+        from adapters.capstone_train import pick, METRIC_PATHS, EXTRA_PATHS, read_json
+        ev = read_json(S.PRODUCTION / "evaluation_metrics.json")
+        metrics = {k: pick(ev, v) for k, v in {**METRIC_PATHS, **EXTRA_PATHS}.items()}
+        metrics = {k: v for k, v in metrics.items() if v is not None}
+        prom = read_json(S.PRODUCTION / "PROMOTED.json") if (S.PRODUCTION / "PROMOTED.json").is_file() else {}
+        prov = read_json(S.PRODUCTION / "training_provenance.json") \
+            if (S.PRODUCTION / "training_provenance.json").is_file() else {}
+        return {"version": LIVE_VERSION, "run_id": prom.get("source_run") or str(S.PRODUCTION),
+                "created": prom.get("promoted_at") or "", "dataset": f"{len(prov.get('source_files', []))} files "
+                "(models/training_provenance.json)", "train_path": "both", "params": {}, "metrics": metrics,
+                "trainer": "pipeline", "live": True}
+    except Exception:
+        return None
+
+
 def _save(reg):
     S.REGISTRY.write_text(json.dumps(reg, indent=2))
 
@@ -46,8 +70,12 @@ def sync():
 
 def list_models():
     reg = sync()
-    return [{**m, "is_production": m["version"] == reg["production"], "deployable": _deployable(m)}
-            for m in reg["models"]]
+    out = [{**m, "is_production": m["version"] == reg["production"], "deployable": _deployable(m)}
+           for m in reg["models"]]
+    live = _live_model()
+    if live and not any(m["is_production"] for m in out):
+        out.insert(0, {**live, "is_production": True, "deployable": True})
+    return out
 
 
 def _deployable(m) -> bool:
@@ -59,7 +87,12 @@ def status() -> dict:
     """Which version is live, and which one Roll back would restore."""
     reg = sync()
     hist = [h["version"] for h in reg["history"]]
-    return {"production": reg["production"], "previous": hist[-2] if len(hist) >= 2 else None, "history": hist}
+    prod = reg["production"]
+    if prod is None:
+        live = _live_model()
+        if live:
+            prod = f"{LIVE_VERSION} ({live['run_id']}, promoted {live['created'][:10] or 'by script'})"
+    return {"production": prod, "previous": hist[-2] if len(hist) >= 2 else None, "history": hist}
 
 
 def _get(reg, version):
@@ -72,7 +105,7 @@ def _get(reg, version):
 def compare(candidate: str) -> dict:
     reg = sync()
     cand = _get(reg, candidate)
-    prod = _get(reg, reg["production"]) if reg["production"] else None
+    prod = _get(reg, reg["production"]) if reg["production"] else _live_model()
     rows, warnings = [], []
     for k in KEYS:
         c = cand["metrics"].get(k)
@@ -88,15 +121,16 @@ def compare(candidate: str) -> dict:
     if prod and cand.get("trainer", "pipeline") != prod.get("trainer", "pipeline"):
         warnings.insert(0, "Not a like-for-like comparison: these models were trained on different kinds of data "
                            "(feature table vs raw DNS queries) and tested on different test sets.")
-    return {"candidate": candidate, "production": reg["production"], "rows": rows, "warnings": warnings,
-            "deployable": _deployable(cand)}
+    return {"candidate": candidate, "production": reg["production"] or (prod and prod["version"]),
+            "rows": rows, "warnings": warnings, "deployable": _deployable(cand)}
 
 
 PART_B_CODES = {
-    1: "Not promoted: the project gate failed (see the gate report). models/ is unchanged.",
-    2: "Promoted, but the smoke test failed, so the previous models were put back.",
-    3: "Not promoted: detection is running or another promote is in progress (or an error). Try again shortly.",
-    4: "Not promoted: training data for the gate is missing.",
+    1: "the project gate failed (see the gate report); models/ is unchanged.",
+    2: "promoted, but the smoke test failed, so the previous models were put back.",
+    3: "detection is running or another promote is in progress (or an error); try again shortly.",
+    4: "training data for the gate is missing.",
+    5: "the shadow check failed: the candidate behaves differently from the live model on current traffic; models/ unchanged.",
 }
 
 
@@ -104,12 +138,24 @@ def _seedless(params):
     return {k: v for k, v in (params or {}).items() if k not in ("seed", "random_state")}
 
 
+def _scoreable(x):
+    """The gate needs the run's frozen test rows and split to compare it with the live model and the rules."""
+    d = jobs._dir(x["run_id"]) / "model"
+    return d.is_dir() and (d / "merged_features_labeled.json").is_file() and (d / "split_manifest.json").is_file()
+
+
 def _siblings(reg, m):
-    """Deployable runs trained the same way as m (same data, path, params apart from the seed)."""
-    out = [x for x in reg["models"] if _deployable(x) and x["dataset"] == m["dataset"]
-           and x.get("train_path") == m.get("train_path") and _seedless(x["params"]) == _seedless(m["params"])
-           and (jobs._dir(x["run_id"]) / "model").is_dir()]
-    return out or [m]
+    """Deployable runs trained the same way as m (same data, path, params apart from the seed): one run per
+    seed (the newest), and only runs the gate can score. Two seed-42 runs are one seed, not two."""
+    same = [x for x in reg["models"] if _deployable(x) and x["dataset"] == m["dataset"]
+            and x.get("train_path") == m.get("train_path") and _seedless(x["params"]) == _seedless(m["params"])
+            and _scoreable(x)]
+    by_seed = {}
+    for x in same:                                   # reg["models"] is oldest first: the newest run wins
+        by_seed[(x["params"] or {}).get("seed", 42)] = x
+    if m["version"] not in {x["version"] for x in by_seed.values()}:
+        by_seed[(m["params"] or {}).get("seed", 42)] = m   # the clicked run is always in
+    return list(by_seed.values())
 
 
 def _shell():
@@ -138,13 +184,19 @@ def _run_part_b(name: str, model_dirs: list):
 
 
 def _promote_capstone(reg, m):
+    if not _scoreable(m):
+        raise RuntimeError(f"{m['version']} can't go through the gate: its run folder has no merged_features_labeled.json "
+                           "or split_manifest.json (it was trained before the console saved them), so the gate cannot "
+                           "score it against the live model. Train it again to get a run the gate can judge.")
     group = _siblings(reg, m)
     dirs = [jobs._dir(x["run_id"]) / "model" for x in group]
     code, out = _run_part_b(f"console_{m['version']}", dirs)
     if code != 0:
-        hint = (f" Only {len(group)} matching run(s); the gate needs >= 3 seeds — train the same "
-                "dataset/settings with 2 more seeds, then Promote again.") if len(group) < 3 else ""
-        raise RuntimeError(PART_B_CODES.get(code, f"Not promoted (part_b exit {code}).") + hint
+        seeds = sorted((x["params"] or {}).get("seed", 42) for x in group)
+        hint = (f" Only {len(group)} comparable run(s) (seed {', '.join(map(str, seeds))}); the gate needs >= 3 "
+                "different seeds — train the same dataset and settings with seed 43 and 44, then Promote again.") \
+            if len(group) < 3 else ""
+        raise RuntimeError(PART_B_CODES.get(code, f"part_b exit {code}.") + hint
                            + "\n" + "\n".join(out.strip().splitlines()[-8:]))
     # part_b picks the median-seed run; record that one as production.
     hit = re.search(r"promoted (\S+)", out)

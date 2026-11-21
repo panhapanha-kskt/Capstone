@@ -131,6 +131,8 @@ def registry(monkeypatch, tmp_path):
     for i, seed in enumerate((42, 43, 44)):
         rid = f"run{i}"
         (S.RUNS / rid / "model").mkdir(parents=True)
+        (S.RUNS / rid / "model" / "merged_features_labeled.json").write_text("[]")   # scoreable by the gate
+        (S.RUNS / rid / "model" / "split_manifest.json").write_text("{}")
         models.append({"version": f"v{i + 1}", "run_id": rid, "created": "", "dataset": "d", "train_path": "both",
                        "params": {"seed": seed, "n": 5}, "metrics": {"f1": 0.9}, "trainer": "pipeline"})
     S.REGISTRY.write_text(json.dumps({"models": models, "production": None, "history": []}))

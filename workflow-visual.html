@@ -1,0 +1,893 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>DNS Traffic Anomaly Detection — Architecture &amp; Workflows</title>
+<style>
+  :root {
+    --bg: #f6f7f9; --panel: #ffffff; --ink: #1c2128; --muted: #5b6672; --line: #d9dee5;
+    --accent: #2f6fed; --accent-ink: #ffffff; --chip: #eef2f8; --code: #eef1f5;
+    --c-mod: #dbeafe; --c-script: #fde68a; --c-store: #d1fae5; --c-cfg: #fce7f3; --c-svc: #e9d5ff; --c-ext: #e5e7eb; --c-forbid: #fecaca;
+  }
+  [data-theme="dark"] {
+    --bg: #0f1216; --panel: #171b21; --ink: #e6e9ee; --muted: #9aa5b1; --line: #2a313b;
+    --accent: #6ea0ff; --accent-ink: #0b1020; --chip: #1f2630; --code: #1d232b;
+    --c-mod: #1e3a5f; --c-script: #5a4a10; --c-store: #114d3a; --c-cfg: #5a1f45; --c-svc: #3f2a6b; --c-ext: #343a44; --c-forbid: #6b1d1d;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; background: var(--bg); color: var(--ink); font: 15px/1.5 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+  header { position: sticky; top: 0; z-index: 10; background: var(--panel); border-bottom: 1px solid var(--line); padding: 10px 20px; display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
+  header h1 { font-size: 17px; margin: 0; font-weight: 650; }
+  header .sub { color: var(--muted); font-size: 13px; }
+  .spacer { flex: 1; }
+  nav.tabs { display: flex; gap: 6px; }
+  nav.tabs button, .btn { background: var(--chip); color: var(--ink); border: 1px solid var(--line); border-radius: 8px; padding: 6px 12px; cursor: pointer; font: inherit; font-size: 14px; }
+  nav.tabs button.active { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
+  nav.tabs button:hover:not(.active), .btn:hover { border-color: var(--accent); }
+  main { max-width: 1500px; margin: 0 auto; padding: 18px 20px 60px; }
+  section.tab { display: none; }
+  section.tab.active { display: block; }
+  .intro { color: var(--muted); margin: 4px 0 14px; max-width: 1100px; }
+  .legend { display: flex; flex-wrap: wrap; gap: 8px 14px; align-items: center; background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 10px 14px; margin-bottom: 16px; font-size: 13px; }
+  .legend .t { font-weight: 650; margin-right: 4px; }
+  .sw { display: inline-block; width: 14px; height: 14px; border-radius: 3px; border: 1px solid var(--line); vertical-align: -2px; margin-right: 5px; }
+  .diagram { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; margin-bottom: 22px; overflow: hidden; }
+  .diagram .head { display: flex; align-items: center; gap: 10px; padding: 10px 14px; border-bottom: 1px solid var(--line); flex-wrap: wrap; }
+  .diagram .head h2 { font-size: 15px; margin: 0; font-weight: 650; }
+  .diagram .head .desc { color: var(--muted); font-size: 13px; }
+  .diagram .tools { margin-left: auto; display: flex; gap: 6px; }
+  .diagram .tools .btn { padding: 3px 9px; font-size: 12px; }
+  .canvas { position: relative; height: 640px; background: var(--bg); cursor: grab; }
+  .canvas.tall { height: 820px; }
+  .canvas:active { cursor: grabbing; }
+  .canvas svg { width: 100% !important; height: 100% !important; max-width: none !important; display: block; }
+  .canvas .hint { position: absolute; right: 10px; bottom: 8px; font-size: 11px; color: var(--muted); pointer-events: none; }
+  pre.mermaid { display: none; }
+  .err { color: #c0392b; padding: 12px; white-space: pre-wrap; font: 12px/1.4 ui-monospace, Menlo, Consolas, monospace; }
+  code, .k { font: 12.5px ui-monospace, Menlo, Consolas, monospace; background: var(--code); padding: 1px 5px; border-radius: 4px; }
+  table.cols { border-collapse: collapse; width: 100%; font-size: 13px; background: var(--panel); border: 1px solid var(--line); border-radius: 10px; overflow: hidden; margin-bottom: 20px; }
+  table.cols th, table.cols td { text-align: left; padding: 7px 12px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  table.cols th { background: var(--chip); font-weight: 650; }
+  .forbid { background: var(--c-forbid); }
+  footer { color: var(--muted); font-size: 12px; text-align: center; margin-top: 30px; }
+</style>
+</head>
+<body>
+<header>
+  <div>
+    <h1>DNS Traffic Anomaly Detection — architecture &amp; execution workflows</h1>
+    <div class="sub">CADT Capstone · <code>src/dns_detect/</code> · <code>scripts/</code> · <code>dashboard/server.py</code> · <code>infra/</code> — names taken from the code, not the README</div>
+  </div>
+  <div class="spacer"></div>
+  <nav class="tabs" role="tablist">
+    <button data-tab="arch" class="active">System Architecture</button>
+    <button data-tab="flows">Primary Execution Workflows</button>
+    <button data-tab="life">State &amp; Data Lifecycle</button>
+  </nav>
+  <button class="btn" id="themeBtn" title="Toggle dark / light">🌙 Dark</button>
+</header>
+
+<main>
+
+<!-- ============================================================ TAB 1: ARCHITECTURE -->
+<section class="tab active" id="tab-arch">
+  <p class="intro">The system is a file-based pipeline: Technitium DNS traffic lands as log lines in <code>data/raw/</code>, the core package turns them into features, ML scores and alerts in <code>data/processed/</code>, and two supervised background services (Detector and Learner) keep it running and retrain only through a pass/fail gate. There is no database — every piece of state is a JSON/CSV/JSONL file. The overview comes first; each layer then gets its own focused diagram.</p>
+  <div class="legend">
+    <span class="t">Legend</span>
+    <span><i class="sw" style="background:var(--c-ext)"></i>external / infra (Docker, Kali lab, datasets)</span>
+    <span><i class="sw" style="background:var(--c-mod)"></i>Python module in <code>src/dns_detect/</code></span>
+    <span><i class="sw" style="background:var(--c-script)"></i>CLI script in <code>scripts/</code> or <code>dashboard/</code></span>
+    <span><i class="sw" style="background:var(--c-svc)"></i>long-running service / port</span>
+    <span><i class="sw" style="background:var(--c-store)"></i>persisted file or folder (cylinder)</span>
+    <span><i class="sw" style="background:var(--c-cfg)"></i>config input (hexagon)</span>
+    <span>solid arrow = data / call · dashed arrow = read-only or control</span>
+  </div>
+
+  <div class="diagram" data-tall="1">
+    <div class="head"><h2>1. Layer overview</h2><span class="desc">how the six layers connect — details in diagrams 2–6</span>
+      <div class="tools"><button class="btn" data-act="fit">Fit</button><button class="btn" data-act="in">+</button><button class="btn" data-act="out">−</button></div></div>
+    <div class="canvas tall"><span class="hint">drag to pan · wheel to zoom</span></div>
+<pre class="mermaid">
+graph TD
+  subgraph L1["1 · Traffic &amp; ingestion"]
+    TECH["Technitium DNS server (Docker, :5353 / :5380)"]:::ext
+    PUSHL["PushLogger DNS App → scripts/technitium_push_listener.py (:8787)"]:::svc
+    RAW[("data/raw/#lt;date#gt;.log")]:::store
+    LAB["Kali lab + external datasets → labelled JSON"]:::ext
+  end
+  subgraph L2["2 · Core package src/dns_detect/"]
+    FEAT["features.extractor + aggregates"]:::mod
+    ING["ingest: merge · cleaning · labeling · feedback"]:::mod
+    MODELS["models: splits · path_a (RF+GBT) · path_b (Isolation Forest) · thresholds · schema"]:::mod
+    FUS["fusion: stacker (LR V1/V2) · bridge"]:::mod
+    DET["detection.engine (6 rules + MITRE)"]:::mod
+    MON["monitoring.monitor (PSI drift, saturation)"]:::mod
+  end
+  subgraph L3["3 · Services (scripts/soc.sh + soc_supervisor.py)"]
+    DETECTOR["Detector: push listener + dashboard/server.py watch loop (:9000)"]:::svc
+    LEARNER["Learner: scripts/learner.py (triggers b/c/a)"]:::svc
+  end
+  subgraph L4["4 · Training &amp; promotion"]
+    TRAIN["scripts/train_models.sh (12 steps)"]:::script
+    GATE["run_candidate_seeds.sh → compare_models.py gate → part_b.py"]:::script
+    PROMO["shadow_check.py → promote_model.sh / rollback_model.sh"]:::script
+  end
+  subgraph L5["5 · UI"]
+    UI["dashboard/*.html + /api/* routes"]:::script
+    GUI["dashboard/training-gui (FastAPI :8100 / Streamlit)"]:::script
+  end
+  subgraph L6["6 · Persistence (files, no database)"]
+    PROC[("data/processed/*.json|csv")]:::store
+    LIVE[("models/ + models/archive/ + PROMOTED.json")]:::store
+    RUNS[("runs/ · runs/soc/ · runs/promotion_log.jsonl · logs/soc/")]:::store
+    ANALYST[("dashboard/data/*.json")]:::store
+    CFG{{"config/settings.yaml · success_criteria.yaml · soc.yaml · allowlists"}}:::cfg
+  end
+  TECH --> PUSHL --> RAW
+  LAB --> PROC
+  RAW --> FEAT --> FUS --> DET --> MON
+  FEAT --> PROC
+  FUS --> PROC
+  DET --> PROC
+  MON --> PROC
+  ING --> MODELS --> LIVE
+  LIVE -.-> FUS
+  DETECTOR -. runs pipeline on log change .-> FEAT
+  DETECTOR --> UI
+  UI --> ANALYST
+  ANALYST -. verdicts .-> LEARNER
+  MON -. retrain_recommended .-> LEARNER
+  LEARNER --> GATE --> PROMO --> LIVE
+  TRAIN --> ING
+  GATE --> TRAIN
+  GUI -.-> TRAIN
+  TRAIN --> RUNS
+  GATE --> RUNS
+  LEARNER --> RUNS
+  CFG -. "read by layers 2, 3 and 4" .-> TRAIN
+  classDef ext fill:#e5e7eb,stroke:#6b7280,color:#111
+  classDef mod fill:#dbeafe,stroke:#2563eb,color:#111
+  classDef script fill:#fde68a,stroke:#b45309,color:#111
+  classDef svc fill:#e9d5ff,stroke:#7e22ce,color:#111
+  classDef store fill:#d1fae5,stroke:#059669,color:#111
+  classDef cfg fill:#fce7f3,stroke:#be185d,color:#111
+</pre>
+  </div>
+
+  <div class="diagram">
+    <div class="head"><h2>2. Traffic &amp; ingestion</h2><span class="desc">live traffic, the ELK side channel, the Kali lab and external datasets</span>
+      <div class="tools"><button class="btn" data-act="fit">Fit</button><button class="btn" data-act="in">+</button><button class="btn" data-act="out">−</button></div></div>
+    <div class="canvas"><span class="hint">drag to pan · wheel to zoom</span></div>
+<pre class="mermaid">
+graph TD
+  subgraph DOCKER["infra/technitium-elk/docker-compose.yml"]
+    TECH["technitium/dns-server (:5353 DNS, :5380 API)"]:::ext
+    FB["filebeat 8.11.1 (filebeat.yml)"]:::ext
+    LS["logstash 8.11.1 (:5044)"]:::ext
+    ES["elasticsearch 8.11.1 (:9200)"]:::ext
+    KB["kibana 8.11.1 (:5601) — kibana/dns-ml-alerts-template.json"]:::ext
+  end
+  APP["PushLogger DNS App — infra/technitium-apps/PushLogger/App.cs (IDnsQueryLogger.InsertLogAsync → HTTP POST pushUrl)"]:::ext
+  BUILD[["infra/technitium-apps/build.sh · scripts/setup_pushlogger.sh (install, enable query logging, set pushUrl + token)"]]:::script
+  LISTEN(["scripts/technitium_push_listener.py — :8787 /push (token), /healthz · format_log_line · append_entry"]):::svc
+  RAW[("data/raw/#lt;date#gt;.log — native Technitium log lines")]:::store
+  SYNC["dashboard/server.py sync_logs / log_signature (watch loop, --watch dir)"]:::script
+  EXTR["dns_detect.features.extractor — DNSFeatureExtractor.parse_technitium_log_line"]:::mod
+
+  subgraph KALI["Kali lab (root)"]
+    ATT["attacks/attack.c (tunnel / flood client)"]:::ext
+    CAP[["scripts/lab_capture.sh a1..a4 b1..b3 → scripts/capture_dns.sh (pcap)"]]:::script
+    MLF[["scripts/make_labeled_features.py (provenance labels, --unlabeled)"]]:::script
+    W7[("data/processed/week7/*.json + SHA256SUMS")]:::store
+  end
+  subgraph EXT["External datasets"]
+    CIC[["scripts/convert_cic_dns.py (CIC-Bell-DNS-EXF-2021)"]]:::script
+    TUN[["scripts/convert_external_tunnels.py (iodine, dnscat2, dns2tcp, cobaltstrike…)"]]:::script
+    CICF[("data/external/cic/cic_benign_train.json · cic_benign_test.json")]:::store
+    LBL[("data/processed/labeled_tunnels.json · labeled_benign.json")]:::store
+  end
+
+  TECH -->|"every answered query"| APP -->|"HTTP push"| LISTEN --> RAW
+  BUILD -.-> APP
+  TECH -->|"query log files"| FB --> LS --> ES --> KB
+  RAW --> SYNC --> EXTR
+  RAW --> EXTR
+  ATT --> CAP --> MLF --> W7
+  CIC --> CICF
+  TUN --> LBL
+  W7 -. "learner trigger (b)" .-> TRAIN["training (tab 2, workflow B/C)"]:::script
+  CICF --> TRAIN
+  LBL --> TRAIN
+  classDef ext fill:#e5e7eb,stroke:#6b7280,color:#111
+  classDef mod fill:#dbeafe,stroke:#2563eb,color:#111
+  classDef script fill:#fde68a,stroke:#b45309,color:#111
+  classDef svc fill:#e9d5ff,stroke:#7e22ce,color:#111
+  classDef store fill:#d1fae5,stroke:#059669,color:#111
+</pre>
+  </div>
+
+  <div class="diagram" data-tall="1">
+    <div class="head"><h2>3. Core package <code>src/dns_detect/</code></h2><span class="desc">modules, the key symbols in each, and who imports whom</span>
+      <div class="tools"><button class="btn" data-act="fit">Fit</button><button class="btn" data-act="in">+</button><button class="btn" data-act="out">−</button></div></div>
+    <div class="canvas tall"><span class="hint">drag to pan · wheel to zoom</span></div>
+<pre class="mermaid">
+graph TD
+  subgraph P["parsing/"]
+    PARSER["dns_parser.py — FEATURES_8 · PATH_A_FEATURES · PATH_B_FEATURES · FORBIDDEN_FEATURES · check_model_features · parse_week3_json_to_df · stable row keys"]:::mod
+  end
+  subgraph F["features/"]
+    EXTR["extractor.py — DNSFeatureExtractor: parse_technitium_log_line, extract_features_from_multiple_logs, export_features_to_json"]:::mod
+    AGG["aggregates.py — FEATURES_WINDOW (7 × 5-min) · FEATURES_AGG (+bigram_logprob) · add_window_features · BigramModel"]:::mod
+    EDA["eda.py · eda_data.py (reports)"]:::mod
+  end
+  subgraph I["ingest/"]
+    MERGE["merge.py — merge(), RENAME, PROVENANCE_FIELDS, trained_files_registry"]:::mod
+    CLEAN["cleaning.py — clean_records, PACKET_KEY, RFC1035 checks"]:::mod
+    LABEL["labeling.py — label_records, TRUSTED_SOURCES, validate_training_labels, labeling_config_hash"]:::mod
+    FEED["feedback.py — build_verdict_rows, check_feedback, VERDICT_TO_LABEL, LABEL_SOURCE=analyst"]:::mod
+  end
+  subgraph M["models/"]
+    SPLITS["splits.py — STRATEGIES (exact_copy, capture_group, parent_domain_group, time, lofo) · prepare_training_split · stable_row_ids · write/read_manifest"]:::mod
+    PA["path_a.py — RF + HistGBT: run_training, score_frame, tree_ensemble_scores, calibrate · dns_tunnel_rf.pkl / dns_tunnel_gbt.pkl / dns_scaler.pkl / dns_threshold.json / bigram_table.json"]:::mod
+    PBT["path_b_train.py — Isolation Forest (default) or Trafficformer AE: compute_threshold, save #lt;name#gt;_norm.json / _threshold.json"]:::mod
+    PBP["path_b_predict.py — load_model_artifacts, build_client_windows, fit_iforest, score_records, normalize_scores"]:::mod
+    THR["thresholds.py — np_threshold, threshold_for_fpr, budget_evidence (false-alarm budget)"]:::mod
+    SCHEMA["schema.py — schema_problems / check_model_schema (saved feature lists == code)"]:::mod
+    BASE["baselines.py · uncertainty.py"]:::mod
+  end
+  subgraph FU["fusion/"]
+    STACK["stacker.py — FUSION_INPUTS [ml_score_A, ml_score_B, has_score_B, rule_hits] · fit / fit_v2 · predict / predict_versioned · tier_boundaries · choose_threshold"]:::mod
+    BRIDGE["bridge.py — run_bridge: check_features, run_path_a, run_path_b, merge_ml_scores, assign_tiers, load_detection_allowlist, check_week4_contract"]:::mod
+  end
+  subgraph D["detection/"]
+    ENG["engine.py — RuleBasedDNSDetector rule1…rule6 · ZScoreDetector · MDTIIntegration · create_alert (mitre_tactics / mitre_techniques) · export_alerts(_csv)"]:::mod
+  end
+  subgraph MO["monitoring/"]
+    MON["monitor.py — run_monitor: PSI per feature (0.10 / 0.25), score saturation, alert_rate, retrain_recommended"]:::mod
+  end
+  subgraph S["soc/"]
+    SCFG["config.py — DEFAULTS, load(), expand()"]:::mod
+    TRG["triggers.py — pending_captures, settled_verdicts, update_drift / drift_due, choose()"]:::mod
+  end
+  subgraph U["utils/"]
+    LOCK["pipeline_lock.py — detection_running (flock runs/.pipeline.lock + heartbeat runs/.pipeline.readers/) · pipeline_running"]:::mod
+    PATHS["paths.py (DNS_DETECT_MODELS_DIR) · dataset_hash.py · sampling.py"]:::mod
+  end
+  CONF["config.py — settings (config/settings.yaml)"]:::cfg
+
+  PARSER --> AGG
+  EXTR --> PARSER
+  MERGE --> CLEAN
+  MERGE --> PARSER
+  LABEL --> PARSER
+  FEED --> LABEL
+  PA --> PARSER
+  PA --> SPLITS
+  PA --> THR
+  PBT --> PARSER
+  PBT --> SPLITS
+  PBP --> PBT
+  SCHEMA --> PARSER
+  SCHEMA --> STACK
+  BRIDGE --> PA
+  BRIDGE --> PBP
+  BRIDGE --> STACK
+  BRIDGE --> PARSER
+  STACK --> THR
+  ENG --> BRIDGE
+  MON --> PARSER
+  TRG --> SCFG
+  CONF -.-> PARSER
+  CONF -.-> BRIDGE
+  CONF -.-> LABEL
+  CONF -.-> CLEAN
+  PATHS -.-> PA
+  PATHS -.-> PBT
+  classDef mod fill:#dbeafe,stroke:#2563eb,color:#111
+  classDef cfg fill:#fce7f3,stroke:#be185d,color:#111
+</pre>
+  </div>
+
+  <div class="diagram">
+    <div class="head"><h2>4. Services (background jobs)</h2><span class="desc"><code>scripts/soc.sh up</code> → two independent supervisors; Detector always on, Learner trains only on a trigger</span>
+      <div class="tools"><button class="btn" data-act="fit">Fit</button><button class="btn" data-act="in">+</button><button class="btn" data-act="out">−</button></div></div>
+    <div class="canvas"><span class="hint">drag to pan · wheel to zoom</span></div>
+<pre class="mermaid">
+graph TD
+  SOC[["scripts/soc.sh up | down | restart | status | logs  (--auto-promote)"]]:::script
+  SOCCFG{{"config/soc.yaml — detector / learner cmds, health, restart_backoff, triggers, shadow, auto_promote"}}:::cfg
+  SUPD(["soc_supervisor.py detector — flock runs/soc/detector.supervisor.lock"]):::svc
+  SUPL(["soc_supervisor.py learner — flock runs/soc/learner.supervisor.lock"]):::svc
+  subgraph DET["Detector (Part 1: always on)"]
+    LIS(["technitium_push_listener.py --port 8787 — health /healthz"]):::svc
+    DASH(["dashboard/server.py --port 9000 — health /api/health · watch_loop → run_pipeline"]):::svc
+  end
+  subgraph LRN["Learner (Part 2: trains only on a trigger)"]
+    LEARN(["scripts/learner.py — poll every 60 s · heartbeat runs/soc/learner.heartbeat"]):::svc
+    TB["(b) captures: new data/processed/week7/*.json in SHA256SUMS, settled, untrained → train_new_data.sh"]:::script
+    TC["(c) verdicts: ≥ 50 settled analyst verdicts → export_feedback_labels.py → FEEDBACK=… run_candidate_seeds.sh"]:::script
+    TA["(a) drift: 3 distinct consecutive monitoring_report.json with retrain_recommended + new data → (b) or (c) command"]:::script
+    GATES["gates: cooldown 24 h · max_runs_per_day 2 · runs/soc/learner.lock · runs/.promote.lock · no foreign train_models.sh"]:::cfg
+  end
+  STATE[("runs/soc/state/#lt;child#gt;.json · runs/soc/learner_state.json")]:::store
+  LOGS[("logs/soc/#lt;child#gt;.log (10 MB × 5) · logs/soc/train_#lt;RUN#gt;.log")]:::store
+  PLOG[("runs/promotion_log.jsonl — one JSON line per decision, source: learner / part_b")]:::store
+  MODELS[("models/ — read-only for soc; written only by part_b.py → promote_model.sh")]:::store
+  PARTB[["scripts/part_b.py (gate → shadow → promote → smoke → rollback)"]]:::script
+
+  SOC --> SUPD
+  SOC --> SUPL
+  SOCCFG -.-> SOC
+  SOCCFG -.-> LEARN
+  SUPD --> LIS
+  SUPD --> DASH
+  SUPL --> LEARN
+  LEARN --> TB
+  LEARN --> TC
+  LEARN --> TA
+  GATES -.-> LEARN
+  SUPD --> STATE
+  SUPL --> STATE
+  SUPD --> LOGS
+  SUPL --> LOGS
+  LEARN --> PLOG
+  TB --> PARTB
+  TC --> PARTB
+  PARTB --> PLOG
+  PARTB -->|"only with --auto-promote"| MODELS
+  MODELS -.->|"schema check + load"| DASH
+  DASH -.->|"monitoring_report.json"| TA
+  DASH -.->|"alert_management.json verdicts"| TC
+  classDef script fill:#fde68a,stroke:#b45309,color:#111
+  classDef svc fill:#e9d5ff,stroke:#7e22ce,color:#111
+  classDef store fill:#d1fae5,stroke:#059669,color:#111
+  classDef cfg fill:#fce7f3,stroke:#be185d,color:#111
+</pre>
+  </div>
+
+  <div class="diagram">
+    <div class="head"><h2>5. Training &amp; promotion chain</h2><span class="desc">candidates train into <code>runs/</code>, never into <code>models/</code>; only <code>promote_model.sh</code> touches the live folder</span>
+      <div class="tools"><button class="btn" data-act="fit">Fit</button><button class="btn" data-act="in">+</button><button class="btn" data-act="out">−</button></div></div>
+    <div class="canvas"><span class="hint">drag to pan · wheel to zoom</span></div>
+<pre class="mermaid">
+graph LR
+  subgraph ENTRY["Entry points"]
+    MAN[["./scripts/train_models.sh (manual, 12 steps)"]]:::script
+    SEEDS[["scripts/run_candidate_seeds.sh — seeds 42 43 44 → runs/#lt;name#gt;_s#lt;seed#gt;"]]:::script
+    NEW[["scripts/train_new_data.sh data/processed/week7 — checksums, rule check, EDA, 3 seeds"]]:::script
+    GUI[["dashboard/training-gui — FastAPI api/main.py (:8100, /api/train, /api/models/{v}/promote) · adapters/capstone_train.py · streamlit_app.py"]]:::script
+  end
+  subgraph STEPS["inside train_models.sh"]
+    PS[["prepare_split.py → split_manifest.json (splits.py time split, frozen test rows)"]]:::script
+    TF[["train_fusion.py — stacker.fit / fit_v2 / --tiers-for-v1"]]:::script
+    RR[["run_record.py → run_record.json (git, pip freeze, sha256 of inputs, split, merged copy)"]]:::script
+  end
+  RUNDIR[("runs/#lt;name#gt;_s#lt;seed#gt;/ — DNS_DETECT_MODELS_DIR: *.pkl, *.json, evaluation_metrics.json, training_metadata.json, trained_files_registry.json")]:::store
+  CMP[["scripts/compare_models.py — gate: candidate vs live models/ vs rule baselines on frozen test rows (mean ± sd over seeds)"]]:::script
+  CRIT{{"config/success_criteria.yaml — min_seeds 3, same_split, detector fusion, recall_min 0.95, fpr_budget, beat_rule_baselines"}}:::cfg
+  PB[["scripts/part_b.py --name --seeds [--auto-promote] [--shadow] — exit 0 promoted · 10 ready · 1 FAIL · 2 rolled back · 5 shadow FAIL"]]:::script
+  SH[["scripts/shadow_check.py — candidate scores last live traffic, no alerts: flag rate ≤ live × 1.5 + 20, agreement ≥ 0.95, ≥ 200 rows"]]:::script
+  PRO[["scripts/promote_model.sh #lt;run#gt; #lt;label#gt; — archive old → models/archive/#lt;label#gt;_#lt;date#gt;/, copy, write PROMOTED.json (SHA-256)"]]:::script
+  SMOKE[["scripts/smoke_models.py --models models --reference run — reload + score sample, must match"]]:::script
+  RB[["scripts/rollback_model.sh — newest archive back, replaced models → archive/rolledback_#lt;date#gt;/"]]:::script
+  LIVE[("models/ (live) · models/archive/ · models/PROMOTED.json")]:::store
+  PLOG[("runs/promotion_log.jsonl")]:::store
+  GATEJSON[("runs/#lt;name#gt;_gate.json · runs/#lt;name#gt;_shadow.json")]:::store
+
+  MAN --> PS --> TF --> RR
+  MAN --> RUNDIR
+  SEEDS -->|"×3 train_models.sh --force-retrain --split-manifest"| MAN
+  NEW --> SEEDS
+  GUI -->|"DNS_DETECT_MODELS_DIR=RUN_DIR/model"| MAN
+  SEEDS --> PB
+  PB --> CMP
+  CRIT -.-> CMP
+  RUNDIR -.-> CMP
+  LIVE -.->|"current model, read only"| CMP
+  CMP --> GATEJSON
+  PB -->|"PASS + --shadow"| SH
+  SH --> GATEJSON
+  PB -->|"PASS (+auto-promote)"| PRO --> LIVE
+  PRO --> SMOKE
+  SMOKE -->|"fail"| RB --> LIVE
+  PB --> PLOG
+  GUI -.->|"/api/models/{version}/promote · /rollback"| PRO
+  classDef script fill:#fde68a,stroke:#b45309,color:#111
+  classDef store fill:#d1fae5,stroke:#059669,color:#111
+  classDef cfg fill:#fce7f3,stroke:#be185d,color:#111
+</pre>
+  </div>
+
+  <div class="diagram">
+    <div class="head"><h2>6. UI, analyst state &amp; persistence</h2><span class="desc">the stdlib HTTP dashboard, its routes, and every file the system reads or writes</span>
+      <div class="tools"><button class="btn" data-act="fit">Fit</button><button class="btn" data-act="in">+</button><button class="btn" data-act="out">−</button></div></div>
+    <div class="canvas"><span class="hint">drag to pan · wheel to zoom</span></div>
+<pre class="mermaid">
+graph LR
+  subgraph PAGES["dashboard/*.html (served by server.py :9000)"]
+    IDX["index.html"]:::script
+    AL["alerts.html"]:::script
+    TR["triage.html"]:::script
+    SC["soc.html"]:::script
+    HE["health.html"]:::script
+    MORE["incidents.html · events.html · devices.html · usecases.html"]:::script
+  end
+  subgraph API["dashboard/server.py Handler — GET / POST /api/*"]
+    AST["/api/state · /api/alerts · /api/metrics · /api/model · /api/health · /api/events · /api/devices"]:::svc
+    ARUN["/api/run (POST → run_pipeline) · /api/alerts/bulk (acknowledge, assign, status, escalate, close, verdict)"]:::svc
+    ATRI["/api/triage/queue · /me · /requests · /handover · /handover/ack · /api/enrich/*"]:::svc
+    AFB["/api/feedback/export (json | csv | ndjson)"]:::svc
+    AMISC["/api/incidents · /api/suppressions · /api/usecases · /api/audit · /api/analysts · /api/integrations · /api/reports/handover"]:::svc
+  end
+  subgraph AN["dashboard/data/ (STORE_DIR) — analyst state"]
+    AM[("alert_management.json — status, assignee, verdict, verdict_by, verdict_at")]:::store
+    TC[("triage_cases.json")]:::store
+    AU[("audit_log.json")]:::store
+    OTH[("analysts.json · incident_records.json · suppressions.json · usecase_preferences.json · response_integrations.json · enrichment_cache.json · export_state.json")]:::store
+  end
+  subgraph DATA["data/"]
+    RAW[("data/raw/#lt;date#gt;.log")]:::store
+    PROC[("data/processed/ — week3_features_all.json · week3_features_with_ml.json (+.meta.json) · week4_unified_alerts.json/csv · monitoring_report.json · merged_features_all/labeled.json · rejected_rows.json · abstained_rows.json · labeling_report.json · merge_report.json · eda_*.json")]:::store
+    SPL[("data/processed/splits/#lt;strategy#gt;_seed#lt;n#gt;.json (e.g. time_seed42.json)")]:::store
+    W7[("data/processed/week7/ · data/external/cic/ · data/feedback/verdict_labels.json")]:::store
+  end
+  subgraph MODELD["models/"]
+    LIVE[("dns_tunnel_rf.pkl · dns_tunnel_gbt.pkl · dns_scaler.pkl · dns_threshold.json · bigram_table.json · dns_trafficformer_iforest.pkl · dns_trafficformer_norm.json · dns_trafficformer_threshold.json · fusion_lr.pkl/.json · fusion_lr_tiers.json · split_manifest.json · training_metadata.json · training_provenance.json · trained_files_registry.json · evaluation_metrics.json · PROMOTED.json · archive/")]:::store
+  end
+  subgraph RUNSD["runs/ &amp; logs/"]
+    RUNS[("runs/#lt;candidate#gt;/ · runs/*_gate.json · runs/promotion_log.jsonl · runs/.pipeline.lock · runs/.promote.lock")]:::store
+    SOCS[("runs/soc/ — *.supervisor.lock, learner.lock, learner.heartbeat, learner_state.json, state/*.json")]:::store
+    LOGS[("logs/soc/*.log · logs/training_#lt;time#gt;.log · logs/pipeline log")]:::store
+  end
+  subgraph CFGS["config/"]
+    SET{{"settings.yaml — paths, models, training (exclude_features), ensemble (fusion: lr), cleaning, labeling, feedback, detection"}}:::cfg
+    SUC{{"success_criteria.yaml"}}:::cfg
+    SOCY{{"soc.yaml"}}:::cfg
+    ALW{{"detect_allowlist.txt (bridge suppression) · dns_allowlist.txt (labeling)"}}:::cfg
+  end
+  PAGES --> API
+  ARUN --> AM
+  ATRI --> TC
+  ARUN --> AU
+  ATRI --> AU
+  AMISC --> OTH
+  AFB -.->|"reads verdicts + week3_features_all.json"| AM
+  AST -.-> PROC
+  AST -.-> LIVE
+  AST -.-> RAW
+  SET -.-> API
+  ALW -.-> PROC
+  SUC -.-> RUNS
+  SOCY -.-> SOCS
+  classDef script fill:#fde68a,stroke:#b45309,color:#111
+  classDef svc fill:#e9d5ff,stroke:#7e22ce,color:#111
+  classDef store fill:#d1fae5,stroke:#059669,color:#111
+  classDef cfg fill:#fce7f3,stroke:#be185d,color:#111
+</pre>
+  </div>
+</section>
+
+<!-- ============================================================ TAB 2: WORKFLOWS -->
+<section class="tab" id="tab-flows">
+  <p class="intro">Three end-to-end runs, each as a sequence diagram with the real script, module and function names. <strong>A</strong> is what happens every time a log file changes; <strong>B</strong> is one training run; <strong>C</strong> is the SOC learning loop that decides when B runs and whether its result goes live.</p>
+  <div class="legend">
+    <span class="t">Legend</span>
+    <span>participants = scripts / modules / files</span>
+    <span>solid arrow = call or data written · dashed arrow = return value / read</span>
+    <span><code>loop</code> / <code>alt</code> / <code>opt</code> boxes = repetition, branches, optional steps</span>
+    <span>notes carry the file written at that point</span>
+  </div>
+
+  <div class="diagram" data-tall="1">
+    <div class="head"><h2>A. Live detection run</h2><span class="desc"><code>scripts/run_pipeline.sh</code> — the same four commands are re-run by <code>dashboard/server.py</code> <code>watch_loop → run_pipeline → pipeline_steps()</code> when a <code>data/raw/*.log</code> changes</span>
+      <div class="tools"><button class="btn" data-act="fit">Fit</button><button class="btn" data-act="in">+</button><button class="btn" data-act="out">−</button></div></div>
+    <div class="canvas tall"><span class="hint">drag to pan · wheel to zoom</span></div>
+<pre class="mermaid">
+sequenceDiagram
+  autonumber
+  participant W as dashboard/server.py watch_loop
+  participant RP as scripts/run_pipeline.sh
+  participant LK as utils.pipeline_lock
+  participant SC as models.schema
+  participant EX as features.extractor
+  participant BR as fusion.bridge
+  participant PA as models.path_a
+  participant PB as models.path_b_predict
+  participant ST as fusion.stacker
+  participant EN as detection.engine
+  participant MO as monitoring.monitor
+  participant FS as data/processed/
+
+  W->>W: log_signature(watch_dir) changed (name, size, mtime)
+  W->>LK: detection_running(runs/) — heartbeat runs/.pipeline.readers/#lt;id#gt;
+  W->>RP: run_pipeline(zscore, cmd) → pipeline_steps() (same commands)
+  RP->>LK: flock -s runs/.pipeline.lock (shared reader lock)
+  RP->>SC: python -m dns_detect.models.schema --models-dir models --path-b-model dns_trafficformer
+  SC-->>RP: dns_threshold.json features == PATH_A_FEATURES, #lt;name#gt;_norm.json == PATH_B_FEATURES, fusion_lr.json inputs == FUSION_INPUTS
+  RP->>EX: python -m dns_detect.features.extractor
+  EX->>EX: extract_features_from_multiple_logs(data/raw, *.log) → parse_technitium_log_line per line
+  EX->>EX: FEATURES_8 per query + detectors (encoding, random subdomain, NXDOMAIN flood, amplification)
+  EX->>FS: export_features_to_json → week3_features_all.json (+ week3_attack_summary.json, week3_suspicious_domains.json)
+  RP->>BR: python -m dns_detect.fusion.bridge --week3 week3_features_all.json --output week3_features_with_ml.json --path-b-model dns_trafficformer
+  BR->>BR: check_features(raw) — FEATURE_SOURCES, add_window_features (FEATURES_WINDOW), bigram_logprob
+  BR->>PA: run_path_a → path_a.score_frame(df)
+  PA-->>BR: ml_score_A, ml_label_A (RF + HistGBT via tree_ensemble_scores, dns_threshold.json)
+  BR->>PB: run_path_b → path_b_predict.score_records(path, save_name)
+  PB->>PB: load_model_artifacts → model_type iforest → dns_trafficformer_iforest.pkl, _norm.json, _threshold.json
+  PB->>PB: build_client_windows(window_size 20) → scores → normalize_scores
+  PB-->>BR: ml_score_B, ml_label_B, has_score_B (check_path_b_alignment on row_id)
+  BR->>ST: merge_ml_scores → load() / load_versioned() fusion_lr.pkl (ensemble.fusion: lr | lr_v2)
+  ST-->>BR: predict(FUSION_INPUTS) → ml_combined_score, ml_combined_label, fusion_method
+  BR->>BR: assign_tiers (fusion_lr_tiers.json: HIGH alarm, MEDIUM ≥ benign q99, LOW ≥ q90, CLEAN) → ml_confidence
+  BR->>BR: load_detection_allowlist(config/detect_allowlist.txt) → suppressed_by_allowlist
+  BR->>BR: ensure_week4_compatible, check_week4_contract
+  BR->>FS: week3_features_with_ml.json + week3_features_with_ml.json.meta.json (tier_summary)
+  RP->>EN: python -m dns_detect.detection.engine --input week3_features_with_ml.json --output week4_unified_alerts.json --zscore 2.0 --csv
+  EN->>EN: RuleBasedDNSDetector.load_week3_features · ZScoreDetector.build_baseline / detect_anomalies (per client_ip)
+  EN->>EN: rule1_excessive_nxdomain · rule2_multiple_clients_same_error · rule3_dns_tunneling_detection · rule4_deep_subdomain_detection
+  EN->>EN: rule5_ml_attack_detection (ml_combined_label) · rule6_ml_threat_score (ml_combined_score) · ALERT_CAPS + _overflow_alert
+  EN->>EN: create_alert(rule, severity, client_ip, mitre_tactics, mitre_techniques T1572 / T1568 / T1048 / T1008 / T1573)
+  EN->>FS: export_alerts → week4_unified_alerts.json · export_alerts_csv → week4_unified_alerts.csv
+  RP->>MO: python -m dns_detect.monitoring.monitor --live week3_features_with_ml.json --alerts week4_unified_alerts.json --output monitoring_report.json
+  MO->>MO: run_monitor — PSI per feature vs models/training_metadata.json (0.10 moderate / 0.25 major), score saturation, alert_rate
+  MO->>FS: monitoring_report.json (drift, score_health, alert_volume, retrain_recommended, reasons)
+  RP-->>LK: release flock / heartbeat
+  W->>W: reload alerts by mtime → /api/alerts, /api/state, /api/model
+</pre>
+  </div>
+
+  <div class="diagram" data-tall="1">
+    <div class="head"><h2>B. Training run</h2><span class="desc"><code>scripts/train_models.sh</code> — one shared split for Path A, Path B and the fusion; output folder = <code>DNS_DETECT_MODELS_DIR</code> (default <code>models/</code>, <code>runs/…</code> for candidates)</span>
+      <div class="tools"><button class="btn" data-act="fit">Fit</button><button class="btn" data-act="in">+</button><button class="btn" data-act="out">−</button></div></div>
+    <div class="canvas tall"><span class="hint">drag to pan · wheel to zoom</span></div>
+<pre class="mermaid">
+sequenceDiagram
+  autonumber
+  participant TM as scripts/train_models.sh
+  participant REG as trained_files_registry.json
+  participant EDA as features.eda_data / features.eda
+  participant EX as features.extractor / make_labeled_features.py
+  participant FB as ingest.feedback
+  participant MG as ingest.merge (+cleaning)
+  participant LB as ingest.labeling
+  participant PS as scripts/prepare_split.py
+  participant PA as models.path_a --train
+  participant PB as models.path_b_train
+  participant TF as scripts/train_fusion.py
+  participant RR as scripts/run_record.py
+  participant OUT as $DNS_DETECT_MODELS_DIR
+
+  TM->>OUT: [1/12] models state: Path A / Path B exist? (--retrain / --force-retrain)
+  TM->>TM: [2/12] environment: python3, dns_detect importable, packages
+  TM->>REG: [3/12] find new files in data/raw (or --data-dir / --files) not in trained_files_registry.json
+  REG-->>TM: list of untrained .log / .pcap / .json / .csv
+  opt --feedback data/feedback/verdict_labels.json
+    TM->>FB: python -m dns_detect.ingest.feedback --input verdict_labels.json --base-manifest … --min 50
+    FB-->>TM: feedback_checked.json (label_source=analyst, never in test)
+  end
+  TM->>EDA: [4/12] python -m dns_detect.features.eda_data → eda_data_report.json / .html
+  loop [5/12] each .log / .pcap
+    TM->>EX: .log → python -m dns_detect.features.extractor --input f.log --output extracted_f.json
+    TM->>EX: .pcap → scripts/make_labeled_features.py (--pcap-label or --unlabeled)
+  end
+  TM->>MG: [6/12] python -m dns_detect.ingest.merge --input a.json=a.log … --output merged_features_all.json --provenance training_provenance.json --report merge_report.json --registry trained_files_registry.json
+  MG->>MG: RENAME legacy keys · cleaning.clean_records (PACKET_KEY copies, RFC 1035, ratio range) → rejected_rows.json
+  MG->>OUT: training_provenance.json (sha256 per source file) · registry updated
+  TM->>EDA: [7/12] python -m dns_detect.features.eda --input merged_features_all.json --output eda_report.json
+  TM->>LB: [8/12] python -m dns_detect.ingest.labeling --input merged_features_all.json --output merged_features_labeled.json --manifest data/attack_manifest.csv --allowlist config/dns_allowlist.txt
+  LB->>LB: label_records: file / provenance / manifest / analyst labels (TRUSTED_SOURCES) + labeling functions → label, label_source, attack_family
+  LB-->>TM: labeling_report.json · abstained_rows.json · validate_training_labels guard (refuses heuristic labels)
+  TM->>PS: [9/12] prepare_split.py --labeled merged_features_labeled.json [--base splits/time_seed42.json] --out split_manifest.json
+  PS->>PS: splits.prepare_training_split — time split, stable_row_ids, old test rows frozen, new rows → train/val only
+  PS->>OUT: split_manifest.json (mode, n_train, n_val, n_test, sha256)
+  TM->>PA: [10/12] python -m dns_detect.models.path_a --train merged_features_labeled.json --split-manifest split_manifest.json --seed 42
+  PA->>PA: run_training: PATH_A_FEATURES (FEATURES_8 − answer_count + FEATURES_AGG), train_random_forest + train_gradient_boosting, calibrate, threshold_for_fpr
+  PA->>OUT: dns_tunnel_rf.pkl · dns_tunnel_gbt.pkl · dns_scaler.pkl · dns_threshold.json · bigram_table.json · evaluation_metrics.json[path_a]
+  TM->>PB: [11/12] python -m dns_detect.models.path_b_train --filename merged_features_labeled.json --n_days 20 --save_name dns_trafficformer --model iforest --split-manifest split_manifest.json
+  PB->>PB: benign-only client windows (PATH_B_FEATURES) → fit_iforest → compute_threshold (99th pct of benign val error)
+  PB->>OUT: dns_trafficformer_iforest.pkl · dns_trafficformer_norm.json · dns_trafficformer_threshold.json (model_type iforest)
+  TM->>TF: [12/12] scripts/train_fusion.py --labeled merged_features_labeled.json --split-manifest split_manifest.json
+  TF->>TF: score_dataset (Path A + Path B on val/test rows) → stacker.fit(val, max_fpr) · --tiers-for-v1 → tier_boundaries · --version 2 → fit_v2 if ensemble.fusion = lr_v2
+  TF->>OUT: fusion_lr.pkl · fusion_lr.json · fusion_lr_tiers.json (· fusion_lr_v2.* · fusion_fallback_quantiles.json) · evaluation_metrics.json[fusion]
+  TM->>OUT: training_metadata.json (feature baselines for PSI, labeling_config_hash, split sha256, trained_until)
+  TM->>RR: scripts/run_record.py --out $OUT --provenance … --split … --seed 42 --copy-merged merged_features_labeled.json
+  RR->>OUT: run_record.json (git commit, pip freeze, input sha256s) + copy of merged_features_labeled.json
+  TM-->>TM: ✓ Training complete → next: ./scripts/run_pipeline.sh
+</pre>
+  </div>
+
+  <div class="diagram">
+    <div class="head"><h2>B′. The 12 steps of <code>train_models.sh</code> as a flow</h2><span class="desc">one box per <code>say</code> line, with the file each step leaves behind</span>
+      <div class="tools"><button class="btn" data-act="fit">Fit</button><button class="btn" data-act="in">+</button><button class="btn" data-act="out">−</button></div></div>
+    <div class="canvas"><span class="hint">drag to pan · wheel to zoom</span></div>
+<pre class="mermaid">
+flowchart LR
+  S1["1 · Models state (Path A / B present → what to train)"]:::script
+  S2["2 · Environment ready (python3, packages)"]:::script
+  S3["3 · Find new files (registry diff)"]:::script
+  S4["4 · EDA data (labeled · unlabeled)"]:::script
+  S5["5 · Pre-process (.log → extractor, .pcap → make_labeled_features.py)"]:::script
+  S6["6 · Merge + clean (ingest.merge)"]:::script
+  S7["7 · Feature EDA (features.eda)"]:::script
+  S8["8 · Label (ingest.labeling + provenance guard)"]:::script
+  S9["9 · Split (prepare_split.py)"]:::script
+  S10["10 · Path A (RF + GBT)"]:::script
+  S11["11 · Path B (Isolation Forest)"]:::script
+  S12["12 · Fusion (train_fusion.py)"]:::script
+  POST["post: training_metadata.json · run_record.py"]:::script
+  S1 --> S2 --> S3 --> S4 --> S5 --> S6 --> S7 --> S8 --> S9 --> S10 --> S11 --> S12 --> POST
+  F3[("trained_files_registry.json")]:::store
+  F4[("eda_data_report.json / .html")]:::store
+  F5[("data/processed/extracted_*.json")]:::store
+  F6[("merged_features_all.json · rejected_rows.json · merge_report.json · training_provenance.json")]:::store
+  F7[("eda_report.json")]:::store
+  F8[("merged_features_labeled.json · labeling_report.json · abstained_rows.json")]:::store
+  F9[("split_manifest.json")]:::store
+  F10[("dns_tunnel_rf.pkl · dns_tunnel_gbt.pkl · dns_scaler.pkl · dns_threshold.json · bigram_table.json")]:::store
+  F11[("dns_trafficformer_iforest.pkl · _norm.json · _threshold.json")]:::store
+  F12[("fusion_lr.pkl · fusion_lr.json · fusion_lr_tiers.json")]:::store
+  FP[("training_metadata.json · run_record.json · evaluation_metrics.json")]:::store
+  S3 -.-> F3
+  S4 -.-> F4
+  S5 -.-> F5
+  S6 -.-> F6
+  S7 -.-> F7
+  S8 -.-> F8
+  S9 -.-> F9
+  S10 -.-> F10
+  S11 -.-> F11
+  S12 -.-> F12
+  POST -.-> FP
+  classDef script fill:#fde68a,stroke:#b45309,color:#111
+  classDef store fill:#d1fae5,stroke:#059669,color:#111
+</pre>
+  </div>
+
+  <div class="diagram" data-tall="1">
+    <div class="head"><h2>C. Learner → gate → promotion (SOC loop)</h2><span class="desc">including the analyst verdict path from the dashboard; promotion is manual unless <code>--auto-promote</code> / <code>auto_promote: true</code></span>
+      <div class="tools"><button class="btn" data-act="fit">Fit</button><button class="btn" data-act="in">+</button><button class="btn" data-act="out">−</button></div></div>
+    <div class="canvas tall"><span class="hint">drag to pan · wheel to zoom</span></div>
+<pre class="mermaid">
+sequenceDiagram
+  autonumber
+  participant AN as Analyst (triage.html / alerts.html)
+  participant DS as dashboard/server.py
+  participant AM as dashboard/data/alert_management.json
+  participant LN as scripts/learner.py
+  participant TR as soc.triggers
+  participant EXP as scripts/export_feedback_labels.py
+  participant RCS as run_candidate_seeds.sh / train_new_data.sh
+  participant TM as scripts/train_models.sh
+  participant PB as scripts/part_b.py
+  participant CM as scripts/compare_models.py
+  participant SH as scripts/shadow_check.py
+  participant PM as promote_model.sh / smoke_models.py / rollback_model.sh
+  participant MD as models/
+  participant PL as runs/promotion_log.jsonl
+
+  AN->>DS: POST /api/alerts/bulk action=verdict (true_positive | benign_positive | fp_model_logic | fp_bad_data | duplicate)
+  DS->>AM: record.verdict, verdict_by, verdict_at (+ audit_log.json, triage_cases.json via /api/triage/*)
+  loop every poll_interval_s (60 s), heartbeat runs/soc/learner.heartbeat
+    LN->>TR: pending_captures(data/processed/week7, *.json, SHA256SUMS, settle 120 s)
+    LN->>TR: settled_verdicts(alert_management.json, newer than last training, settle 60 min)
+    LN->>TR: update_drift / drift_due(monitoring_report.json, 3 distinct consecutive retrain_recommended)
+    TR-->>LN: choose(caps, verdicts, drift_due, min_verdicts 50, require_new_data) → (b) | (c) | (a) | none
+    LN->>LN: gates: cooldown 1440 min · max_runs_per_day 2 · runs/soc/learner.lock · runs/.promote.lock · foreign_training()
+  end
+  alt (b) new lab captures
+    LN->>RCS: nice bash scripts/train_new_data.sh data/processed/week7
+    RCS->>RCS: SHA256SUMS check · live training files (models/training_provenance.json) + week7/*.json · TXT/NULL/KEY rule check · --eda-only
+  else (c) ≥ 50 settled verdicts
+    LN->>EXP: scripts/export_feedback_labels.py --url http://127.0.0.1:9000
+    EXP->>DS: GET /api/feedback/export
+    DS-->>EXP: verdicts joined to week3_features_all.json rows
+    EXP->>EXP: data/feedback/verdict_labels.json (label_source=analyst) + labels_#lt;ts#gt;.csv + .meta.json
+    LN->>RCS: FEEDBACK=data/feedback/verdict_labels.json nice bash scripts/run_candidate_seeds.sh
+  else (a) drift (edge-triggered) and something new to train on
+    LN->>RCS: the (b) or (c) command for whatever is new
+  end
+  LN->>PL: {"source": "learner", trigger, run, decision}
+  loop seeds 42 43 44 (same split: models/split_manifest.json or runs/#lt;name#gt;_split.json)
+    RCS->>TM: DNS_DETECT_MODELS_DIR=runs/#lt;name#gt;_s#lt;seed#gt; bash scripts/train_models.sh --seed S --n-days 20 --path-b-model iforest --force-retrain --split-manifest … --files … [--feedback …]
+    TM-->>RCS: runs/#lt;name#gt;_s#lt;seed#gt;/ (workflow B)
+  end
+  RCS->>PB: python3 scripts/part_b.py --name #lt;name#gt; --seeds "42 43 44" [--auto-promote] [--shadow]
+  PB->>PB: flock runs/.promote.lock · pipeline_running(runs/)? → "not promoted: run_pipeline.sh is running"
+  PB->>CM: compare_models.py --runs runs/#lt;name#gt;_s42 _s43 _s44 --out runs/#lt;name#gt;_gate.json
+  CM->>MD: score_current(models/, frozen test rows) — read only
+  CM->>CM: evaluate(success_criteria.yaml): min_seeds 3, same_split, recall_min 0.95, fpr budget, ≥ current recall, false alarms not higher, beat_rule_baselines
+  CM-->>PB: PASS / FAIL report (mean ± sd over seeds)
+  alt gate FAIL
+    PB->>PL: decision gate FAIL (exit 1, models/ untouched)
+  else gate PASS, shadow enabled
+    PB->>SH: shadow_check.py --candidate runs/#lt;name#gt;_s#lt;median seed#gt; --live-ml week3_features_with_ml.json --features week3_features_all.json
+    SH->>SH: score candidate on last live traffic (no alerts) → flag rate ≤ live × 1.5 + 20 · agreement ≥ 0.95 · ≥ 200 rows
+    SH-->>PB: pass (0) · fail (5, models/ untouched) · too few rows (4, gate decides)
+  end
+  alt not --auto-promote
+    PB->>PL: exit 10 "ready to promote" (operator runs promote_model.sh by hand)
+  else --auto-promote (max_auto_promotions_per_week 1)
+    PB->>PM: bash scripts/promote_model.sh runs/#lt;name#gt;_s#lt;seed#gt; #lt;label#gt;
+    PM->>MD: move current → models/archive/#lt;label#gt;_#lt;date#gt;/ · copy pipeline files · write PROMOTED.json (SHA-256)
+    PB->>PM: python3 scripts/smoke_models.py --models models --reference runs/#lt;name#gt;_s#lt;seed#gt;
+    alt smoke test fails
+      PB->>PM: bash scripts/rollback_model.sh → newest archive back (exit 2)
+      PM->>MD: replaced models → models/archive/rolledback_#lt;date#gt;/
+    else smoke OK
+      PB->>PL: promoted (exit 0)
+    end
+  end
+  MD-->>DS: next run_pipeline: models.schema check + /api/model shows PROMOTED.json
+</pre>
+  </div>
+</section>
+
+<!-- ============================================================ TAB 3: LIFECYCLE -->
+<section class="tab" id="tab-life">
+  <p class="intro">Follow one DNS query from the Technitium log line to an analyst verdict and back into training. Every arrow is a file write; every box names the fields that exist at that stage. The red column lists the identity / provenance fields that may drive windows, splits and joins but are <strong>never</strong> a model input (<code>FORBIDDEN_FEATURES</code> in <code>parsing/dns_parser.py</code>, enforced by <code>check_model_features</code>).</p>
+  <div class="legend">
+    <span class="t">Legend</span>
+    <span><i class="sw" style="background:var(--c-store)"></i>persisted representation of the query (cylinder)</span>
+    <span><i class="sw" style="background:var(--c-mod)"></i>transform (module / function)</span>
+    <span><i class="sw" style="background:var(--c-script)"></i>model artefact</span>
+    <span><i class="sw" style="background:var(--c-forbid)"></i>forbidden / identity columns — carried along, never a model input</span>
+    <span>dashed = read-only use (join, window, split key)</span>
+  </div>
+
+  <div class="diagram" data-tall="1">
+    <div class="head"><h2>One DNS query — transformations and persistence</h2><span class="desc">the feedback edge at the end closes the loop into workflow B/C</span>
+      <div class="tools"><button class="btn" data-act="fit">Fit</button><button class="btn" data-act="in">+</button><button class="btn" data-act="out">−</button></div></div>
+    <div class="canvas tall"><span class="hint">drag to pan · wheel to zoom</span></div>
+<pre class="mermaid">
+flowchart LR
+  LINE[("1 · Technitium log line — data/raw/#lt;date#gt;.log: timestamp, client_ip:port, protocol, response code, qtype, domain, answers")]:::store
+  T1["features.extractor — parse_technitium_log_line → extract features"]:::mod
+  REC[("2 · extractor record — week3_features_all.json: FEATURES_8 (query_length, query_entropy, has_digits, answer_count, subdomain_count, longest_label, digit_ratio, unique_char_ratio) + detector flags (is_nxdomain, encoding, random subdomain…) + row_id")]:::store
+  T2["bridge.check_features / aggregates.add_window_features — 5-min windows per client + parent domain"]:::mod
+  WIN[("2b · + FEATURES_WINDOW: uniq_subdomains_5m, uniq_ratio_5m, info_chars_per_min, nxdomain_share_5m, qpm_client_5m, iat_std_5m, tunnel_rr_share_5m (excluded via settings) + bigram_logprob")]:::store
+  T3["ingest.merge + cleaning.clean_records → ingest.labeling.label_records"]:::mod
+  ROW[("3 · merged / cleaned / labelled row — merged_features_labeled.json: features + label (0/1), label_source (file | provenance | manifest | analyst), attack_family, source_file, source_type, input_file, dup_key")]:::store
+  T4["splits.prepare_training_split (scripts/prepare_split.py) — stable_row_ids over (source_file, timestamp, client_ip, domain, query_type)"]:::mod
+  SPLIT[("4 · split membership — split_manifest.json / data/processed/splits/time_seed42.json: row_id → train | val | test (test rows frozen across runs)")]:::store
+  T5["path_a.run_training · path_b_train (iforest) · train_fusion.py"]:::mod
+  ART[["5 · model artefacts — dns_tunnel_rf.pkl, dns_tunnel_gbt.pkl, dns_scaler.pkl, dns_threshold.json, bigram_table.json · dns_trafficformer_iforest.pkl, dns_trafficformer_norm.json, dns_trafficformer_threshold.json · fusion_lr.pkl, fusion_lr.json, fusion_lr_tiers.json"]]:::script
+  T6["fusion.bridge.run_bridge — score_frame · score_records · stacker.predict · assign_tiers · allowlist"]:::mod
+  SCORED[("6 · scored record — week3_features_with_ml.json: ml_score_A, ml_label_A, ml_score_B, ml_label_B, has_score_B, ml_combined_score, ml_combined_label, ml_confidence (HIGH | MEDIUM | LOW | CLEAN), fusion_method, tier_source, suppressed_by_allowlist, ml_threat_score")]:::store
+  T7["detection.engine — rule1…rule6, ZScoreDetector, create_alert"]:::mod
+  ALERT[("7 · alert — week4_unified_alerts.json / .csv: rule_name, rule_source, severity, client_ip, domain, mitre_tactics, mitre_techniques, ml scores, row_id")]:::store
+  T8["dashboard/server.py — /api/alerts, /api/triage/*, POST /api/alerts/bulk action=verdict"]:::mod
+  VERD[("8 · analyst verdict — dashboard/data/alert_management.json (verdict, verdict_reason, verdict_by, verdict_at) · triage_cases.json · audit_log.json")]:::store
+  T9["scripts/export_feedback_labels.py (GET /api/feedback/export) → ingest.feedback.build_verdict_rows / check_feedback"]:::mod
+  FBK[("9 · feedback label — data/feedback/verdict_labels.json: query features + label (true_positive → 1, benign_positive / fp_* → 0), label_source = analyst, ml_* and fusion_* fields dropped")]:::store
+  MON[("monitoring_report.json — PSI of FEATURES_8 vs training_metadata.json baselines, retrain_recommended")]:::store
+
+  FORBID["FORBIDDEN_FEATURES — never a model input: client_ip, client_port, timestamp, hour_of_day, day_of_week, source_file, source_type, input_file, label_source, attack_family, dup_key, label"]:::forbid
+
+  LINE --> T1 --> REC --> T2 --> WIN
+  WIN --> T3 --> ROW --> T4 --> SPLIT --> T5 --> ART
+  ART --> T6
+  WIN --> T6 --> SCORED --> T7 --> ALERT --> T8 --> VERD --> T9 --> FBK
+  FBK -. "train_models.sh --feedback / run_candidate_seeds.sh FEEDBACK=… (new rows → train/val only)" .-> T3
+  SCORED -.-> MON
+  FORBID -. "window keys (client_ip, timestamp, parent domain)" .-> T2
+  FORBID -. "split keys (time, capture, parent domain, family)" .-> T4
+  FORBID -. "group-by for Z-score and alerts" .-> T7
+  FORBID -. "join key for verdict → query" .-> T9
+  classDef store fill:#d1fae5,stroke:#059669,color:#111
+  classDef mod fill:#dbeafe,stroke:#2563eb,color:#111
+  classDef script fill:#fde68a,stroke:#b45309,color:#111
+  classDef forbid fill:#fecaca,stroke:#b91c1c,color:#111
+</pre>
+  </div>
+
+  <table class="cols">
+    <thead><tr><th style="width:26%">Column group</th><th>Fields</th><th style="width:28%">Role</th></tr></thead>
+    <tbody>
+      <tr><td><code>FEATURES_8</code> (raw per-query vector)</td><td>query_length, query_entropy, has_digits, answer_count, subdomain_count, longest_label, digit_ratio, unique_char_ratio</td><td>duplicate keys, schema checks, PSI drift monitoring; Path A drops <code>answer_count</code> (encodes capture source)</td></tr>
+      <tr><td><code>FEATURES_WINDOW</code> / <code>FEATURES_AGG</code></td><td>uniq_subdomains_5m, uniq_ratio_5m, info_chars_per_min, nxdomain_share_5m, qpm_client_5m, iat_std_5m, tunnel_rr_share_5m (+ bigram_logprob)</td><td>behaviour over a 300 s window per client / parent domain; <code>tunnel_rr_share_5m</code> is switched off via <code>training.exclude_features</code></td></tr>
+      <tr><td><code>PATH_A_FEATURES</code></td><td>FEATURES_8 − answer_count + FEATURES_AGG − excluded</td><td>RF + HistGBT input; saved in <code>dns_threshold.json</code> and checked by <code>models.schema</code></td></tr>
+      <tr><td><code>PATH_B_FEATURES</code></td><td>query_length, query_entropy, subdomain_count, digit_ratio, longest_label + FEATURES_WINDOW − excluded</td><td>Isolation Forest input over client windows of 20; saved in <code>dns_trafficformer_norm.json</code></td></tr>
+      <tr><td><code>FUSION_INPUTS</code></td><td>ml_score_A, ml_score_B, has_score_B, rule_hits</td><td>logistic-regression stacker (<code>fusion_lr.pkl</code>); V2 adds logit / rule-threshold spec</td></tr>
+      <tr class="forbid"><td><code>FORBIDDEN_FEATURES</code></td><td>client_ip, client_port, timestamp, hour_of_day, day_of_week, source_file, source_type, input_file, label_source, attack_family, dup_key, label</td><td>identity, time and provenance — separate classes by shortcut, so they only drive windows, splits, joins and alert grouping</td></tr>
+    </tbody>
+  </table>
+</section>
+
+</main>
+<footer>Generated from the repository code (<code>src/dns_detect</code>, <code>scripts</code>, <code>dashboard/server.py</code>, <code>config</code>, <code>infra</code>). Mermaid.js and svg-pan-zoom are loaded from jsDelivr.</footer>
+
+<script src="https://cdn.jsdelivr.net/npm/svg-pan-zoom@3.6.2/dist/svg-pan-zoom.min.js"></script>
+<script type="module">
+  import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs';
+
+  const root = document.documentElement;
+  const themeBtn = document.getElementById('themeBtn');
+  const saved = (() => { try { return localStorage.getItem('wf-theme'); } catch (e) { return null; } })();
+  let theme = saved || (matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+
+  function applyTheme() {
+    root.setAttribute('data-theme', theme);
+    themeBtn.textContent = theme === 'dark' ? '☀️ Light' : '🌙 Dark';
+    mermaid.initialize({
+      startOnLoad: false,
+      securityLevel: 'strict',
+      theme: theme === 'dark' ? 'dark' : 'default',
+      flowchart: { htmlLabels: false, curve: 'basis', useMaxWidth: false, padding: 12, nodeSpacing: 30, rankSpacing: 45 },
+      sequence: { useMaxWidth: false, mirrorActors: false, actorMargin: 28, messageMargin: 32, wrap: false, noteMargin: 8 },
+      themeVariables: theme === 'dark'
+        ? { fontSize: '14px', primaryTextColor: '#e6e9ee', lineColor: '#9aa5b1', actorBkg: '#1e3a5f', actorBorder: '#6ea0ff', actorTextColor: '#e6e9ee', signalColor: '#c9d1dc', signalTextColor: '#e6e9ee', noteBkgColor: '#5a4a10', noteTextColor: '#f3e8c0', loopTextColor: '#e6e9ee', labelBoxBkgColor: '#1f2630', labelTextColor: '#e6e9ee', activationBkgColor: '#2a313b', sequenceNumberColor: '#0b1020' }
+        : { fontSize: '14px', actorBkg: '#dbeafe', actorBorder: '#2563eb', noteBkgColor: '#fef3c7', noteBorderColor: '#d97706' }
+    });
+    try { localStorage.setItem('wf-theme', theme); } catch (e) {}
+  }
+
+  // Each .diagram keeps its Mermaid source in <pre class="mermaid">; rendering goes into .canvas.
+  const blocks = [...document.querySelectorAll('.diagram')].map((el, i) => ({
+    el, i, src: el.querySelector('pre.mermaid').textContent.trim(), canvas: el.querySelector('.canvas'), pz: null, renderedTheme: null
+  }));
+
+  async function renderBlock(b) {
+    if (b.renderedTheme === theme) return;
+    if (b.pz) { try { b.pz.destroy(); } catch (e) {} b.pz = null; }
+    const hint = b.canvas.querySelector('.hint');
+    b.canvas.querySelectorAll('svg, .err').forEach(n => n.remove());
+    try {
+      const { svg } = await mermaid.render('wf-svg-' + b.i + '-' + Date.now(), b.src);
+      const wrap = document.createElement('div');
+      wrap.innerHTML = svg;
+      const svgEl = wrap.firstElementChild;
+      svgEl.removeAttribute('style');
+      svgEl.setAttribute('width', '100%');
+      svgEl.setAttribute('height', '100%');
+      b.canvas.insertBefore(svgEl, hint);
+      b.pz = svgPanZoom(svgEl, { zoomEnabled: true, controlIconsEnabled: false, fit: true, center: true, minZoom: 0.1, maxZoom: 12, zoomScaleSensitivity: 0.3, dblClickZoomEnabled: true });
+      b.renderedTheme = theme;
+    } catch (err) {
+      const e = document.createElement('div');
+      e.className = 'err';
+      e.textContent = 'Mermaid render error in diagram ' + (b.i + 1) + ':\n' + (err && err.message ? err.message : err);
+      b.canvas.insertBefore(e, hint);
+      b.renderedTheme = theme;
+    }
+  }
+
+  async function renderVisible() {
+    const active = document.querySelector('section.tab.active');
+    for (const b of blocks) if (active.contains(b.el)) await renderBlock(b);
+  }
+
+  // tabs
+  const tabButtons = document.querySelectorAll('nav.tabs button');
+  function showTab(name) {
+    tabButtons.forEach(btn => btn.classList.toggle('active', btn.dataset.tab === name));
+    document.querySelectorAll('section.tab').forEach(s => s.classList.toggle('active', s.id === 'tab-' + name));
+    try { history.replaceState(null, '', '#' + name); } catch (e) {}
+    renderVisible().then(() => blocks.forEach(b => { if (b.pz && document.getElementById('tab-' + name).contains(b.el)) { b.pz.resize(); b.pz.fit(); b.pz.center(); } }));
+  }
+  tabButtons.forEach(btn => btn.addEventListener('click', () => showTab(btn.dataset.tab)));
+
+  // per-diagram zoom tools
+  document.querySelectorAll('.diagram .tools .btn').forEach(btn => btn.addEventListener('click', () => {
+    const b = blocks.find(x => x.el.contains(btn));
+    if (!b || !b.pz) return;
+    if (btn.dataset.act === 'fit') { b.pz.resize(); b.pz.fit(); b.pz.center(); }
+    else if (btn.dataset.act === 'in') b.pz.zoomIn();
+    else if (btn.dataset.act === 'out') b.pz.zoomOut();
+  }));
+
+  themeBtn.addEventListener('click', async () => {
+    theme = theme === 'dark' ? 'light' : 'dark';
+    applyTheme();
+    blocks.forEach(b => { b.renderedTheme = null; });
+    await renderVisible();
+  });
+
+  window.addEventListener('resize', () => blocks.forEach(b => { if (b.pz) { b.pz.resize(); b.pz.fit(); b.pz.center(); } }));
+
+  applyTheme();
+  const initial = (location.hash || '#arch').slice(1);
+  showTab(['arch', 'flows', 'life'].includes(initial) ? initial : 'arch');
+</script>
+</body>
+</html>

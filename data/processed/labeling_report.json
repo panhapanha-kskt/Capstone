@@ -7,12 +7,12 @@
   },
   "labeling_functions_fired": {},
   "parents_with_attack_votes": {
-    "dns2tcp-key.com": {
+    "dns2tcp-txt.com": {
       "queries": 4000,
       "unique_subdomains": 4000,
       "unique_ratio": 1.0,
-      "information_chars": 255031,
-      "long_encoded_share": 0.3205,
+      "information_chars": 251233,
+      "long_encoded_share": 0.3155,
       "tunnel_record_share": 1.0,
       "p95_length": 194.0,
       "clients": 1,
@@ -23,12 +23,12 @@
       ],
       "ordinary": false
     },
-    "dns2tcp-txt.com": {
-      "queries": 4000,
-      "unique_subdomains": 4000,
+    "dns2tcp-key.com": {
+      "queries": 3997,
+      "unique_subdomains": 3997,
       "unique_ratio": 1.0,
-      "information_chars": 251233,
-      "long_encoded_share": 0.3155,
+      "information_chars": 254497,
+      "long_encoded_share": 0.32,
       "tunnel_record_share": 1.0,
       "p95_length": 194.0,
       "clients": 1,
@@ -52,6 +52,48 @@
         "many_unique_subdomains",
         "high_information",
         "tunnel_record_types"
+      ],
+      "ordinary": false
+    },
+    "0zcywdjwcph5tzixmlmbbr1fk70occcfrpnbcswacaozezuhoaudqmrktakm48t.ni": {
+      "queries": 1,
+      "unique_subdomains": 0,
+      "unique_ratio": 0.0,
+      "information_chars": 0,
+      "long_encoded_share": 1.0,
+      "tunnel_record_share": 1.0,
+      "p95_length": 194.0,
+      "clients": 1,
+      "attack_votes": [
+        "long_encoded_labels"
+      ],
+      "ordinary": false
+    },
+    "0zc6uzrtciyih3hrrr2mfha36mu1shsvlir7kwq4rt3mchdtfobhv7uodjhvnhp.mo": {
+      "queries": 1,
+      "unique_subdomains": 0,
+      "unique_ratio": 0.0,
+      "information_chars": 0,
+      "long_encoded_share": 1.0,
+      "tunnel_record_share": 1.0,
+      "p95_length": 194.0,
+      "clients": 1,
+      "attack_votes": [
+        "long_encoded_labels"
+      ],
+      "ordinary": false
+    },
+    "0zdrwfhychtdk1qxyfgi7xxy4f5qlzaa9bvc+zuagkndl5ivg2kv2jx7vpor7zm.as": {
+      "queries": 1,
+      "unique_subdomains": 0,
+      "unique_ratio": 0.0,
+      "information_chars": 0,
+      "long_encoded_share": 1.0,
+      "tunnel_record_share": 1.0,
+      "p95_length": 194.0,
+      "clients": 1,
+      "attack_votes": [
+        "long_encoded_labels"
       ],
       "ordinary": false
     }

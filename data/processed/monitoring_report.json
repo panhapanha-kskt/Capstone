@@ -1,25 +1,25 @@
 {
-  "live_input": "/home/shed/CADT/Capstone/dns-anomaly-detection-lab/Capstone/data/processed/week3_features_with_ml.json",
-  "trained_on": "2026-10-24T09:29:28Z",
+  "live_input": "/mnt/c/Programming-CTF/Capstone/data/processed/week3_features_with_ml.json",
+  "trained_on": "2026-11-14T13:19:29Z",
   "drift": {
     "query_length": {
-      "psi": 6.9633,
+      "psi": 8.027,
       "band": "major"
     }
   },
   "alert_volume": {
-    "n_alerts": 2410,
-    "alert_rate": 0.2955
+    "n_alerts": 2740,
+    "alert_rate": 0.3361
   },
   "score_health": {
     "column": "ml_combined_score",
-    "mean": 0.9851,
-    "frac_saturated_high": 0.9966,
-    "frac_saturated_low": 0.0026
+    "mean": 0.9917,
+    "frac_saturated_high": 0.9901,
+    "frac_saturated_low": 0.0065
   },
   "retrain_recommended": true,
   "reasons": [
-    "Major drift in 'query_length' (PSI=6.96).",
+    "Major drift in 'query_length' (PSI=8.03).",
     "ML scores are saturated \u2014 model is no longer discriminating; recalibrate/retrain."
   ]
 }

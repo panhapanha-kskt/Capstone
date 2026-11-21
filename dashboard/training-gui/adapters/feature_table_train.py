@@ -413,6 +413,34 @@ def main():
     (run / "metrics.json").write_text(json.dumps(metrics, indent=2))
     log(f"wrote {out / 'model.joblib'} and metrics.json")
     write_run_record(out, src, seed)
+    save_to_models(out, meta, metrics, params)
+
+
+def save_to_models(out: Path, meta: dict, metrics: dict, params: dict) -> None:
+    """Also keep a copy in the models folder when PARAMS_JSON has "save_to_models": "<name>"
+    (or the SAVE_TO_MODELS env var). Written as <name>.joblib + <name>_meta.json next to the
+    Path A / Path B files. The live pipeline (run_pipeline.sh, the bridge) does NOT load this
+    model: it scores DNSTunnel2026-style 38-column tables only. The meta file says so."""
+    name = params.get("save_to_models") or os.environ.get("SAVE_TO_MODELS")
+    if not name:
+        return
+    import shutil
+    models_dir = Path(os.environ.get("DNS_DETECT_MODELS_DIR") or (Path.cwd() / "models"))
+    if not models_dir.is_absolute():
+        models_dir = Path.cwd() / models_dir
+    models_dir.mkdir(parents=True, exist_ok=True)
+    shutil.copy2(out / "model.joblib", models_dir / f"{name}.joblib")
+    (models_dir / f"{name}_meta.json").write_text(json.dumps({
+        **meta,
+        "model_file": f"{name}.joblib",
+        "source_run": str(out.parent),
+        "test_metrics": metrics,
+        "used_by_detection": False,
+        "note": ("Feature-table model (trained on a pre-aggregated 38-column table). "
+                 "Not loaded by the bridge or run_pipeline.sh; it cannot score raw DNS queries. "
+                 "Kept here for the record and for scoring DNSTunnel2026-style tables."),
+    }, indent=2))
+    log(f"copied model to {models_dir / (name + '.joblib')} and {name}_meta.json (not used by detection)")
 
 
 def write_run_record(out: Path, dataset: Path, seed: int) -> None:

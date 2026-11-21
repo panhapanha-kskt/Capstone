@@ -1,9 +1,9 @@
 {
-  "generated_at": "2026-11-19 23:03",
+  "generated_at": "2026-11-21 10:30",
   "files": [
     {
       "file": "cic_benign_train.json",
-      "path": "data/external/cic/cic_benign_train.json",
+      "path": "/mnt/c/Programming-CTF/Capstone/data/external/cic/cic_benign_train.json",
       "group": "labeled",
       "status": "labeled",
       "kind": "json",
@@ -12,7 +12,7 @@
     },
     {
       "file": "labeled_benign.json",
-      "path": "data/processed/labeled_benign.json",
+      "path": "/mnt/c/Programming-CTF/Capstone/data/processed/labeled_benign.json",
       "group": "labeled",
       "status": "labeled",
       "kind": "json",
@@ -21,7 +21,7 @@
     },
     {
       "file": "labeled_tunnels.json",
-      "path": "data/processed/labeled_tunnels.json",
+      "path": "/mnt/c/Programming-CTF/Capstone/data/processed/labeled_tunnels.json",
       "group": "labeled",
       "status": "labeled",
       "kind": "json",

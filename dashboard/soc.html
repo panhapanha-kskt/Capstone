@@ -45,203 +45,7 @@
       overflow: hidden
     }
 
-    /* ── top bar ───────────────────────────────── */
-    .topbar {
-      height: 46px;
-      background: var(--topbar);
-      border-bottom: 1px solid var(--border);
-      display: flex;
-      align-items: center;
-      gap: 18px;
-      padding: 0 14px;
-      position: relative;
-      z-index: 5
-    }
-
-    .logo {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      font-size: 15px;
-      font-weight: 600;
-      color: #fff
-    }
-
-    .logo .mark {
-      width: 24px;
-      height: 24px;
-      border-radius: 50%;
-      background: radial-gradient(circle at 35% 35%, #b3d96b, #6f9f33);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-size: 12px;
-      color: #10240a;
-      font-weight: 800
-    }
-
-    .topnav {
-      display: flex;
-      gap: 16px;
-      color: var(--muted);
-      font-size: 12.5px
-    }
-
-    .topnav span {
-      cursor: pointer;
-      display: flex;
-      align-items: center;
-      gap: 4px
-    }
-
-    .topnav span:hover {
-      color: #fff
-    }
-
-    .caret {
-      font-size: 9px;
-      opacity: .7
-    }
-
-    .topbar .right {
-      margin-left: auto;
-      display: flex;
-      align-items: center;
-      gap: 12px;
-      font-size: 12px;
-      color: var(--muted)
-    }
-
-    .pill {
-      border: 1px solid var(--green);
-      color: var(--green);
-      border-radius: 4px;
-      padding: 2px 10px;
-      display: flex;
-      gap: 5px;
-      align-items: center;
-      font-size: 11.5px
-    }
-
-    .select {
-      background: var(--panel);
-      border: 1px solid var(--border);
-      border-radius: 4px;
-      padding: 3px 24px 3px 10px;
-      color: var(--text);
-      position: relative;
-      cursor: default
-    }
-
-    .select:after {
-      content: "▾";
-      position: absolute;
-      right: 8px;
-      color: var(--dim);
-      font-size: 9px;
-      top: 5px
-    }
-
-    .bell {
-      font-size: 15px;
-      cursor: pointer
-    }
-
-    .user {
-      display: flex;
-      align-items: center;
-      gap: 6px
-    }
-
-    .user:after {
-      content: "▾";
-      color: var(--dim);
-      font-size: 9px
-    }
-
-    /* ── layout ────────────────────────────────── */
-    .wrap {
-      display: flex;
-      height: calc(100vh - 46px)
-    }
-
-    .sidebar {
-      width: 196px;
-      min-width: 196px;
-      background: var(--sidebar);
-      border-right: 1px solid var(--border);
-      display: flex;
-      flex-direction: column;
-      padding-top: 10px
-    }
-
-    .sb-title {
-      font-size: 12px;
-      font-weight: 700;
-      letter-spacing: .6px;
-      color: #fff;
-      padding: 8px 16px 12px
-    }
-
-    .nav {
-      flex: 1;
-      overflow-y: auto
-    }
-
-    .nav a {
-      display: flex;
-      align-items: center;
-      gap: 10px;
-      padding: 9px 16px;
-      color: var(--muted);
-      text-decoration: none;
-      font-size: 12.5px;
-      border-left: 3px solid transparent
-    }
-
-    .nav a .ic {
-      width: 16px;
-      text-align: center;
-      opacity: .85
-    }
-
-    .nav a:hover {
-      color: #fff;
-      background: #1c2032
-    }
-
-    .nav a.open {
-      color: #fff
-    }
-
-    .nav a.active {
-      color: #fff;
-      background: #222842;
-      border-left-color: var(--green)
-    }
-
-    .nav a.active .ic {
-      color: var(--green)
-    }
-
-    .nav .sub {
-      padding-left: 42px;
-      font-size: 12px
-    }
-
-    .nav .grp-caret {
-      margin-left: auto;
-      font-size: 9px;
-      color: var(--dim)
-    }
-
-    .sb-ver {
-      padding: 10px 16px;
-      color: var(--dim);
-      font-size: 11px
-    }
-
-    .main {
+        .main {
       flex: 1;
       overflow-y: auto;
       padding: 12px 14px 0
@@ -600,47 +404,13 @@
     .fp-tbl th, .fp-tbl td { text-align: left; padding: 5px 8px; border-bottom: 1px solid #2a2f42 }
     .fp-tbl th { color: #8a90a5; font-weight: 600 }
   </style>
+<link rel="stylesheet" href="/static/css/shell.css">
 </head>
 
 <body>
 
-  <div class="topbar">
-    <div class="logo"><span class="mark">◎</span> Capstone Project</div>
-    <div class="topnav">
-      <span>⠿ Services <span class="caret">▾</span></span>
-      <span>☉ Support <span class="caret">▾</span></span>
-    </div>
-    <div class="right">
-      <span class="pill" id="modePill"><span class="statusdot" id="statusDot"></span><span
-          id="modeLabel">Live</span></span>
-      <span class="select">English</span>
-      <span class="select">Theme: Dark</span>
-      <span class="bell">🔔</span>
-      <span class="user">👤 <span id="userLabel">soc-analyst@lab.local</span></span>
-    </div>
-  </div>
-
-  <div class="wrap">
-    <aside class="sidebar">
-      <div class="sb-title">SOC AS-A-SERVICE</div>
-      <nav class="nav">
-        <a class="open" href="#"><span class="ic">▦</span> Dashboards <span class="grp-caret">▾</span></a>
-        <a class="active sub" href="/soc">Monitoring Overview</a>
-        <a class="sub" href="/usecases">Monitoring Use Cases</a>
-        <a class="sub" href="/">Classic Dashboard</a>
-        <a href="/alerts"><span class="ic">⚠</span> Alerts</a>
-        <a href="/events"><span class="ic">◉</span> Event Explorer</a>
-        <a href="/devices"><span class="ic">🖳</span> Sources &amp; Collection</a>
-        <a href="/health"><span class="ic">♥</span> Pipeline Health</a>
-        <a href="/incidents"><span class="ic">▤</span> Incidents</a>
-        <a href="#"><span class="ic">🔍</span> Forensic Analysis</a>
-        <a href="#"><span class="ic">≣</span> Audit Logs</a>
-        <a href="#"><span class="ic">⚙</span> Settings <span class="grp-caret">▸</span></a>
-      </nav>
-      <div class="sb-ver">v1.0 — Capstone</div>
-    </aside>
-
-    <main class="main">
+  <div id="app-chrome">
+  <main class="main">
       <div class="grid">
 
         <!-- summary strip -->
@@ -753,8 +523,10 @@
     </main>
   </div>
 
-  <script>
+  <script src="/static/js/chrome.js"></script>
+<script>
     "use strict";
+SOC.mount({active:"soc"});
     const $ = id => document.getElementById(id);
     const C = {
       green: "#8bc34a", green2: "#4caf50", orange: "#f09f33", yellow: "#e8d44d",
@@ -968,11 +740,6 @@
       const total = t.alerts || 0;
       const uniq = (k) => new Set(feed.map(f => f[k]).filter(Boolean)).size;
 
-      // top-bar status
-      $("modeLabel").textContent = s.mode === "demo" ? "Demo" : "Live";
-      const dot = $("statusDot");
-      dot.className = "statusdot" + (s.pipeline?.status === "running" ? " running" : s.pipeline?.status === "error" ? " error" : "");
-
       // 1. summary strip
       summary([
         { icon: "🖳", val: uniq("client"), label: "Monitored Devices" },
@@ -1069,23 +836,11 @@
       miniLegend("trendLegend", trendSeries);
     }
 
-    let etag = null;
-    async function tick() {
-      if (document.hidden) return;
-      try {
-        const r = await fetch("/api/state", { cache: "no-store", headers: etag ? { "If-None-Match": etag } : {} });
-        if (r.status === 304 || !r.ok) return;
-        etag = r.headers.get("ETag");
-        render(await r.json());
-      } catch (e) { /* server restarting; keep polling */ }
-    }
-    tick();
-    setInterval(tick, 3000);
-    document.addEventListener("visibilitychange", tick);
+    const overviewPoll = SOC.pollState(render, 3000);
     let resizeTimer = null;
     window.addEventListener("resize", () => {
       clearTimeout(resizeTimer);
-      resizeTimer = setTimeout(() => { lastVersion = -1; etag = null; tick(); }, 150);
+      resizeTimer = setTimeout(() => { lastVersion = -1; overviewPoll.forceTick(); }, 150);
     });
   </script>
 </body>

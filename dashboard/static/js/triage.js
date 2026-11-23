@@ -54,8 +54,12 @@
             <option>Critical</option><option>High</option><option>Medium</option><option>Low</option></select>
           <input id="f-q" type="search" placeholder="Search host, domain, rule" aria-label="Search">
         </div>
+        <div class="queue-status" id="queue-status" hidden>
+          <span id="queue-message" role="status"></span>
+          <button class="btn sec" type="button" id="queue-retry">Retry</button>
+        </div>
         <div class="qlist" id="qlist" role="listbox" aria-label="Cases" tabindex="0"><div class="empty">Loading…</div></div>
-        <div class="pager"><button id="p-prev">‹</button><span id="p-info">—</span><button id="p-next">›</button></div>
+        <div class="pager"><button id="p-prev" aria-label="Previous page">‹</button><span id="p-info">—</span><button id="p-next" aria-label="Next page">›</button></div>
       </section>
       <section class="tri-col" aria-label="Case">
         <div class="case" id="case"><div class="empty">Select a case (or press <span class="kbd">j</span>).</div></div>
@@ -200,8 +204,7 @@
     const me = st.analysts.find(a=>a.id === actor());
     st.tier = me ? SOC.tierOf(me.role) : 0;
     $("btn-approvals").hidden = st.tier < 2;
-    const lbl = document.getElementById("soc-actor-label");
-    if (lbl && me) lbl.textContent = me.id + "@lab.local · " + me.role;
+
   }
   async function loadMe(){
     try {
@@ -227,11 +230,11 @@
   }
   function renderCounts(q){
     const c = q.counts;
-    const btn = (id, label, n, on, bad) => `<button class="cnt ${on ? "on" : ""} ${bad && n ? "bad" : ""}" data-cnt="${id}">${esc(label)}<b>${esc(n)}</b></button>`;
+    const btn = (id, label, n, on) => `<button class="cnt ${on ? "on" : ""}" aria-pressed="${on}" data-cnt="${id}">${esc(label)}<b>${esc(n)}</b></button>`;
     $("counts").innerHTML = [
       btn("mine", "My queue", c.mine, st.mine),
-      btn("unassigned", "Unassigned", c.unassigned, false),
-      btn("breached", "SLA breached", c.sla_breached, false, true),
+      `<span class="cnt">Unassigned<b>${esc(c.unassigned)}</b></span>`,
+      `<span class="cnt ${c.sla_breached ? "bad" : ""}">SLA breached<b>${esc(c.sla_breached)}</b></span>`,
       btn("pending", "Pending approval", c.pending_approval, st.status === "PendingApproval"),
       ...["Critical","High","Medium","Low"].filter(s=>c.by_severity[s]).map(s=>btn("sev:"+s, s, c.by_severity[s], st.severity === s)),
       `<span class="cnt" style="cursor:default">${esc(c.total)} cases · ${esc(c.alerts)} alerts</span>`,
@@ -261,14 +264,26 @@
     SOC.patchList($("qlist"), q.cases, c=>c.key, rowHtml,
       `<div class="empty">No cases match. ${st.status === "open" ? "Nothing open — good shift." : ""}</div>`);
     const page = Math.floor(st.offset / st.limit) + 1, pages = Math.max(Math.ceil(q.total / st.limit), 1);
-    $("p-info").textContent = `Page ${page} of ${pages} · ${q.total} shown`;
+    $("p-info").textContent = `Page ${page} of ${pages} · ${q.total} matching`;
     $("p-prev").disabled = st.offset <= 0;
     $("p-next").disabled = st.offset + st.limit >= q.total;
     tickSla();
     if (st.selected) loadCase(st.selected, true);
     loadMe();
   }
-  const poller = SOC.pollJSON(queueUrl, renderQueue, 5000);
+  const poller = SOC.pollJSON(queueUrl, renderQueue, 5000, error=>{
+    const retry = $("queue-retry");
+    if (!error && document.activeElement === retry) $("qlist").focus();
+    $("queue-status").hidden = !error;
+    if (error){
+      const message = st.queue ? "Queue update failed. Showing the last loaded results." : "Could not load the queue.";
+      if ($("queue-message").textContent !== message) $("queue-message").textContent = message;
+      if (!st.queue) $("qlist").textContent = "";
+    } else {
+      $("queue-message").textContent = "";
+    }
+  });
+  $("queue-retry").addEventListener("click", ()=>poller.refresh());
   function refreshAll(){ poller.refresh(); }
 
   $("f-group").value = st.group;
@@ -285,8 +300,6 @@
     const k = b.dataset.cnt;
     if (k === "mine") st.mine = !st.mine;
     else if (k === "pending") st.status = st.status === "PendingApproval" ? "open" : "PendingApproval";
-    else if (k === "unassigned") { st.mine = false; st.status = "Open"; }
-    else if (k === "breached") { st.status = "open"; }
     else if (k.startsWith("sev:")) st.severity = st.severity === k.slice(4) ? "" : k.slice(4);
     $("f-status").value = st.status; $("f-sev").value = st.severity;
     st.offset = 0; refreshAll();
@@ -295,6 +308,10 @@
     const r = e.target.closest("[data-case]"); if (r) select(r.dataset.case);
   });
   function select(key){
+    if (st.selected !== key){
+      st.view = null;
+      $("case").innerHTML = '<div class="empty" role="status">Loading case…</div>';
+    }
     st.selected = key;
     for (const el of $("qlist").querySelectorAll(".qrow")){
       const on = el.dataset.case === key;
@@ -316,16 +333,17 @@
   function showEmpty(){ $("case").innerHTML = '<div class="empty">Select a case (or press <span class="kbd">j</span>).</div>'; st.view = null; }
   let caseReq = 0;
   async function loadCase(key, quiet){
+    if (key !== st.selected) return;
     const my = ++caseReq;
     try {
       const v = await SOC.apiGET(`/api/triage/case/${encodeURIComponent(key)}?limit=50&actor=${encodeURIComponent(actor())}`);
-      if (my !== caseReq) return;
+      if (my !== caseReq || key !== st.selected) return;
       const scroll = $("case").scrollTop;
       st.view = v;
       renderCase(v);
       if (quiet) $("case").scrollTop = scroll;
     } catch(e){
-      if (my !== caseReq) return;
+      if (my !== caseReq || key !== st.selected) return;
       if (!quiet) $("case").innerHTML = `<div class="nag bad">Could not load the case: ${esc(e.message)}</div>`;
     }
   }
@@ -460,9 +478,10 @@
   $("case").addEventListener("change", async e=>{
     const cb = e.target.closest("[data-check]");
     if (!cb || !st.view) return;
+    const key = st.view.case.key;
     try {
-      await post(`/api/triage/case/${st.view.case.key}/checklist`, {item_id: cb.dataset.check, checked: cb.checked});
-      loadCase(st.view.case.key, true);
+      await post(`/api/triage/case/${key}/checklist`, {item_id: cb.dataset.check, checked: cb.checked});
+      if (key === st.selected) loadCase(key, true);
     } catch(err){ cb.checked = !cb.checked; fail(err); }
   });
 

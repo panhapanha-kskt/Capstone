@@ -19,43 +19,7 @@
   html,body{height:100%}
   body{background:var(--bg);color:var(--text);font:13px/1.45 "Segoe UI",system-ui,Arial,sans-serif;overflow:hidden}
 
-  /* ── chrome (same as the rest of the suite) ── */
-  .topbar{height:46px;background:var(--topbar);border-bottom:1px solid var(--border);
-    display:flex;align-items:center;gap:18px;padding:0 14px;position:relative;z-index:5}
-  .logo{display:flex;align-items:center;gap:8px;font-size:15px;font-weight:600;color:#fff}
-  .logo .mark{width:24px;height:24px;border-radius:50%;background:radial-gradient(circle at 35% 35%,#b3d96b,#6f9f33);
-    display:flex;align-items:center;justify-content:center;font-size:12px;color:#10240a;font-weight:800}
-  .topnav{display:flex;gap:16px;color:var(--muted);font-size:12.5px}
-  .topnav span{cursor:pointer;display:flex;align-items:center;gap:4px}
-  .topnav span:hover{color:#fff}
-  .caret{font-size:9px;opacity:.7}
-  .topbar .right{margin-left:auto;display:flex;align-items:center;gap:12px;font-size:12px;color:var(--muted)}
-  .pill{border:1px solid var(--green);color:var(--green);border-radius:4px;padding:2px 10px;display:flex;gap:5px;align-items:center;font-size:11.5px}
-  .select{background:var(--panel);border:1px solid var(--border);border-radius:4px;padding:3px 24px 3px 10px;color:var(--text);position:relative;cursor:default}
-  .select:after{content:"▾";position:absolute;right:8px;color:var(--dim);font-size:9px;top:5px}
-  .bell{font-size:15px;cursor:pointer}
-  .user{display:flex;align-items:center;gap:6px}
-  .user:after{content:"▾";color:var(--dim);font-size:9px}
-  .statusdot{width:8px;height:8px;border-radius:50%;background:var(--green);display:inline-block}
-  .statusdot.running{background:var(--orange);animation:pulse 1s infinite}
-  .statusdot.error{background:var(--red)}
-  @keyframes pulse{50%{opacity:.35}}
-
-  .wrap{display:flex;height:calc(100vh - 46px)}
-  .sidebar{width:196px;min-width:196px;background:var(--sidebar);border-right:1px solid var(--border);
-    display:flex;flex-direction:column;padding-top:10px}
-  .sb-title{font-size:12px;font-weight:700;letter-spacing:.6px;color:#fff;padding:8px 16px 12px}
-  .nav{flex:1;overflow-y:auto}
-  .nav a{display:flex;align-items:center;gap:10px;padding:9px 16px;color:var(--muted);text-decoration:none;font-size:12.5px;border-left:3px solid transparent}
-  .nav a .ic{width:16px;text-align:center;opacity:.85}
-  .nav a:hover{color:#fff;background:#1c2032}
-  .nav a.open{color:#fff}
-  .nav a.active{color:#fff;background:#222842;border-left-color:var(--green)}
-  .nav a.active .ic{color:var(--green)}
-  .nav .sub{padding-left:42px;font-size:12px}
-  .nav .grp-caret{margin-left:auto;font-size:9px;color:var(--dim)}
-  .sb-ver{padding:10px 16px;color:var(--dim);font-size:11px}
-  .main{flex:1;overflow-y:auto;display:flex;flex-direction:column}
+    .main{flex:1;overflow-y:auto;display:flex;flex-direction:column}
 
   /* ── alerts app ────────────────────────────── */
   .page-head{display:flex;align-items:center;padding:14px 18px 10px}
@@ -82,7 +46,7 @@
   .axis{fill:var(--muted);font-size:10.5px}
   .gridline{stroke:#262b3d;stroke-width:1}
 
-  .gridbar{display:flex;align-items:center;gap:10px;padding:12px 18px;background:var(--bg)}
+  .gridbar{display:flex;flex-wrap:wrap;align-items:center;gap:10px;padding:12px 18px;background:var(--bg)}
   .gridbar .items{font-size:14px;color:#e7eaf2}
   .btn{display:inline-flex;align-items:center;gap:6px;font-size:12.5px;border-radius:3px;padding:6px 14px;cursor:pointer;border:0;color:#fff;font-family:inherit}
   .btn.add{background:var(--green2)}
@@ -132,7 +96,7 @@
   .pager button:disabled{opacity:.3;cursor:default}
 
   /* alert detail drawer */
-  .drawer{position:fixed;top:46px;right:0;bottom:0;width:380px;background:var(--panel);border-left:1px solid var(--border);
+  .drawer{position:fixed;top:var(--shell-header);right:0;bottom:0;width:min(380px, 100vw);background:var(--panel);border-left:1px solid var(--border);
     box-shadow:-8px 0 24px #0008;z-index:20;display:flex;flex-direction:column;animation:slide .15s ease-out}
   @keyframes slide{from{transform:translateX(30px);opacity:0}}
   .drawer .d-head{display:flex;align-items:center;gap:10px;padding:14px 16px;border-bottom:1px solid var(--border);font-weight:600;color:#fff}
@@ -223,49 +187,18 @@
   .rel-main{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis}
   .playbook{padding-left:18px;display:flex;flex-direction:column;gap:7px;font-size:12.5px;color:#e8ebf4}
 </style>
+<link rel="stylesheet" href="/static/css/shell.css">
 </head>
 <body>
 
-<div class="topbar">
-  <div class="logo"><span class="mark">◎</span> Capstone Project</div>
-  <div class="topnav">
-    <span>⠿ Services <span class="caret">▾</span></span>
-    <span>☉ Support <span class="caret">▾</span></span>
-  </div>
-  <div class="right">
-    <span class="pill"><span class="statusdot" id="statusDot"></span><span id="modeLabel">Live</span></span>
-    <span class="select">English</span>
-    <span class="select">Theme: Dark</span>
-    <span class="bell">🔔</span>
-    <span class="user">👤 <span>soc-analyst@lab.local</span></span>
-  </div>
-</div>
-
-<div class="wrap">
-  <aside class="sidebar">
-    <div class="sb-title">SOC AS-A-SERVICE</div>
-    <nav class="nav">
-      <a class="open" href="#"><span class="ic">▦</span> Dashboards <span class="grp-caret">▾</span></a>
-      <a class="sub" href="/soc">Monitoring Overview</a>
-      <a class="sub" href="/usecases">Monitoring Use Cases</a>
-      <a class="sub" href="/">Classic Dashboard</a>
-      <a class="active" href="/alerts"><span class="ic">⚠</span> Alerts</a>
-      <a href="/events"><span class="ic">◉</span> Event Explorer</a>
-      <a href="/devices"><span class="ic">🖳</span> Sources &amp; Collection</a>
-      <a href="/health"><span class="ic">♥</span> Pipeline Health</a>
-      <a href="/incidents"><span class="ic">▤</span> Incidents</a>
-      <a href="#"><span class="ic">🔍</span> Forensic Analysis</a>
-      <a href="#"><span class="ic">≣</span> Audit Logs</a>
-      <a href="#"><span class="ic">⚙</span> Settings <span class="grp-caret">▸</span></a>
-    </nav>
-    <div class="sb-ver">v1.0 — Capstone</div>
-  </aside>
-
+<div id="app-chrome">
   <main class="main"><div id="root" style="flex:1;display:flex;flex-direction:column"></div></main>
 </div>
 
+<script src="/static/js/chrome.js"></script>
 <script>
 "use strict";
+SOC.mount({active:"alerts"});
 /* ════════════════════════════════════════════════════════════
    Alerts — React 18 single-page app (FortiSOAR-style module)
    Data source: GET /api/state (feed) + POST /api/alerts/{fp}/* (persistent mgmt).
@@ -287,9 +220,8 @@ async function apiGET(url){
   if (!r.ok) throw new Error("HTTP "+r.status);
   return r.json();
 }
-const ACTOR_KEY = "soc_actor";
-function currentActor(){ return localStorage.getItem(ACTOR_KEY) || "analyst-1"; }
-function setActor(a){ try { localStorage.setItem(ACTOR_KEY, a); } catch(e){} }
+const currentActor = SOC.actor;
+const setActor = SOC.setActor;
 
 const COLORS = { green:"#4caf50", yellow:"#c9a227", orange:"#d9822b", blue:"#4a90d9", red:"#e0564a" };
 const SEV_ORDER = ["Low","Medium","High","Critical"];
@@ -816,7 +748,8 @@ function SuppressModal({req, onClose, onDone}){
 function AlertsGrid({alerts, analysts, model, doAction, refresh, busy}){
   const [filters, setFilters] = useState({});
   const [sort, setSort] = useState({key:"severity", dir:-1});
-  const [mineOnly, setMineOnly] = useState(false);
+  const [assignment, setAssignment] = useState("");
+  const [actorId, setActorId] = useState(currentActor);
   const [showSuppressed, setShowSuppressed] = useState(false);
   const [openOnly, setOpenOnly] = useState(false);
   const [supReq, setSupReq] = useState(null);
@@ -841,10 +774,10 @@ function AlertsGrid({alerts, analysts, model, doAction, refresh, busy}){
 
   const suppressedCount = useMemo(()=>alerts.filter(a=>a.suppressed).length, [alerts]);
   const list = useMemo(()=>{
-    const me = currentActor();
     let l = alerts.filter(a =>
       (showSuppressed || !a.suppressed) &&
-      (!mineOnly || a.assigned_id === me) &&
+      (assignment !== "mine" || a.assigned_id === actorId) &&
+      (assignment !== "unassigned" || !a.assigned_id) &&
       (!openOnly || a.is_open) &&
       Object.entries(filters).every(([k,q]) => !q || String(a[k]).toLowerCase().includes(q)));
     const val = (a, k) => k === "severity" ? (SEV_RANK[a.severity] || 0) : a[k];
@@ -854,7 +787,7 @@ function AlertsGrid({alerts, analysts, model, doAction, refresh, busy}){
       return primary || (b.weight - a.weight) || String(b._raw.time||"").localeCompare(String(a._raw.time||""));
     });
     return l;
-  }, [alerts, filters, sort, mineOnly, showSuppressed, openOnly]);
+  }, [alerts, filters, sort, assignment, actorId, showSuppressed, openOnly]);
 
   const pages = Math.max(Math.ceil(list.length/PAGE_SIZE), 1);
   const cur = Math.min(page, pages);
@@ -911,16 +844,22 @@ function AlertsGrid({alerts, analysts, model, doAction, refresh, busy}){
   return html`<${React.Fragment}>
     <div class="gridbar">
       <span class="items">${list.length} Item${list.length === 1 ? "" : "s"}</span>
-      <span class="iconbtn" title="Refresh" onClick=${refresh}>⟳</span>
+      <button class="iconbtn" type="button" aria-label="Refresh alerts" onClick=${refresh}>⟳</button>
       <button class="btn exec" type="button" disabled=${!checked.size} onClick=${()=>setBulkOpen(true)}>⚙ Execute ▾</button>
       ${checked.size ? html`<span class="selinfo">${checked.size} selected</span>` : null}
-      <label class="tgl"><input type="checkbox" checked=${mineOnly} onChange=${e=>{ setMineOnly(e.target.checked); setPage(1); }}/> Assigned to me</label>
+      <label class="tgl">Assignment
+        <select class="colq" value=${assignment} onChange=${e=>{ setAssignment(e.target.value); setPage(1); }}>
+          <option value="">Anyone</option>
+          <option value="mine">Assigned to me</option>
+          <option value="unassigned">Unassigned</option>
+        </select>
+      </label>
       <label class="tgl"><input type="checkbox" checked=${openOnly} onChange=${e=>{ setOpenOnly(e.target.checked); setPage(1); }}/> Open only</label>
       <label class="tgl"><input type="checkbox" checked=${showSuppressed} onChange=${e=>{ setShowSuppressed(e.target.checked); setPage(1); }}/> Show suppressed (${suppressedCount})</label>
       <div class="rtools">
         <span style=${{color:"var(--muted)", fontSize:"11.5px"}}>Actor:</span>
-        <select class="colq" style=${{width:"auto", minWidth:120}} value=${currentActor()}
-          onChange=${e=>{ setActor(e.target.value); refresh(); }}>
+        <select class="colq" style=${{width:"auto", minWidth:120}} aria-label="Acting analyst" value=${actorId}
+          onChange=${e=>{ setActor(e.target.value); setActorId(e.target.value); setPage(1); refresh(); }}>
           ${analysts.map(a=>html`<option key=${a.id} value=${a.id}>${a.name}</option>`)}
         </select>
       </div>
@@ -1020,30 +959,12 @@ function AlertsGrid({alerts, analysts, model, doAction, refresh, busy}){
 /* ── app root ───────────────────────────────── */
 function useApiStateWithRefresh(){
   const [state, setState] = useState(null);
-  const bumpRef = useRef(0);
-  const refresh = useCallback(()=>{ bumpRef.current += 1; forceTick(); }, []);
   const forceRef = useRef(null);
-  function forceTick(){ if (forceRef.current) forceRef.current(); }
+  const refresh = useCallback(()=>forceRef.current?.(), []);
   useEffect(()=>{
-    let version = -1, alive = true, etag = null;
-    async function tick(force){
-      if (!force && document.hidden) return;
-      try {
-        const r = await fetch("/api/state", {cache:"no-store",
-          headers: (!force && etag) ? {"If-None-Match": etag} : {}});
-        if (r.status === 304 || !r.ok || !alive) return;
-        etag = r.headers.get("ETag");
-        const s = await r.json();
-        if (!force && s.version === version) return;
-        version = s.version; setState(s);
-      } catch(e){}
-    }
-    forceRef.current = ()=>tick(true);
-    tick(true);
-    const t = setInterval(()=>tick(false), 3000);
-    const onVis = ()=>{ if (!document.hidden) tick(false); };
-    document.addEventListener("visibilitychange", onVis);
-    return ()=>{ alive = false; clearInterval(t); document.removeEventListener("visibilitychange", onVis); };
+    const poll = SOC.pollState(setState, 3000);
+    forceRef.current = poll.forceTick;
+    return poll.stop;
   }, []);
   return [state, refresh];
 }
@@ -1059,13 +980,6 @@ function App(){
   useEffect(()=>{   // model info changes only after retraining; refresh it with the pipeline run counter
     apiGET("/api/model").then(setModel).catch(()=>setModel(null));
   }, [state?.pipeline?.runs]);
-
-  useEffect(()=>{
-    if (!state) return;
-    document.getElementById("modeLabel").textContent = state.mode === "demo" ? "Demo" : "Live";
-    document.getElementById("statusDot").className = "statusdot" +
-      (state.pipeline?.status === "running" ? " running" : state.pipeline?.status === "error" ? " error" : "");
-  }, [state]);
 
   const alerts = useMemo(()=>{
     const feed = state?.feed || [];

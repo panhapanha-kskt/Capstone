@@ -7,19 +7,15 @@
   "use strict";
 
   const NAV = [
-    {href:"#", icon:"▦", label:"Dashboards", cls:"open", caret:"▾"},
-    {href:"/soc", label:"Monitoring Overview", key:"soc", cls:"sub"},
-    {href:"/usecases", label:"Monitoring Use Cases", key:"usecases", cls:"sub"},
-    {href:"/", label:"Classic Dashboard", key:"classic", cls:"sub"},
-    {href:"/triage", icon:"✚", label:"Triage (Tier 1)", key:"triage"},
-    {href:"/alerts", icon:"⚠", label:"Alerts", key:"alerts"},
-    {href:"/events", icon:"◉", label:"Event Explorer", key:"events"},
-    {href:"/devices", icon:"🖳", label:"Sources & Collection", key:"devices"},
-    {href:"/health", icon:"♥", label:"Pipeline Health", key:"health"},
-    {href:"/incidents", icon:"▤", label:"Incidents", key:"incidents"},
-    {href:"#", icon:"🔍", label:"Forensic Analysis"},
-    {href:"#", icon:"≣", label:"Audit Logs"},
-    {href:"#", icon:"⚙", label:"Settings", caret:"▸"},
+    {href:"/soc", label:"Monitoring overview", key:"soc"},
+    {href:"/triage", label:"Triage", key:"triage"},
+    {href:"/alerts", label:"Alerts", key:"alerts"},
+    {href:"/events", label:"Event explorer", key:"events"},
+    {href:"/incidents", label:"Incidents", key:"incidents"},
+    {href:"/devices", label:"Sources & collection", key:"devices"},
+    {href:"/health", label:"Pipeline health", key:"health"},
+    {href:"/usecases", label:"Monitoring use cases", key:"usecases"},
+    {href:"/", label:"Classic dashboard", key:"classic"},
   ];
 
   function esc(s){
@@ -29,33 +25,25 @@
 
   function renderChrome(active){
     return `
-<div class="topbar">
-  <div class="logo"><span class="mark">◎</span> Capstone Project</div>
-  <div class="topnav">
-    <span>⠿ Services <span class="caret">▾</span></span>
-    <span>☉ Support <span class="caret">▾</span></span>
-  </div>
+<a class="soc-skip" href="#soc-main">Skip to content</a>
+<header class="topbar">
+  <button type="button" class="soc-menu" aria-expanded="false" aria-controls="soc-sidebar">Menu</button>
+  <a class="logo" href="/soc"><span class="mark" aria-hidden="true">◎</span> DNS Operations</a>
   <div class="right">
-    <span class="pill" id="soc-health-pill"><span class="statusdot" id="soc-status-dot"></span><span id="soc-mode-label">…</span></span>
-    <span class="select">English</span>
-    <span class="select">Theme: Dark</span>
-    <span class="bell">🔔</span>
-    <span class="user">👤 <span id="soc-actor-label">soc-analyst@lab.local</span></span>
+    <span class="pill" id="soc-health-pill" role="status"><span class="statusdot connecting" id="soc-status-dot" aria-hidden="true"></span><span id="soc-mode-label">Connecting</span></span>
+    <span class="soc-actor" id="soc-actor-label"></span>
   </div>
-</div>
+</header>
 <div class="wrap">
-  <aside class="sidebar">
-    <div class="sb-title">SOC AS-A-SERVICE</div>
-    <nav class="nav">
+  <aside class="sidebar" id="soc-sidebar">
+    <nav class="nav" aria-label="SOC navigation">
       ${NAV.map(n=>{
-        const isActive = n.key === active;
-        const cls = [n.cls, isActive ? "active" : ""].filter(Boolean).join(" ");
-        return `<a class="${esc(cls)}" href="${esc(n.href)}">${n.icon?`<span class="ic">${esc(n.icon)}</span> `:""}${esc(n.label)}${n.caret?` <span class="grp-caret">${esc(n.caret)}</span>`:""}</a>`;
+        const current = n.key === active ? ' class="active" aria-current="page"' : "";
+        return `<a href="${n.href}"${current}>${esc(n.label)}</a>`;
       }).join("")}
     </nav>
-    <div class="sb-ver">v1.0 — Capstone (Week 6)</div>
   </aside>
-  <main class="main" id="soc-main"></main>
+<main class="main" id="soc-main" tabindex="-1"></main>
 </div>`;
   }
 
@@ -97,21 +85,27 @@
     const r = await fetch("/api/state", {cache:"no-store", headers});
     if (r.status === 304) return null;
     if (!r.ok) throw new Error("HTTP "+r.status);
+    const state = await r.json();
     if (etagRef) etagRef.etag = r.headers.get("ETag");
-    return r.json();
+    return state;
   }
 
   // GET /api/state polling helper; onUpdate(state) gets called when state.version changes.
   // Pauses while the tab is hidden and catches up as soon as it is visible again.
   function pollState(onUpdate, interval){
-    let version = -1, alive = true, failed = 0, busy = false;
+    let version = -1, alive = true, failed = 0, busy = false, queued = false;
     const etagRef = {etag:null};
     async function tick(force){
-      if (!alive || busy || (!force && document.hidden)) return;
+      if (!alive || (!force && document.hidden)) return;
+      if (busy){
+        queued ||= force;
+        return;
+      }
       busy = true;
       try {
-        if (force) etagRef.etag = null;
+        if (force || failed >= 2) etagRef.etag = null;
         const s = await fetchState(etagRef);
+        if (!alive) return;
         failed = 0;
         if (s === null) return;
         updateChromeFromState(s);
@@ -121,7 +115,13 @@
       } catch(e){
         failed++;
         if (failed >= 2) markDisconnected();
-      } finally { busy = false; }
+      } finally {
+        busy = false;
+        if (queued){
+          queued = false;
+          tick(true);
+        }
+      }
     }
     const onVis = ()=>{ if (!document.hidden) tick(false); };
     document.addEventListener("visibilitychange", onVis);
@@ -132,22 +132,37 @@
   }
 
   // Generic conditional-GET poller (ETag / 304, paused while hidden). urlFn() is re-read every tick.
-  function pollJSON(urlFn, onUpdate, interval){
-    let alive = true, busy = false, etag = null, lastUrl = null;
+  function pollJSON(urlFn, onUpdate, interval, onStatus = ()=>{}){
+    let alive = true, busy = false, queued = false, etag = null, lastUrl = null;
+    const currentUrl = () => typeof urlFn === "function" ? urlFn() : urlFn;
     async function tick(force){
-      if (!alive || busy || (!force && document.hidden)) return;
+      if (!alive || (!force && document.hidden)) return;
+      if (busy){
+        queued ||= force;
+        return;
+      }
       busy = true;
+      const url = currentUrl();
       try {
-        const url = typeof urlFn === "function" ? urlFn() : urlFn;
         if (url !== lastUrl){ etag = null; lastUrl = url; }
         const r = await fetch(url, {cache:"no-store", headers: (!force && etag) ? {"If-None-Match": etag} : {}});
-        if (r.status === 304) return;
-        if (!r.ok) throw new Error("HTTP " + r.status);
-        etag = r.headers.get("ETag");
-        const data = await r.json();
-        try { onUpdate(data); } catch(e){ console.error(e); }
-      } catch(e){ /* keep polling */ }
-      finally { busy = false; }
+        if (r.status !== 304){
+          if (!r.ok) throw new Error("HTTP " + r.status);
+          const data = await r.json();
+          if (!alive || url !== currentUrl()) return;
+          onUpdate(data);
+          etag = r.headers.get("ETag");
+        }
+        if (alive && url === currentUrl()) onStatus(null);
+      } catch(e){
+        if (alive && url === currentUrl()) onStatus(e);
+      } finally {
+        busy = false;
+        if (queued){
+          queued = false;
+          tick(true);
+        }
+      }
     }
     const onVis = ()=>{ if (!document.hidden) tick(false); };
     document.addEventListener("visibilitychange", onVis);
@@ -164,7 +179,19 @@
     return analystsPromise;
   }
   function actor(){ try { return localStorage.getItem("soc_actor") || "analyst-1"; } catch(e){ return "analyst-1"; } }
-  function setActor(a){ try { localStorage.setItem("soc_actor", a); } catch(e){} }
+  function setActor(a){
+    try { localStorage.setItem("soc_actor", a); } catch(e){}
+    updateActorLabel();
+  }
+  function updateActorLabel(){
+    const label = document.getElementById("soc-actor-label");
+    if (!label) return;
+    label.textContent = actor();
+    analysts().then(list=>{
+      const selected = list.find(a=>a.id===actor());
+      if (selected) label.textContent = selected.name + " · " + selected.role;
+    });
+  }
   function tierOf(role){ const m = /\d/.exec(String(role||"")); return m ? Number(m[0]) : 0; }
 
   // Keyed DOM patch: renderFn(item) returns the HTML of ONE element. Only rows whose HTML changed
@@ -209,29 +236,28 @@
     const mode = document.getElementById("soc-mode-label");
     const dot = document.getElementById("soc-status-dot");
     const pill = document.getElementById("soc-health-pill");
-    if (mode) mode.textContent = s.mode === "demo" ? "Demo" : "Live";
+    if (mode) {
+      const status = s.pipeline?.status;
+      const detail = status === "running" ? "Processing" : status === "error" ? "Pipeline error" : s.health?.band;
+      const label = (s.mode === "demo" ? "Demo" : "Live") + (detail ? " · " + detail : "");
+      if (mode.textContent !== label) mode.textContent = label;
+    }
     if (dot) {
       const st = s.pipeline && s.pipeline.status;
       dot.className = "statusdot" + (st==="running" ? " running" : st==="error" ? " error" : "");
     }
-    if (pill && s.health) {
+    if (pill) {
       pill.classList.remove("warn","err");
-      if (s.health.band === "Critical") pill.classList.add("err");
-      else if (s.health.band === "Warning") pill.classList.add("warn");
-      pill.title = (s.health.reasons||[]).join("; ");
-    }
-    const act = document.getElementById("soc-actor-label");
-    if (act && !act.dataset.filled){
-      act.dataset.filled = "1";
-      analysts().then(list=>{
-        const me = list.find(a=>a.id===actor());
-        act.textContent = actor() + "@lab.local" + (me ? " · " + me.role : "");
-      });
+      if (s.pipeline?.status === "error" || s.health?.band === "Critical") pill.classList.add("err");
+      else if (s.health?.band === "Warning") pill.classList.add("warn");
+      pill.title = (s.health?.reasons||[]).join("; ");
     }
   }
   function markDisconnected(){
     const dot = document.getElementById("soc-status-dot");
     const pill = document.getElementById("soc-health-pill");
+    const mode = document.getElementById("soc-mode-label");
+    if (mode) mode.textContent = "Disconnected";
     if (dot) dot.className = "statusdot error";
     if (pill) { pill.classList.add("err"); pill.title = "Dashboard server not reachable"; }
   }
@@ -239,10 +265,28 @@
   function mount(opts){
     const host = document.getElementById("app-chrome");
     if (!host) throw new Error("app-chrome container missing");
-    host.outerHTML = renderChrome(opts && opts.active);
-    return document.getElementById("soc-main");
+    const page = host.querySelector("main");
+    document.body.classList.add("soc-shell");
+    host.outerHTML = renderChrome(opts?.active);
+    const main = document.getElementById("soc-main");
+    if (page) main.append(...page.childNodes);
+    updateActorLabel();
+    const menu = document.querySelector(".soc-menu");
+    const sidebar = document.getElementById("soc-sidebar");
+    function setMenu(open){
+      menu.setAttribute("aria-expanded", String(open));
+      sidebar.classList.toggle("is-open", open);
+    }
+    menu.addEventListener("click", () => setMenu(menu.getAttribute("aria-expanded") === "false"));
+    document.addEventListener("keydown", e => {
+      if (e.key === "Escape" && sidebar.classList.contains("is-open") && menu.getClientRects().length){
+        setMenu(false);
+        menu.focus();
+      }
+    });
+    return main;
   }
 
   global.SOC = {mount, pollState, pollJSON, fetchState, patchList, apiGET, apiPOST, fmtDate, relTime, esc, NAV,
-                POST_HEADERS, analysts, actor, setActor, tierOf};
+                POST_HEADERS, analysts, actor, setActor, tierOf, updateChromeFromState, markDisconnected};
 })(window);

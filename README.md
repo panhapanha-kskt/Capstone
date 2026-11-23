@@ -107,6 +107,7 @@ attacks/         - Lab attack simulator (attack.c)
 infra/           - Docker Compose (Technitium+ELK), nginx lab config
 models/          - Trained model artifacts (gitignored)
 data/raw/        - Raw DNS logs from Technitium
+data/results/    - Saved evaluation CSVs
 docs/            - Full academic paper, technical docs, extension plan
 tests/           - Smoke tests
 ```
@@ -116,6 +117,8 @@ tests/           - Smoke tests
 - [Full Academic Paper](docs/week0/README_full.md)
 - [Technical Documentation](docs/week0/Document_DNS.md)
 - [Extension Plan](docs/week0/PLAN.md)
+- [v2 improvement plan](docs/PLAN_v2_improvement.md)
+- [Architecture and workflow diagrams](docs/architecture/workflow-visual.html)
 - [Week 6 progress report](docs/Week6/WEEK6_PROGRESS_REPORT.md) · [v3 evaluation results](docs/Week6/V3_EVALUATION_RESULTS.md) · [next tasks](docs/Week6/next%20task.md)
 
 ## Current Progress (2026-11-10)

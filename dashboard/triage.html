@@ -19,6 +19,8 @@
   .cnt b{color:#fff;margin-left:4px}
   .cnt.on{border-color:var(--green);color:#fff}
   .cnt.bad b{color:var(--red)}
+  .queue-status:not([hidden]){display:flex;align-items:center;gap:8px;padding:8px 10px;color:var(--orange)}
+  .counts span.cnt{cursor:default}
   .qfilters{display:flex;gap:6px;flex-wrap:wrap;padding:8px 10px;border-bottom:1px solid var(--border)}
   .qfilters select,.qfilters input{background:#262b3d;color:var(--text);border:1px solid var(--border);border-radius:3px;padding:4px 6px;font:inherit;font-size:12px}
   .qfilters input{flex:1;min-width:120px}
@@ -76,6 +78,7 @@
 /* audit fix F3: action buttons are inactive while a request is running */
 body.busy .acts .btn, body.busy dialog .btn:not([data-close]){opacity:.55;pointer-events:none}
 </style>
+<link rel="stylesheet" href="/static/css/shell.css">
 </head>
 <body>
 <div id="app-chrome"></div>

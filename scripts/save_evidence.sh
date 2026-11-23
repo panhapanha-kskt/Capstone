@@ -71,14 +71,16 @@ copy logs/multiseed_all.log eval multiseed_all.txt   # .txt: .gitignore ignores 
 
 # ── Week 4 unseen-tool results that survived (the only saved evidence for them) ──
 CSV_NOTE=""
-for f in tunnels_det_model_results.csv tunnels_dns_shell_model_results.csv; do
+for name in tunnels_det_model_results.csv tunnels_dns_shell_model_results.csv; do
+  f="data/results/$name"
+  [[ -f "$f" ]] || f="$name"  # accept results generated in the project root
   if [[ -f "$f" ]]; then
     check=$(python3 -c "
 import csv
 rows = list(csv.DictReader(open('$f', encoding='utf-8')))
 print(len(rows), sum(r.get('ml_label_A') == '1' for r in rows))" 2>/dev/null || echo "? ?")
     read -r n flagged <<< "$check"
-    CSV_NOTE+="- \`$f\`: $n rows, $flagged flagged as attack"
+    CSV_NOTE+="- \`$name\`: $n rows, $flagged flagged as attack"
     if [[ "$n" == "5000" && "$flagged" == "5000" ]]; then CSV_NOTE+=" (matches the Week 4 unseen-tool result 5,000 / 5,000)"$'\n'
     else CSV_NOTE+=" (does NOT match 5,000 / 5,000: from a different run; do not cite as the Week 4 result)"$'\n'; fi
     copy "$f" unseen_tool

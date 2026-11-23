@@ -46,7 +46,7 @@ LOG="logs/week5_eval_${STAMP}.log"
 SUMMARY="logs/week5_eval_${STAMP}_summary.txt"
 V3_LOG="logs/training_20261107_220017.log"
 CIC="data/external/cic/cic_benign_test.json"
-CIC_CSV="cic_benign_test_model_results.csv"   # path_a --infer overwrites this committed file
+CIC_CSV="cic_benign_test_model_results.csv"   # path_a --infer writes this in the project root
 
 exec > >(tee -a "$LOG") 2>&1
 echo "week5_eval.sh · $(date) · log: $LOG"
@@ -114,8 +114,7 @@ else
     TOTAL=$(sed -n 's/.*Total analyzed : *\([0-9]*\).*/\1/p' <<< "$OUT")
     FLAG=$(sed -n 's/.*Attack detected: *\([0-9]*\).*/\1/p' <<< "$OUT")
     if [[ -f "$CIC_CSV" ]]; then
-      cp "$CIC_CSV" "runs/$run/cic_test_results.csv"   # keep the scores; flagged domains are in here
-      git checkout -- "$CIC_CSV" 2>/dev/null           # restore the committed file
+      mv "$CIC_CSV" "runs/$run/cic_test_results.csv"   # keep the scores; flagged domains are in here
     fi
     if [[ -n "$FLAG" && -n "$TOTAL" ]]; then
       RATE=$(python3 -c "print(f'{$FLAG/$TOTAL:.3%}')")

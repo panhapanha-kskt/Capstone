@@ -28,6 +28,19 @@ The working tree contains shared SOC navigation, mobile layout, status display, 
 5. Existing dashboard regression tests pass, followed by targeted browser checks for the changed workflows.
 6. Update this plan with completed items, evidence, and remaining limitations before closing Week 8.
 
+## SOC platform follow-up track
+
+The 2026-11-23 read-only audit added [A10–A16](AUDIT_FINDINGS.md) and expanded A1. These are server, identity, and integration tasks beyond the interface-only work order above. Their priority order for continuing Week 8 is:
+
+| Priority | Findings | Work | Completion evidence |
+|---|---|---|---|
+| P0 | A1, A10, A11 | Authenticate analysts on the server; derive tier from the authenticated session; reject client-supplied `_approved_by`; apply one close/approval policy to case, single-alert, and bulk actions. | Tier 1 cannot impersonate Tier 2, forge approval, or bypass checklist/verdict rules through another route. A real second analyst must approve a qualifying close. |
+| P1 | A12, A16 | Remove the known training token default, define a separate model-admin role, and require authenticated operator permission for `/api/run`. | Default token fails; an authorized admin can train/promote; a Tier 1 request to run the pipeline is denied. |
+| P2 | A13, A14 | Integrate and verify outbound delivery and response actions one connector at a time. Add a manager-side endpoint inventory/heartbeat source for Windows, macOS, and Ubuntu with per-metric timestamps. | External receiver records a test alert; a response action has an externally verified outcome; disconnected/stale/unknown agents display distinctly without invented values. |
+| P3 | A15, A8 | Define event/case retention and search beyond the 150-alert feed; complete a real-mode walkthrough with Technitium and any configured exporters. | A retained event and case can be reconstructed after restart; page counts reconcile with retained data; real-mode evidence names its source and timestamps. |
+
+Do not treat a hidden button, browser actor selector, CSRF header, or simulated incident action as proof that these backend tasks are complete. The running audit instance was a loopback-bound demo, so synthetic alert and SLA counts are not acceptance evidence for production monitoring.
+
 ## Dependencies and boundaries
 
 The real-mode walkthrough needs a reachable dashboard with representative Technitium logs. Elasticsearch/Kibana export verification additionally needs the configured stack. If those services are unavailable, complete the local interface checks and record the external verification as pending. Model and training fixes A2–A7 in the [audit](AUDIT_FINDINGS.md) need separate implementation and evaluation work. Authentication A1 requires server-side identity and authorization design; an actor selector in the browser cannot provide it.

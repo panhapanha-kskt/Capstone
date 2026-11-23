@@ -457,7 +457,7 @@
         </section>
 
         <section class="panel c4">
-          <div class="p-head">ALERTS BY STATUS <span class="close-details">Close details</span></div>
+          <div class="p-head">ALERTS BY STATUS · LAST 24 H <span class="close-details">Close details</span></div>
           <div class="p-body">
             <div class="donut-wrap">
               <div class="donut-box"><svg id="stDonut" viewBox="0 0 120 120"></svg>
@@ -472,7 +472,7 @@
         </section>
 
         <section class="panel c4">
-          <div class="p-head">ALERTS BY SLA <span class="close-details">Close details</span></div>
+          <div class="p-head">ACK SLA · LAST 24 H <span class="close-details">Close details</span></div>
           <div class="p-body">
             <div class="donut-wrap">
               <div class="donut-box"><svg id="slaDonut" viewBox="0 0 120 120"></svg>
@@ -496,19 +496,19 @@
 
         <!-- bottom charts -->
         <section class="panel c6">
-          <div class="p-head">AVERAGE LOG RATE (per second)</div>
+          <div class="p-head">AVERAGE QUERY RATE (per second)</div>
           <div class="p-body chart-body"><svg id="rateChart" width="100%" height="100%"></svg></div>
         </section>
 
         <section class="panel c6">
-          <div class="p-head">LOG COLLECTION BREAKDOWN
+          <div class="p-head">CUMULATIVE ALERTS BY SEVERITY
             <span class="chart-legend" id="stackLegend"></span>
           </div>
           <div class="p-body chart-body"><svg id="stackChart" width="100%" height="100%"></svg></div>
         </section>
 
         <section class="panel c6">
-          <div class="p-head">THREAT DETECTION TREND
+          <div class="p-head">NEW ALERTS PER RUN
             <span class="chart-legend" id="trendLegend"></span>
           </div>
           <div class="p-body chart-body"><svg id="trendChart" width="100%" height="100%"></svg></div>
@@ -535,7 +535,12 @@ SOC.mount({active:"soc"});
     const CAT_COLORS = [C.orange, C.yellow, C.green, C.blue, C.purple, C.cyan, C.red];
     const fmt = n => n >= 1e6 ? (n / 1e6).toFixed(1) + "M" : n >= 1000 ? (n / 1000).toFixed(1) + "K" : String(n ?? 0);
     const esc = s => String(s ?? "").replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
-    const hhmm = t => { const d = new Date(t * 1000); return String(d.getHours()).padStart(2, "0") + ":" + String(d.getMinutes()).padStart(2, "0"); };
+    const timeLabel = (t, seconds) => {
+      const d = new Date(t * 1000);
+      const p = n => String(n).padStart(2, "0");
+      return p(d.getHours()) + ":" + p(d.getMinutes()) + (seconds ? ":" + p(d.getSeconds()) : "");
+    };
+    const showSeconds = pts => pts.length > 1 && pts[pts.length - 1].t - pts[0].t < 3600;
 
     /* ── donut ─────────────────────────────────── */
     function donut(svgId, parts) {                       // parts: [{v,color}]
@@ -602,7 +607,7 @@ SOC.mount({active:"soc"});
             <path d="${line}" fill="none" stroke="${color}" stroke-width="1.6"/>`;
         pts.forEach((p, i) => { out += `<circle cx="${x(i)}" cy="${y(p.v)}" r="2.2" fill="${color}"/>`; });
         const step = Math.max(1, Math.ceil(pts.length / 6));
-        pts.forEach((p, i) => { if (i % step === 0) out += `<text x="${x(i)}" y="${h - 5}" text-anchor="middle" class="axis">${hhmm(p.t)}</text>`; });
+        pts.forEach((p, i) => { if (i % step === 0) out += `<text x="${x(i)}" y="${h - 5}" text-anchor="middle" class="axis">${timeLabel(p.t, showSeconds(pts))}</text>`; });
       }
       svg.innerHTML = out;
     }
@@ -630,7 +635,7 @@ SOC.mount({active:"soc"});
           yTop -= bh;
         });
         const step = Math.max(1, Math.ceil(n / 6));
-        if (i % step === 0) out += `<text x="${cx}" y="${h - 5}" text-anchor="middle" class="axis">${hhmm(p.t)}</text>`;
+        if (i % step === 0) out += `<text x="${cx}" y="${h - 5}" text-anchor="middle" class="axis">${timeLabel(p.t, showSeconds(pts))}</text>`;
       });
       svg.innerHTML = out;
     }
@@ -656,7 +661,7 @@ SOC.mount({active:"soc"});
       });
       if (pts.length) {
         const step = Math.max(1, Math.ceil(pts.length / 6));
-        pts.forEach((p, i) => { if (i % step === 0) out += `<text x="${x(i)}" y="${h - 5}" text-anchor="middle" class="axis">${hhmm(p.t)}</text>`; });
+        pts.forEach((p, i) => { if (i % step === 0) out += `<text x="${x(i)}" y="${h - 5}" text-anchor="middle" class="axis">${timeLabel(p.t, showSeconds(pts))}</text>`; });
       }
       svg.innerHTML = out;
     }
@@ -685,6 +690,7 @@ SOC.mount({active:"soc"});
       return (sec / 3600).toFixed(1) + " h";
     }
     let metricsBusy = false;
+    let latestState = null;
     async function loadMetrics() {
       if (metricsBusy) return;
       metricsBusy = true;
@@ -694,6 +700,43 @@ SOC.mount({active:"soc"});
         const m = await r.json();
         const fpr = m.false_positive_rate;
         const judged = Object.values(m.verdicts || {}).reduce((a, b) => a + b, 0);
+        const counts = m.status_counts || {};
+        const active = ["Open", "Acknowledged", "Investigating", "Escalated"].reduce((n, status) => n + (counts[status] || 0), 0);
+        const current = latestState || {};
+        const currentHigh = current.totals?.by_severity?.High || 0;
+        const band = current.health?.band || "Unknown";
+        opRow([
+          { icon: "●", val: active, label: "Active Alerts", hint: "Open + Acknowledged + Investigating + Escalated" },
+          { icon: "◔", val: counts.Open || 0, cls: "warn", label: "Unacknowledged", hint: "Untouched alerts count as Open" },
+          { icon: "◑", val: counts.Investigating || 0, label: "Under Investigation" },
+          { icon: "⮝", val: counts.Escalated || 0, cls: "bad", label: "Escalated" },
+          { icon: "✓", val: counts.Resolved || 0, label: "Resolved" },
+          { icon: "🔺", val: currentHigh, cls: "warn", label: "High Severity (feed)" },
+          { icon: "🖳", val: (current.sources || []).length, label: "Collection Sources" },
+          { icon: "♥", val: band, cls: band === "Warning" ? "warn" : band === "Critical" ? "bad" : "", label: "Pipeline Health",
+            hint: (current.health?.reasons || []).join("; ") },
+        ]);
+
+        const statusItems = [
+          { label: "Open", v: counts.Open || 0, color: C.red },
+          { label: "Acknowledged", v: counts.Acknowledged || 0, color: C.orange },
+          { label: "Investigating", v: counts.Investigating || 0, color: C.yellow },
+          { label: "Escalated", v: counts.Escalated || 0, color: C.purple },
+          { label: "Resolved", v: counts.Resolved || 0, color: C.green },
+          { label: "Closed", v: counts.Closed || 0, color: C.blue },
+        ];
+        donut("stDonut", statusItems);
+        $("stTotal").textContent = m.alerts_in_window;
+        $("stLegend").innerHTML = legendHTML(statusItems, m.alerts_in_window);
+
+        const breached = m.ack_sla_breached || 0;
+        const slaItems = [
+          { label: "Not breached", v: Math.max(m.alerts_in_window - breached, 0), color: C.green2 },
+          { label: "Breached", v: breached, color: C.orange },
+        ];
+        donut("slaDonut", slaItems);
+        $("slaTotal").textContent = m.alerts_in_window;
+        $("slaLegend").innerHTML = legendHTML(slaItems, m.alerts_in_window);
         $("perfRow").innerHTML = [
           { icon: "⏱", val: dur(m.mttd_seconds.median), label: "MTTD (median)", hint: `n=${m.mttd_seconds.n}, p90 ${dur(m.mttd_seconds.p90)}` },
           { icon: "✋", val: dur(m.mtta_seconds.median), label: "MTTA (median)", hint: `n=${m.mtta_seconds.n}, p90 ${dur(m.mtta_seconds.p90)}` },
@@ -734,6 +777,7 @@ SOC.mount({active:"soc"});
     function render(s) {
       if (s.version === lastVersion) return;
       lastVersion = s.version;
+      latestState = s;
 
       const t = s.totals || {}, sev = t.by_severity || {}, feed = s.feed || [];
       const high = sev.High || 0, med = sev.Medium || 0, low = sev.Low || 0;
@@ -752,33 +796,6 @@ SOC.mount({active:"soc"});
       ]);
       loadMetrics();
 
-      // Week 6 operational row — grounded in persisted alert management + /api/health
-      const mgmt = feed.map(f => f.management).filter(Boolean);
-      const open = mgmt.filter(m => m.status === "Open").length;
-      const ack  = mgmt.filter(m => m.status === "Acknowledged").length;
-      const inv  = mgmt.filter(m => m.status === "Investigating").length;
-      const esc_ = mgmt.filter(m => m.status === "Escalated" || m.escalated).length;
-      const res  = mgmt.filter(m => m.status === "Resolved").length;
-      // "Derived-Open" = feed items without a management record yet, treated as Open-ish
-      const derivedOpen = feed.filter(f => !f.management).length;
-      const unack = open + derivedOpen;
-      const srcCount = (s.sources || []).length;
-      const band = (s.health && s.health.band) || "Unknown";
-      const bandCls = band === "Healthy" ? "" : band === "Warning" ? "warn" : band === "Critical" ? "bad" : "";
-      opRow([
-        { icon: "●", val: open + ack + inv + esc_, label: "Active Alerts",
-          hint: "Open + Acknowledged + Investigating + Escalated (persisted only)" },
-        { icon: "◔", val: unack, cls: "warn", label: "Unacknowledged",
-          hint: "Open or Derived-Open (no analyst touch yet)" },
-        { icon: "◑", val: inv, label: "Under Investigation" },
-        { icon: "⮝", val: esc_, cls: "bad", label: "Escalated" },
-        { icon: "✓", val: res, label: "Resolved" },
-        { icon: "🔺", val: high, cls: "warn", label: "Critical Events (feed)" },
-        { icon: "🖳", val: srcCount, label: "Collection Sources" },
-        { icon: "♥", val: band, cls: bandCls, label: "Pipeline Health",
-          hint: (s.health && (s.health.reasons||[]).join("; ")) || "" },
-      ]);
-
       // 2. severity donut
       const sevItems = [
         { label: "High", v: high, color: C.red }, { label: "Medium", v: med, color: C.orange },
@@ -787,41 +804,25 @@ SOC.mount({active:"soc"});
       $("sevTotal").textContent = total;
       $("sevLegend").innerHTML = legendHTML(sevItems, total);
 
-      // 3. status donut (derived: Escalated=new, Confirmed=high, In Progress=medium, Closed=rest)
-      // feed holds the newest 150 alerts; alerts older than that count as Closed so
-      // the donut total always equals totals.alerts, same as the classic dashboard
-      const older = Math.max(total - feed.length, 0);
-      const nNew = feed.filter(f => f.is_new).length;
-      const nConf = feed.filter(f => !f.is_new && f.severity === "High").length;
-      const nProg = feed.filter(f => !f.is_new && f.severity === "Medium").length;
-      const nClos = Math.max(feed.length - nNew - nConf - nProg, 0) + older;
-      const stItems = [
-        { label: "Escalated", v: nNew, color: C.red }, { label: "Closed (Resolved)", v: nClos, color: C.green },
-        { label: "In Progress", v: nProg, color: C.yellow }, { label: "Confirmed", v: nConf, color: C.orange }];
-      donut("stDonut", stItems);
-      $("stTotal").textContent = total;
-      $("stLegend").innerHTML = legendHTML(stItems, total);
-
-      // 4. SLA donut: Met = alerts already triaged by a rule with MITRE mapping
-      const mapped = feed.filter(f => (f.techniques || []).length).length + older;
-      const slaItems = [
-        { label: "Met", v: mapped, color: C.green2 },
-        { label: "Unmapped", v: Math.max(total - mapped, 0), color: C.orange }];
-      donut("slaDonut", slaItems.filter(i => i.v).length ? slaItems : [{ label: "Met", v: 1, color: C.green2 }]);
-      $("slaTotal").textContent = total;
-      $("slaLegend").innerHTML = legendHTML(slaItems, total || 1);
-
-      // 5. categories
+      // 3. categories
       catBars(t.by_rule);
 
-      // 6-8. history charts
+      // History stores cumulative totals. Use adjacent snapshots for rates and new alerts.
       const hist = s.history || [];
-      // avg log rate = delta queries / delta t between runs
-      const rate = [];
+      const changes = [];
       for (let i = 1; i < hist.length; i++) {
-        const dt = Math.max(hist[i].t - hist[i - 1].t, 1);
-        rate.push({ t: hist[i].t, v: Math.max((hist[i].queries - hist[i - 1].queries) / dt, 0) });
+        const previous = hist[i - 1], current = hist[i];
+        const dt = current.t - previous.t;
+        if (dt <= 0 || current.total < previous.total || current.queries < previous.queries) continue;
+        changes.push({
+          t: current.t,
+          queriesPerSecond: (current.queries - previous.queries) / dt,
+          total: current.total - previous.total,
+          high: Math.max(current.high - previous.high, 0),
+          medium: Math.max(current.medium - previous.medium, 0),
+        });
       }
+      const rate = changes.slice(-24).map(p => ({ t: p.t, v: p.queriesPerSecond }));
       if (!rate.length && hist.length) rate.push({ t: hist[0].t, v: 0 });
       areaChart("rateChart", rate.slice(-24), C.blue);
 
@@ -830,8 +831,8 @@ SOC.mount({active:"soc"});
       stackChart("stackChart", stackPts, stackSeries);
       miniLegend("stackLegend", stackSeries);
 
-      const trendSeries = [{ label: "Security Event", color: C.yellow }, { label: "Triaged Alerts", color: C.orange }, { label: "Escalated Alerts", color: C.red }];
-      const trendPts = hist.slice(-24).map(p => ({ t: p.t, vals: [p.total || 0, p.medium || 0, p.high || 0] }));
+      const trendSeries = [{ label: "All", color: C.yellow }, { label: "High", color: C.red }, { label: "Medium", color: C.orange }];
+      const trendPts = changes.slice(-24).map(p => ({ t: p.t, vals: [p.total, p.high, p.medium] }));
       trendChart("trendChart", trendPts, trendSeries);
       miniLegend("trendLegend", trendSeries);
     }

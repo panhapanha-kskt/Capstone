@@ -3,14 +3,50 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Pipeline Health</title>
+<title>SOC Health Check</title>
 <link rel="stylesheet" href="/static/css/soc.css">
 <style>
-  .big-tile{padding:20px 24px}
-  .big-tile .value{font-size:30px}
+  .big-tile{padding:16px 18px}
+  .big-tile .value{font-size:27px}
   .spark{display:block;width:100%;height:60px;background:var(--panel2);border-radius:3px;margin-top:8px}
   .spark path{fill:none;stroke:var(--green);stroke-width:1.6}
   .spark .area{fill:var(--green);opacity:.18;stroke:none}
+  .health-page .page-head{align-items:baseline}
+  .health-page .page-head .subtitle{min-width:0;overflow-wrap:anywhere}
+  .health-page .tilerow{grid-template-columns:repeat(auto-fit,minmax(min(100%,180px),1fr))}
+  .health-page .tile,.health-page .panel{min-width:0}
+  .health-page .tile :is(.value,.foot){overflow-wrap:anywhere}
+  .health-page .kvtable{grid-template-columns:minmax(110px,200px) minmax(0,1fr)}
+  .health-page .kvtable .v{overflow-wrap:anywhere;word-break:normal}
+  .health-page .table-scroll{max-width:100%;overflow-x:auto}
+  .health-page .data{min-width:480px}
+  .health-page .integrations-table{min-width:760px}
+  .health-page .data td{white-space:normal;overflow-wrap:anywhere}
+  .health-page .freshness .status{margin-left:auto}
+  .health-page .freshness .status.bad{color:#ff897f}
+  .health-page .health-note{overflow-wrap:anywhere}
+  .health-page .data thead th{cursor:default;user-select:text}
+  .health-page .data tbody tr:hover{cursor:default}
+  .health-page .connection-note{margin:12px 18px 0}
+  .health-page .health-details summary{cursor:pointer;font-size:14px;font-weight:600;color:#e7eaf2}
+  .health-page .health-details summary:focus-visible{outline:2px solid var(--green);outline-offset:3px}
+  .health-page .detail-body{margin-top:14px}
+  .health-page .detail-body h2{margin-top:16px}
+  .health-page .detail-body h2:first-child{margin-top:0}
+  .health-page .detail-body .kvtable{margin-bottom:14px}
+  .health-page .endpoint-status{display:flex;gap:12px;align-items:flex-start;flex-wrap:wrap}
+  .health-page .endpoint-status p{flex:1;min-width:min(100%,260px);color:var(--muted);font-size:12px}
+  .health-page .health-note a{color:#a8cffa}
+  .health-page .table-scroll:focus-visible{outline:2px solid var(--green);outline-offset:2px}
+  .soc-shell .topbar .pill.demo{color:var(--muted)}
+  @media(max-width:600px){
+    .health-page .page-head{display:block}
+    .health-page .page-head .subtitle{display:block;margin:6px 0 0}
+    .health-page .tilerow{grid-template-columns:1fr}
+    .health-page .kvtable{grid-template-columns:1fr}
+    .health-page .kvtable .v{margin-bottom:7px}
+    .health-page .freshness .status{margin-left:0;width:100%}
+  }
 </style>
 <link rel="stylesheet" href="/static/css/shell.css">
 </head>
@@ -22,72 +58,146 @@
 const main = SOC.mount({active:"health"});
 main.innerHTML = `
   <div class="page-head">
-    <h1>Pipeline Health</h1>
-    <span class="subtitle">Grounded in actual pipeline + collection telemetry. Dashboard server being up ≠ pipeline healthy.</span>
+    <h1>Health Check</h1>
+    <span class="subtitle">Current pipeline signal and data freshness.</span>
   </div>
-  <div class="freshness" id="freshness"></div>
-  <div class="tilerow" id="tiles"></div>
+  <div class="freshness" id="freshness"><span class="status" id="check-status">Connecting…</span><span id="state-generated"></span></div>
+  <div class="nag bad connection-note" id="connection-note" role="status" aria-live="polite" hidden></div>
+  <div class="tilerow" id="tiles"><div class="tile"><div class="label">Pipeline telemetry</div><div class="value">Loading…</div></div></div>
   <div class="panel">
-    <h2>Drift &amp; score health (from <code>monitoring_report.json</code>)</h2>
-    <div id="drift-body"></div>
+    <h2>Endpoint agent health</h2>
+    <div class="endpoint-status">
+      <span class="chip unk">Not connected</span>
+      <p>Windows, macOS, and Ubuntu agent connectivity and system metrics are unavailable. This server has no endpoint heartbeat or inventory feed. <a href="/devices">DNS collection sources</a> are separate.</p>
+    </div>
   </div>
-  <div class="panel">
-    <h2>Recent pipeline run history</h2>
-    <div class="sub">Last 30 runs from in-memory <code>STATE.history</code>; resets on server restart.</div>
-    <svg id="spark" class="spark" viewBox="0 0 400 60" preserveAspectRatio="none" role="img" aria-label="Alerts per pipeline run"></svg>
-    <div id="hist-summary" style="color:var(--muted);font-size:11.5px;margin-top:6px"></div>
-    <div class="sub" style="margin-top:10px">Max feature drift (PSI) per run. PSI above 0.25 is major drift.</div>
-    <svg id="psi-spark" class="spark" viewBox="0 0 400 60" preserveAspectRatio="none" role="img" aria-label="Maximum PSI per pipeline run"></svg>
-    <div id="psi-summary" style="color:var(--muted);font-size:11.5px;margin-top:6px"></div>
-  </div>
-  <div class="panel">
-    <h2>Deployed model (<code>/api/model</code>)</h2>
-    <div id="model-body"><div class="nag">Loading…</div></div>
-  </div>
-  <div class="panel">
-    <h2>SOC tool exports</h2>
-    <div class="sub">Configured in <code>dashboard/data/response_integrations.json</code> (<code>elasticsearch</code>, <code>syslog_cef</code>, <code>webhook</code>). Off by default.</div>
-    <div id="integ-body"></div>
-  </div>
+  <details class="panel health-details">
+    <summary>Pipeline diagnostics</summary>
+    <div class="detail-body">
+      <div class="kvtable" id="pipeline-details"></div>
+      <h2>Drift and score report</h2>
+      <div id="drift-body"><div class="nag">Loading monitoring report…</div></div>
+      <h2>Run history</h2>
+      <div class="sub" id="history-context">Cumulative alert totals at the last 30 runs; history resets on server restart.</div>
+      <svg id="spark" class="spark" viewBox="0 0 400 60" preserveAspectRatio="none" role="img" aria-label="Cumulative alert total at each pipeline run"></svg>
+      <div id="hist-summary" class="sub"></div>
+      <div class="sub">Maximum feature drift (PSI) when a report was available. Dashed line marks 0.25.</div>
+      <svg id="psi-spark" class="spark" viewBox="0 0 400 60" preserveAspectRatio="none" role="img" aria-label="Maximum PSI per pipeline run"></svg>
+      <div id="psi-summary" class="sub"></div>
+    </div>
+  </details>
+  <details class="panel health-details">
+    <summary>Model metadata</summary>
+    <div class="detail-body">
+      <div class="sub" id="model-context">Configuration and training history, not a model-service heartbeat.</div>
+      <div id="model-status" role="status" aria-live="polite"></div>
+      <div id="model-body"><div class="nag">Loading…</div></div>
+    </div>
+  </details>
+  <details class="panel health-details">
+    <summary>Exporter status</summary>
+    <div class="detail-body">
+      <div class="sub">Configured in <code>data/response_integrations.json</code>; off by default.</div>
+      <div id="integ-body"></div>
+    </div>
+  </details>
 `;
+main.classList.add("health-page");
 
 function bandCls(b){
   return b === "Healthy" ? "good" : b === "Warning" ? "warn" : b === "Critical" ? "bad" : "";
 }
+function updateShellStatus(state){
+  SOC.updateChromeFromState(state);
+  const pill = document.getElementById("soc-health-pill");
+  if (pill) pill.classList.toggle("demo", state.mode === "demo" && state.pipeline?.status !== "error");
+  if (state.mode !== "demo" || state.pipeline?.status === "error") return;
+  const label = document.getElementById("soc-mode-label");
+  if (label) label.textContent = "Demo · Synthetic";
+  if (pill){
+    pill.classList.remove("warn", "err");
+    pill.title = "Synthetic demo data; no endpoint agent health is available";
+  }
+}
+function epochDate(seconds){
+  const d = new Date(Number(seconds) * 1000);
+  return seconds != null && seconds !== "" && Number.isFinite(d.getTime()) ? SOC.fmtDate(d.toISOString()) : "—";
+}
+function fixed(value, digits, fallback="—"){
+  const n = Number(value);
+  return value != null && value !== "" && Number.isFinite(n) ? n.toFixed(digits) : fallback;
+}
+let latestHealth = null;
+let latestState = null;
+let latestStateReceivedAt = null;
+let lastSuccessfulCheck = null;
+let stateError = null;
+let latestMode = null;
+let lastConnectionMessage = "";
+let lastModel = null;
+function alertsAge(health){
+  const age = Number(health.alerts_file_age_seconds);
+  if (health.alerts_file_age_seconds == null || !Number.isFinite(age)) return "n/a";
+  const elapsed = latestStateReceivedAt ? (Date.now()-latestStateReceivedAt)/1000 : 0;
+  return Math.max(0,Math.round(age+elapsed))+"s";
+}
 
 function renderTiles(health, mode){
+  const demo = mode === "demo";
   const tiles = [
-    {label:"Pipeline Health", value:health.band || "Unknown", cls:bandCls(health.band),
-     foot:(health.reasons||[]).join("; ") || "—", big:true},
+    {label:demo ? "Demo pipeline state" : "Pipeline Health", value:demo ? "Synthetic" : health.band || "Unknown", cls:demo ? "" : bandCls(health.band),
+     foot:demo ? "Synthetic in-memory alerts; not production health" : (health.reasons||[]).join("; ") || "—", big:true},
     {label:"Pipeline Status", value:health.pipeline_status || "—",
-     foot:"Runs: " + (health.pipeline_runs||0)},
-    {label:"Last Pipeline Run", value:SOC.relTime(health.pipeline_last_run_at),
-     foot:health.pipeline_last_run_at ? SOC.fmtDate(new Date(health.pipeline_last_run_at*1000).toISOString()) : "never"},
-    {label:"Last Duration", value:(health.pipeline_last_duration!=null?Number(health.pipeline_last_duration).toFixed(1)+"s":"—"), foot:""},
-    {label:"Alerts File Age", value:(health.alerts_file_age_seconds!=null?Math.round(health.alerts_file_age_seconds)+"s":"n/a"),
-     foot: health.alerts_file_mtime ? SOC.fmtDate(new Date(health.alerts_file_mtime*1000).toISOString()) : (mode==="demo"?"demo (in-memory)":"no file yet")},
-    {label:"Retrain Recommended", value:(health.retrain_recommended===true?"Yes":health.retrain_recommended===false?"No":"n/a"),
-     cls:(health.retrain_recommended?"warn":""), foot:"from monitor_report"},
-    {label:"Pipeline Error", value:(health.pipeline_error?"Yes":"No"), cls:(health.pipeline_error?"bad":""),
-     foot:(health.pipeline_error||"").slice(0,80) || "—"},
+     foot:"Runs: " + (health.pipeline_runs ?? "—")},
+    {label:"Last Pipeline Run", value:health.pipeline_last_run_at ? SOC.relTime(health.pipeline_last_run_at) : "never",
+     foot:health.pipeline_last_run_at ? epochDate(health.pipeline_last_run_at) : "never", id:"run-age"},
+    {label:"Alerts File Age", value:demo ? (health.has_alerts_file ? "in memory" : "n/a") : health.alerts_file_mtime ? alertsAge(health) : "n/a",
+     foot: demo ? "demo data, no alerts file" : health.alerts_file_mtime ? epochDate(health.alerts_file_mtime) : "no file yet", id:"alerts-age"},
   ];
   document.getElementById("tiles").innerHTML = tiles.map(t=>`
     <div class="tile ${t.cls||""} ${t.big?"big-tile":""}">
       <div class="label">${SOC.esc(t.label)}</div>
-      <div class="value">${SOC.esc(t.value)}</div>
+      <div class="value"${t.id ? ` id="${t.id}"` : ""}>${SOC.esc(t.value)}</div>
       <div class="foot">${SOC.esc(t.foot)}</div>
     </div>`).join("");
 }
 
-function renderFreshness(health, pipeline){
-  const nowIso = SOC.fmtDate(new Date().toISOString());
-  const parts = [
-    ["Last pipeline run", health.pipeline_last_run_at ? SOC.fmtDate(new Date(health.pipeline_last_run_at*1000).toISOString()) : "never"],
-    ["Alerts file mtime", health.alerts_file_mtime ? SOC.fmtDate(new Date(health.alerts_file_mtime*1000).toISOString()) : "no file"],
-    ["Dashboard tick", nowIso],
+function renderDiagnostics(health, mode){
+  const rows = [
+    ["Runs", health.pipeline_runs ?? "—"],
+    ["Last run duration", health.pipeline_last_duration == null ? "—" : fixed(health.pipeline_last_duration,1) + "s"],
+    ["Alerts file modified", mode === "demo" ? "synthetic data in memory" : health.alerts_file_mtime ? epochDate(health.alerts_file_mtime) : "no file"],
+    ["Retrain recommended", mode === "demo" ? "not evaluated" : health.retrain_recommended === true ? "Yes" : health.retrain_recommended === false ? "No" : "unknown"],
+    ["Pipeline error", health.pipeline_error || (health.pipeline_status === "error" ? "Reported; no details available" : "None reported")],
   ];
-  document.getElementById("freshness").innerHTML = parts.map(([k,v])=>`<span><b>${SOC.esc(k)}:</b> ${SOC.esc(v)}</span>`).join("")
-    + '<span style="margin-left:auto;color:var(--dim)">These three timestamps are intentionally separate — the dashboard being fresh does not mean the pipeline is fresh.</span>';
+  document.getElementById("pipeline-details").innerHTML = rows.map(([key,value])=>
+    `<span class="k">${SOC.esc(key)}</span><span class="v">${SOC.esc(value)}</span>`).join("");
+}
+function renderFreshness(serverNow){
+  document.getElementById("state-generated").textContent = serverNow ? `State generated ${epochDate(serverNow)}` : "";
+  paintClock();
+}
+function paintClock(){
+  const status = document.getElementById("check-status");
+  if (status){
+    status.classList.toggle("bad", Boolean(stateError));
+    status.textContent = stateError ? "State check failed" : lastSuccessfulCheck ?
+      `Server checked ${Math.floor((Date.now()-lastSuccessfulCheck)/1000)}s ago` : "Connecting…";
+  }
+  const note = document.getElementById("connection-note");
+  if (note){
+    note.hidden = !stateError;
+    const message = stateError ? `State check failed: ${stateError}. ${latestState ? "Values shown may be stale." : "No health data is available."}` : "";
+    if (message !== lastConnectionMessage){
+      note.textContent = message;
+      lastConnectionMessage = message;
+    }
+  }
+  if (!latestHealth) return;
+  const run = document.getElementById("run-age");
+  if (run && latestHealth.pipeline_last_run_at) run.textContent = SOC.relTime(latestHealth.pipeline_last_run_at);
+  const alerts = document.getElementById("alerts-age");
+  if (alerts && latestHealth.alerts_file_mtime && latestMode !== "demo") alerts.textContent = alertsAge(latestHealth);
 }
 
 function renderDrift(monitoring){
@@ -103,21 +213,21 @@ function renderDrift(monitoring){
   rows.push(`<div class="kvtable">
     <span class="k">Live input</span><span class="v">${SOC.esc(monitoring.live_input||"—")}</span>
     <span class="k">Trained on</span><span class="v">${SOC.esc(monitoring.trained_on||"—")}</span>
-    <span class="k">Retrain recommended</span><span class="v">${monitoring.retrain_recommended? '<span class="chip warn">Yes</span>' : '<span class="chip ok">No</span>'}</span>
-    <span class="k">Alert volume</span><span class="v">${SOC.esc(av.n_alerts||0)} alerts (rate ${SOC.esc((av.alert_rate||0).toFixed ? av.alert_rate.toFixed(4) : av.alert_rate)})</span>
+    <span class="k">Retrain recommended</span><span class="v">${monitoring.retrain_recommended===true? '<span class="chip warn">Yes</span>' : monitoring.retrain_recommended===false ? '<span class="chip ok">No</span>' : '<span class="chip unk">Unknown</span>'}</span>
+    <span class="k">Alert volume</span><span class="v">${SOC.esc(av.n_alerts ?? "—")} alerts (rate ${SOC.esc(fixed(av.alert_rate,4,"n/a"))})</span>
     <span class="k">Score column</span><span class="v">${SOC.esc(sh.column||"—")}</span>
-    <span class="k">Score mean</span><span class="v">${sh.mean!=null?Number(sh.mean).toFixed(4):"—"}</span>
-    <span class="k">Saturated high/low</span><span class="v">${sh.frac_saturated_high!=null?Number(sh.frac_saturated_high).toFixed(3):"—"} / ${sh.frac_saturated_low!=null?Number(sh.frac_saturated_low).toFixed(3):"—"}</span>
+    <span class="k">Score mean</span><span class="v">${fixed(sh.mean,4)}</span>
+    <span class="k">Saturated high/low</span><span class="v">${fixed(sh.frac_saturated_high,3)} / ${fixed(sh.frac_saturated_low,3)}</span>
   </div>`);
   if (Object.keys(drift).length){
     rows.push(`<h3 style="font-size:13px;color:#e7eaf2;margin:12px 0 6px">Per-feature drift</h3>`);
-    rows.push(`<table class="data" style="min-width:auto"><thead><tr><th>Feature</th><th>PSI</th><th>Band</th></tr></thead><tbody>${
+    rows.push(`<div class="table-scroll" role="region" aria-label="Per-feature drift" tabindex="0"><table class="data"><thead><tr><th>Feature</th><th>PSI</th><th>Band</th></tr></thead><tbody>${
       Object.entries(drift).map(([k,v])=>{
         const b = (v && v.band) || "unknown";
-        const cls = (b==="major"||b==="high") ? "warn" : b==="moderate" ? "warn" : "ok";
-        return `<tr><td>${SOC.esc(k)}</td><td class="num">${v && v.psi!=null ? Number(v.psi).toFixed(3) : "—"}</td><td><span class="chip ${cls}">${SOC.esc(b)}</span></td></tr>`;
+        const cls = (b==="major"||b==="high"||b==="moderate") ? "warn" : b==="low"||b==="none" ? "ok" : "unk";
+        return `<tr><td>${SOC.esc(k)}</td><td class="num">${fixed(v?.psi,3)}</td><td><span class="chip ${cls}">${SOC.esc(b)}</span></td></tr>`;
       }).join("")
-    }</tbody></table>`);
+    }</tbody></table></div>`);
   }
   if ((monitoring.reasons||[]).length){
     rows.push('<h3 style="font-size:13px;color:#e7eaf2;margin:12px 0 6px">Reasons</h3>');
@@ -130,49 +240,57 @@ function renderSparkline(history){
   const svg = document.getElementById("spark");
   const pts = (history||[]).slice(-30);
   if (!pts.length){ svg.innerHTML = ""; document.getElementById("hist-summary").textContent = "no history yet"; return; }
-  const maxT = Math.max(...pts.map(p=>p.total||0), 1);
+  const valid = pts.map((p,i)=>({i, value:p?.total})).filter(p=>typeof p.value === "number" && Number.isFinite(p.value) && p.value >= 0);
+  if (!valid.length){ svg.innerHTML = ""; document.getElementById("hist-summary").textContent = "no valid alert totals in history"; return; }
+  const low = Math.min(...valid.map(p=>p.value));
+  const high = Math.max(...valid.map(p=>p.value));
+  const span = Math.max(high-low, 1);
+  const floor = Math.max(0, low-span*0.1);
+  const ceiling = high+span*0.1;
   const W = 400, H = 60;
   const xs = (i)=> pts.length===1 ? W/2 : (i/(pts.length-1))*W;
-  const ys = (v)=> H - (v/maxT)*(H-6) - 3;
-  const linePath = pts.map((p,i)=>`${i===0?"M":"L"}${xs(i).toFixed(1)},${ys(p.total||0).toFixed(1)}`).join(" ");
-  const areaPath = linePath + ` L${W},${H} L0,${H} Z`;
-  svg.innerHTML = `<path class="area" d="${areaPath}"/><path d="${linePath}"/>`;
+  const ys = (v)=> H - ((v-floor)/(ceiling-floor))*(H-6) - 3;
+  const linePath = valid.map((p,j)=>`${j && p.i === valid[j-1].i+1 ? "L" : "M"}${xs(p.i).toFixed(1)},${ys(p.value).toFixed(1)}`).join(" ");
+  const area = valid.length > 1 && valid.length === pts.length ?
+    `<path class="area" d="${linePath} L${xs(valid[valid.length-1].i)},${H} L${xs(valid[0].i)},${H} Z"/>` : "";
+  const marker = valid.length === 1 ? `<circle cx="${xs(valid[0].i).toFixed(1)}" cy="${ys(valid[0].value).toFixed(1)}" r="2.5" fill="var(--green)"/>` : "";
+  svg.innerHTML = area + `<path d="${linePath}"/>` + marker;
   document.getElementById("hist-summary").textContent =
-    `Latest: ${pts[pts.length-1].total} alerts · peak in window: ${maxT}`;
+    `Latest available total: ${valid[valid.length-1].value} alerts · window range: ${low}–${high} · chart scaled to that range`;
 }
 
-function renderPsi(history){
+function renderPsi(history, mode){
   const svg = document.getElementById("psi-spark");
-  const pts = (history||[]).slice(-30).filter(p=>typeof p.max_psi === "number");
-  if (!pts.length){ svg.innerHTML = ""; document.getElementById("psi-summary").textContent = "no drift measurements yet (the monitoring step runs after each live pipeline run)"; return; }
-  const maxV = Math.max(...pts.map(p=>p.max_psi), 0.3);
+  const historyPoints = (history||[]).slice(-30);
+  const pts = historyPoints.map((p,i)=>({i, value:p?.max_psi})).filter(p=>typeof p.value === "number" && Number.isFinite(p.value) && p.value >= 0);
+  if (!pts.length){ svg.innerHTML = ""; document.getElementById("psi-summary").textContent = mode === "demo" ? "not evaluated for synthetic demo data" : "no drift measurements yet (the monitoring step runs after each live pipeline run)"; return; }
+  const maxV = Math.max(...pts.map(p=>p.value), 0.3);
   const W = 400, H = 60;
-  const xs = i => pts.length===1 ? W/2 : (i/(pts.length-1))*W;
+  const xs = i => historyPoints.length===1 ? W/2 : (i/(historyPoints.length-1))*W;
   const ys = v => H - (v/maxV)*(H-6) - 3;
-  const line = pts.map((p,i)=>`${i===0?"M":"L"}${xs(i).toFixed(1)},${ys(p.max_psi).toFixed(1)}`).join(" ");
+  const line = pts.map((p,j)=>`${j && p.i === pts[j-1].i+1 ? "L" : "M"}${xs(p.i).toFixed(1)},${ys(p.value).toFixed(1)}`).join(" ");
   const yThr = ys(0.25).toFixed(1);
-  svg.innerHTML = `<line x1="0" x2="${W}" y1="${yThr}" y2="${yThr}" stroke="#d9822b" stroke-dasharray="4 3"/><path d="${line}"/>`;
+  svg.innerHTML = `<line x1="0" x2="${W}" y1="${yThr}" y2="${yThr}" stroke="#d9822b" stroke-dasharray="4 3"/><path d="${line}"/>` +
+    pts.map(p=>`<circle cx="${xs(p.i).toFixed(1)}" cy="${ys(p.value).toFixed(1)}" r="2.3" fill="var(--green)"/>`).join("");
   const last = pts[pts.length-1];
   document.getElementById("psi-summary").textContent =
-    `Latest max PSI ${last.max_psi.toFixed(3)}${last.max_psi > 0.25 ? " (major drift)" : ""} · dashed line = 0.25`;
+    `Latest available max PSI ${last.value.toFixed(3)}${last.value > 0.25 ? " (above 0.25)" : ""} · ${pts.length} measured of ${historyPoints.length} runs`;
 }
 
-let lastRuns = -1;
-async function renderModel(runs){
-  if (runs === lastRuns) return;
-  lastRuns = runs;
+function renderModel(m){
   const el = document.getElementById("model-body");
   try {
-    const m = await SOC.apiGET("/api/model");
+    const a = m.path_a || {}, b = m.path_b || {}, fusion = m.fusion || {};
+    const training = m.training || {}, drift = m.drift || {};
     const kv = [
       ["Model version", m.model_version || "—"],
-      ["Path A", `${m.path_a.model_type} · threshold ${m.path_a.threshold ?? "—"} · decision ${m.path_a.decision ?? "—"} · FPR budget ${m.path_a.fpr_budget ?? "—"}`],
-      ["Path B", `${m.path_b.model_type || "not deployed"} · threshold ${m.path_b.threshold != null ? Number(m.path_b.threshold).toPrecision(4) : "—"} (${m.path_b.threshold_method || "—"}) · window ${m.path_b.window_size ?? "—"}`],
-      ["Fusion", `${m.fusion.method || "OR fallback"} · threshold ${m.fusion.threshold != null ? Number(m.fusion.threshold).toFixed(4) : "—"}`],
-      ["Last trained", m.training.last_trained || "—"],
-      ["Training samples", `${m.training.total_samples ?? "—"} (${m.training.attack_samples ?? "—"} attack / ${m.training.benign_samples ?? "—"} benign)`],
-      ["Drift", m.drift.max_psi == null ? "no report" : `max PSI ${m.drift.max_psi}${m.drift.retrain_recommended ? " · retraining recommended" : ""}`],
-      ["Models folder", m.models_dir],
+      ["Path A", `${a.model_type || "—"} · threshold ${a.threshold ?? "—"} · decision ${a.decision ?? "—"} · FPR budget ${a.fpr_budget ?? "—"}`],
+      ["Path B", `${b.model_type || "—"} · threshold ${b.threshold == null ? "—" : fixed(b.threshold,4)} (${b.threshold_method || "—"}) · window ${b.window_size ?? "—"}`],
+      ["Fusion", `${fusion.method || "—"} · threshold ${fixed(fusion.threshold,4)}`],
+      ["Last trained", training.last_trained || "—"],
+      ["Training samples", `${training.total_samples ?? "—"} (${training.attack_samples ?? "—"} attack / ${training.benign_samples ?? "—"} benign)`],
+      ["Drift", drift.max_psi == null ? "no report" : `max PSI ${drift.max_psi}${drift.retrain_recommended ? " · retraining recommended" : ""}`],
+      ["Models folder", m.models_dir || "—"],
     ];
     el.innerHTML = `<div class="kvtable">${kv.map(([k,v])=>`<span class="k">${SOC.esc(k)}</span><span class="v">${SOC.esc(v)}</span>`).join("")}</div>`
       + (m.note ? `<div class="nag" style="margin-top:8px">${SOC.esc(m.note)}</div>` : "");
@@ -181,25 +299,61 @@ async function renderModel(runs){
 
 function renderIntegrations(st){
   const rows = Object.entries(st||{});
-  document.getElementById("integ-body").innerHTML = rows.length ? `<table class="data" style="min-width:auto"><thead><tr>
-      <th>Target</th><th>Enabled</th><th>Last success</th><th>Sent</th><th>Pending</th><th>Last error</th></tr></thead><tbody>${
-    rows.map(([name, s])=>`<tr><td>${SOC.esc(name)}</td>
+  document.getElementById("integ-body").innerHTML = rows.length ? `<div class="table-scroll" role="region" aria-label="SOC tool exports" tabindex="0"><table class="data integrations-table"><thead><tr>
+      <th scope="col">Target</th><th scope="col">Configured</th><th scope="col">Last success</th><th scope="col">Sent</th><th scope="col">Pending</th><th scope="col">Last error</th></tr></thead><tbody>${
+    rows.map(([name, raw])=>{ const s = raw || {}; return `<tr><td>${SOC.esc(name)}</td>
       <td><span class="chip ${s.configured ? "ok" : "unk"}">${s.configured ? "Yes" : "No"}</span></td>
       <td class="num">${SOC.esc(s.last_success ? SOC.fmtDate(s.last_success) : "—")}</td>
-      <td class="num">${SOC.esc(s.sent_total)}</td><td class="num">${SOC.esc(s.pending)}</td>
-      <td>${s.last_error ? `<span class="chip warn">error</span> ${SOC.esc(s.last_error)}` : "—"}</td></tr>`).join("")
-  }</tbody></table>` : '<div class="nag">No exporters available.</div>';
+      <td class="num">${SOC.esc(s.sent_total ?? "—")}</td><td class="num">${SOC.esc(s.pending ?? "—")}</td>
+      <td>${s.last_error ? `<span class="chip warn">error</span> ${SOC.esc(s.last_error)}` : "—"}</td></tr>`; }).join("")
+  }</tbody></table></div>` : '<div class="nag">No exporters available.</div>';
 }
 
-SOC.pollState(async s => {
+SOC.pollJSON("/api/state", s => {
+  latestState = s;
+  latestStateReceivedAt = Date.now();
+  latestMode = s.mode;
+  updateShellStatus(s);
+  latestHealth = s.health || {};
   renderTiles(s.health||{}, s.mode);
-  renderFreshness(s.health||{}, s.pipeline||{});
-  renderDrift(s.monitoring);
+  renderFreshness(s.now);
+  renderDiagnostics(s.health||{}, s.mode);
+  document.getElementById("history-context").textContent = (s.mode === "demo" ? "Synthetic demo: " : "") +
+    "Cumulative alert totals at the last 30 runs; history resets on server restart.";
+  document.getElementById("model-context").textContent = s.mode === "demo" ?
+    "Project model metadata. Demo detections are synthetic and do not establish deployed model health." :
+    "Project model metadata from /api/model. This is configuration and training history, not a model-service heartbeat.";
+  if (s.mode === "demo") document.getElementById("drift-body").innerHTML = '<div class="nag info">Drift and score health are not evaluated for synthetic demo alerts.</div>';
+  else renderDrift(s.monitoring);
   renderSparkline(s.history);
-  renderPsi(s.history);
+  renderPsi(s.history, s.mode);
   renderIntegrations(s.integrations);
-  renderModel((s.pipeline||{}).runs);
-}, 4000);
+}, 4000, error => {
+  stateError = error ? error.message : null;
+  if (error) SOC.markDisconnected();
+  else {
+    lastSuccessfulCheck = Date.now();
+    if (latestState) updateShellStatus(latestState);
+  }
+  paintClock();
+});
+SOC.pollJSON("/api/model", m => {
+  lastModel = m;
+  renderModel(m);
+}, 30000, error => {
+  const status = document.getElementById("model-status");
+  if (error){
+    status.className = "nag bad";
+    status.textContent = `Model check failed: ${error.message}. ${lastModel ? "Showing last received metadata." : "No model metadata available."} Retrying automatically.`;
+    if (!lastModel) document.getElementById("model-body").innerHTML = "";
+  } else if (status.textContent){
+    status.textContent = "";
+    status.className = "";
+    if (lastModel) renderModel(lastModel);
+  }
+});
+setInterval(() => { if (!document.hidden) paintClock(); }, 1000);
+document.addEventListener("visibilitychange", () => { if (!document.hidden) paintClock(); });
 </script>
 </body>
 </html>

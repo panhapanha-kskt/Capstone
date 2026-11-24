@@ -72,6 +72,7 @@ AUTO_PROMOTE=0
 ZSCORE_THRESHOLD=2.0
 declare -a TRAIN_ARGS=()   # retrain flags passed through to train_models.sh
 declare -a MODEL_ARGS=()   # model/label options passed through to train_models.sh (also on --auto-retrain)
+ADD_FILES_LIST=""          # --add-files: new files added to the live model's training files (Part B)
 declare -a DATA_ARGS=()    # --data-dir / --files passed through to train_models.sh (--files goes last)
 RETRAIN_GIVEN=false
 
@@ -97,6 +98,7 @@ show_help() {
   echo -e "${BOLD}Training options${NC} (passed to train_models.sh; see ./scripts/train_models.sh --help):"
   echo "  --path-b-model T       Path B algorithm: trafficformer (default, slow) or iforest (minutes)"
   echo "  --files F1 F2 ...      Train on these files (.json/.csv/.pcap/.log) instead of scanning data/raw/"
+  echo "  --add-files F1 ...     Train more data: the live model's training files PLUS these (needs --retrain)"
   echo "  --data-dir PATH        Train on every data file in this folder"
   echo "  --path-a-only          Train only Path A (RF + GBT)"
   echo "  --path-b-only          Train only Path B"
@@ -140,6 +142,12 @@ while [[ $# -gt 0 ]]; do
       while [[ $# -gt 0 && "$1" != --* ]]; do FILE_LIST+=("$1"); shift; done
       [[ ${#FILE_LIST[@]} -gt 0 ]] || fail "--files needs at least one file"
       DATA_ARGS+=(--files "${FILE_LIST[@]}") ;;
+    --add-files)
+      shift; ADD_LIST=()
+      while [[ $# -gt 0 && "$1" != --* ]]; do ADD_LIST+=("$1"); shift; done
+      [[ ${#ADD_LIST[@]} -gt 0 ]] || fail "--add-files needs at least one file"
+      ADD_FILES_LIST="${ADD_LIST[*]}"
+      DATA_ARGS+=(--add-files "${ADD_LIST[@]}") ;;
     --skip-train)    SKIP_TRAIN=true;                 shift ;;
     --auto-retrain)  AUTO_RETRAIN=true;               shift ;;
     --auto-promote)  AUTO_PROMOTE=1;                  shift ;;
@@ -149,18 +157,27 @@ while [[ $# -gt 0 ]]; do
   esac
 done
 
+# --add-files only goes through the gated Part B (--retrain), never straight into models/,
+# and not together with --files (it already starts from the live model's files).
+if [[ -n "$ADD_FILES_LIST" ]]; then
+  [[ "$RETRAIN_GIVEN" == true ]] || fail "--add-files needs --retrain (the new model must pass the gate in Part B instead of overwriting models/)"
+  for a in "${DATA_ARGS[@]}"; do
+    [[ "$a" == --files ]] && fail "--add-files and --files can't be combined: --add-files already starts from the live model's training files"
+  done
+fi
+
 # Part B: train 3 seeds into runs/ → gate → (promote) → smoke test. Never writes to models/ directly.
 PART_B_CODE=0
 run_part_b() {
   local name files="" i
   name="retrain_$(date +%Y%m%d_%H%M%S)"
   for ((i = 0; i < ${#DATA_ARGS[@]}; i++)); do          # --files from the command line become the training files
-    [[ "${DATA_ARGS[$i]}" == --files ]] && files="${DATA_ARGS[*]:$((i + 1))}"
+    [[ "${DATA_ARGS[$i]}" == --files ]] && { files="${DATA_ARGS[*]:$((i + 1))}"; files="${files%% --add-files*}"; }
   done
-  [[ ${#DATA_ARGS[@]} -gt 0 && -z "$files" ]] && warn "--data-dir is not used by Part B; pass --files instead (using the default training bundle)"
+  [[ " ${DATA_ARGS[*]} " == *" --data-dir "* ]] && warn "--data-dir is not used by Part B; pass --files instead (using the default training bundle)"
   [[ ${#MODEL_ARGS[@]} -gt 0 ]] && warn "Model options are fixed by run_candidate_seeds.sh in Part B; ignored: ${MODEL_ARGS[*]}"
   set +e
-  RUN_NAME="$name" AUTO_PROMOTE="$AUTO_PROMOTE" FILES="$files" bash "$SCRIPT_DIR/run_candidate_seeds.sh"
+  RUN_NAME="$name" AUTO_PROMOTE="$AUTO_PROMOTE" FILES="$files" ADD_FILES="${ADD_FILES_LIST:-}" bash "$SCRIPT_DIR/run_candidate_seeds.sh"
   PART_B_CODE=$?
   set -e
   case "$PART_B_CODE" in

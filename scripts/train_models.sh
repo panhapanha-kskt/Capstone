@@ -9,6 +9,7 @@
 #    ./scripts/train_models.sh                              # scan data/raw/
 #    ./scripts/train_models.sh --data-dir /path/to/folder   # scan a folder
 #    ./scripts/train_models.sh --files a.csv b.pcap c.log   # specific files
+#    ./scripts/train_models.sh --add-files new.json          # the live model's files + new ones
 #    ./scripts/train_models.sh --retrain                    # only files not trained before
 #    ./scripts/train_models.sh --force-retrain              # retrain on all given data
 #    ./scripts/train_models.sh --path-a-only | --path-b-only
@@ -114,6 +115,7 @@ BASE_MANIFEST="$PROJECT_ROOT/data/processed/splits/time_seed42.json"   # base sp
 NEW_SPLIT=false
 BASE_EXPLICIT=false
 declare -a EXTRA_FILES=()
+ADD_FILES=false          # --add-files: start from the live model's training files (training_provenance.json)
 FEEDBACK_FILE=""          # --feedback: analyst verdicts (scripts/export_feedback_labels.py)
 
 # ── ARG PARSING ────────────────────────────────────────────
@@ -125,6 +127,10 @@ Usage:  ./scripts/train_models.sh [options]
 Data:
   --data-dir PATH     Scan a folder (3 levels deep) for .log .pcap .pcapng .json .csv
   --files F1 F2 ...   Train on specific files (can be combined with --data-dir)
+  --add-files F1 ...  "Train more data": the live model's training files (models/training_provenance.json)
+                      PLUS these new ones. Trees cannot be updated in place, so the model is
+                      rebuilt on old + new data; this option only saves you typing the old list.
+                      Stops if one of the live model's files is missing on this machine.
   --pcap-label 0|1    Label for every query in .pcap files (1 = attack, 0 = benign);
                       without it PCAPs are kept as unlabeled data
   (neither given)     Scan data/raw/ for .log .json .csv
@@ -199,6 +205,12 @@ while [[ $# -gt 0 ]]; do
     --allow-heuristic-labels) ALLOW_HEURISTIC_LABELS=true; shift ;;
     --feedback)       FEEDBACK_FILE="${2:?--feedback needs a file}"; shift 2 ;;
     --files)
+      shift
+      while [[ $# -gt 0 && "$1" != --* ]]; do
+        EXTRA_FILES+=("$1"); shift
+      done ;;
+    --add-files)
+      ADD_FILES=true; FORCE_RETRAIN=true
       shift
       while [[ $# -gt 0 && "$1" != --* ]]; do
         EXTRA_FILES+=("$1"); shift
@@ -411,6 +423,40 @@ if [[ -n "$FEEDBACK_FILE" ]]; then
     fail "Analyst feedback not used — $(tail -n 1 "$TRAIN_LOG.feedback")"
   fi
   cat "$TRAIN_LOG.feedback" >> "$TRAIN_LOG" 2>/dev/null || true
+fi
+
+# --add-files: the live model's own training files come first, then the new ones. The list is
+# read from models/training_provenance.json (not from this run's $MODELS_DIR), so a run into
+# runs/<name> still starts from what the live detector learned.
+if [[ "$ADD_FILES" == true ]]; then
+  LIVE_PROV="$PROJECT_ROOT/models/training_provenance.json"
+  [[ -f "$LIVE_PROV" ]] || fail "--add-files needs $LIVE_PROV (no live model to add to); use --files instead"
+  mapfile -t LIVE_FILES < <(python3 -c '
+import json, sys
+for f in json.load(open(sys.argv[1]))["source_files"]:
+    print(f["path"])' "$LIVE_PROV" 2>>"$TRAIN_LOG")
+  [[ ${#LIVE_FILES[@]} -gt 0 ]] || fail "--add-files: $LIVE_PROV lists no source files"
+  MISSING_LIVE=()
+  for f in "${LIVE_FILES[@]}"; do
+    [[ -f "$f" || -f "$PROJECT_ROOT/$f" ]] || MISSING_LIVE+=("$f")
+  done
+  if [[ ${#MISSING_LIVE[@]} -gt 0 ]]; then
+    fail "--add-files: ${#MISSING_LIVE[@]} of the live model's training files are not on this machine, so the new model would know LESS than the current one. Copy them first (e.g. from the Kali VM): ${MISSING_LIVE[*]}"
+  fi
+  NEW_LIST=("${EXTRA_FILES[@]+"${EXTRA_FILES[@]}"}")
+  EXTRA_FILES=()
+  for f in "${LIVE_FILES[@]}"; do [[ -f "$f" ]] && EXTRA_FILES+=("$f") || EXTRA_FILES+=("$PROJECT_ROOT/$f"); done
+  ADDED=0
+  for f in "${NEW_LIST[@]+"${NEW_LIST[@]}"}"; do
+    DUP=false
+    for g in "${EXTRA_FILES[@]}"; do [[ "$(realpath -m "$g")" == "$(realpath -m "$f")" ]] && { DUP=true; break; }; done
+    if [[ "$DUP" == true ]]; then
+      later "--add-files: $f is already a training file of the live model (not added twice)"
+    else
+      EXTRA_FILES+=("$f"); ADDED=$((ADDED + 1))
+    fi
+  done
+  later "--add-files: ${#LIVE_FILES[@]} file(s) of the live model + $ADDED new file(s); the model is rebuilt on all of them"
 fi
 
 for f in "${EXTRA_FILES[@]+"${EXTRA_FILES[@]}"}"; do

@@ -6,6 +6,7 @@
 #   ./scripts/run_candidate_seeds.sh                         # same data + split as the live model, seeds 42 43 44
 #   RUN_NAME=x SEEDS="42 43 44 45 46" SPLIT=path/to/split.json ./scripts/run_candidate_seeds.sh
 #   FILES="a.json b.json" ./scripts/run_candidate_seeds.sh   # other training files (on purpose)
+#   ADD_FILES="new.json" ./scripts/run_candidate_seeds.sh     # the live model's files + new ones ("train more data")
 #   FEEDBACK=data/feedback/verdict_labels.json ./scripts/run_candidate_seeds.sh   # + analyst verdicts, every seed
 #
 # Default training files = models/training_provenance.json (what the live model learned from), and
@@ -28,12 +29,28 @@ if [[ -z "${SPLIT:-}" ]]; then
   SPLIT="models/split_manifest.json"
   echo "• split: the live model's ($SPLIT)"
 fi
+if [[ -n "${FILES:-}" ]]; then FILES_GIVEN=true; else FILES_GIVEN=false; fi
 if [[ -z "${FILES:-}" ]]; then
   [[ -f "$LIVE_PROV" ]] || { echo "✗ $LIVE_PROV not found: set FILES=\"...\" (or run_all.sh --files ...)" >&2; exit 4; }
   FILES="$(python3 -c 'import json,sys; print(" ".join(f["path"] for f in json.load(open(sys.argv[1]))["source_files"]))' "$LIVE_PROV")"
   echo "• training files: the live model's ($LIVE_PROV)"
 fi
 read -r -a FILES <<< "$FILES"
+if [[ -n "${ADD_FILES:-}" ]]; then
+  [[ "$FILES_GIVEN" == false ]] || { echo "✗ set FILES or ADD_FILES, not both (ADD_FILES already starts from the live model's files)" >&2; exit 4; }
+  read -r -a ADD <<< "$ADD_FILES"
+  added=0
+  for a in "${ADD[@]}"; do
+    dup=false
+    for f in "${FILES[@]}"; do [[ "$(realpath -m "$f")" == "$(realpath -m "$a")" ]] && { dup=true; break; }; done
+    if [[ "$dup" == true ]]; then
+      echo "• add-files: $a is already a training file of the live model (not added twice)"
+    else
+      FILES+=("$a"); added=$((added + 1))
+    fi
+  done
+  echo "• add-files: $added new file(s) added to the live model's training files"
+fi
 
 [[ -f "$SPLIT" ]] || { echo "✗ split manifest not found: $SPLIT (set SPLIT=...)" >&2; exit 4; }
 missing=()

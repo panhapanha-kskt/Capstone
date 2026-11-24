@@ -76,3 +76,5 @@ logs/soc/
 models/archive/
 models/PROMOTED.json
 data/external/tu2023/
+data/external/dmachard/
+data/external/graphtunnel/

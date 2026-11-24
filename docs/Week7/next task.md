@@ -17,14 +17,14 @@ All time estimates are guesses, not measurements.
 
 ---
 
-## Progress (updated 2026-11-20 09:30)
+## Progress (updated 2026-11-21 19:10)
 
 | Task | Status | Evidence |
 |---|---|---|
 | 1 · T4 light: seed spread | ✅ **done** | 20 seeds trained and scored. Cause found: the false-alarm domains appear only in the test set. Seed averaging and voting measured. Optional extra, not required: a 1,000-tree Path A. See [PATH_B_REPORT §5](../Week6/PATH_B_REPORT.md) |
-| 2 · Harder data | 🔄 in progress (2026-11-20) | A1 (iodine over A) and A2 (iodine over CNAME) recorded on Kali. Automated: `scripts/lab_capture.sh` (Kali: capture → convert → sha256, one command per capture; tunnel server in a Docker container) and `scripts/train_new_data.sh` (checksums → file list → record-type rule check → EDA → 3 seeds → gate); `tests/test_lab_scripts.py` 6 tests. Still to record: A3, A4, B1–B3 |
-| 3 · Domain-grouped split | ⏸ waiting for Task 2 | needs ≥ 3 attack domains |
-| 4 · Later-traffic check | ⏸ waiting | needs a fresh normal capture |
+| 2 · Harder data | 🔄 **largely done via public data (2026-11-21)**; lab captures still open | **GraphTunnel dataset** (IEEE 2024, raw pcaps) converted with `scripts/convert_graphtunnel.sh`: 24 tunnel families × 5,000 queries (iodine/dnscat2/dnspot/DNS-shell/tuns/tcp-over-dns/AndIodine… over **A, CNAME, MX, SRV**, not only TXT/KEY/NULL) + 335k benign incl. **wildcard DNS**. Trained `runs/v4_graphtunnel` (seed 42, 29 min): fusion recall 1.0, **0 false alarms** on the frozen test (was 7); **Path B recall 0.0** at its p99 threshold (ranking still perfect — threshold must become budget-based). See [GRAPHTUNNEL_V4_2026-11-21.md](GRAPHTUNNEL_V4_2026-11-21.md). Lab: A1, A2 recorded; A3, A4, B1–B3 still to record |
+| 3 · Domain-grouped split | ▶ **unblocked (2026-11-21)** | attack domains now: `ggy666.tk` (GraphTunnel, 24 families), `dns2tcp-key.com` (labeled_tunnels) + the Tu 2023 domains once copied from the Kali VM |
+| 4 · Later-traffic check | ▶ **data available (2026-11-21)** | GraphTunnel `normal_00015…00067` (53 files, ~800k benign) and `wildcard_00004…00012` were deliberately **not** trained on → held-out later traffic; `check_later_traffic.py` still to write |
 | 5 · T3: 0.1% target + operating point | ⏸ waiting for Tasks 1–3 | — |
 | 6 · Drift warning | ❌ not started | feature PSI already exists in `monitor.py`; score PSI and saved bins to add |
 | 7 · Review band | ❌ not started | tiers already exist in the bridge; budget-based band and `/triage` routing to add |
@@ -40,6 +40,19 @@ All time estimates are guesses, not measurements.
 
 | Date | Work | Commit |
 |---|---|---|
+| 2026-11-21 | **Project review** ([PROJECT_REVIEW_2026-11-21.md](PROJECT_REVIEW_2026-11-21.md)): two kinds of dataset (raw queries → `train_models.sh`; feature tables → feature-table trainer); data/model inventory; recipes | — |
+| 2026-11-21 | **Train/pipeline audit** ([AUDIT_TRAIN_PIPELINE_2026-11-21.md](AUDIT_TRAIN_PIPELINE_2026-11-21.md)): 13 findings — drift baseline always says retrain (HIGH), mixed timestamp formats mis-ordered in `_time_split`/Path B (HIGH, reproduced), Path B scores only the last row of a window (HIGH), registry marks files trained before training succeeds, in-sample fusion threshold, fusion-vs-Path-A gate, … | — |
+| 2026-11-21 | **DNSTunnel2026** (30 M-row feature table) trained with the feature-table trainer and tested on the authors' `test.csv`: recall 0.9989, FPR 0.036 % (within the 0.1 % budget), F1 0.989 at the best-F1 threshold; saved as `models/dnstunnel2026_hgb.joblib` (+ `_meta.json`, `used_by_detection: false`). `feature_table_train.py` gained `save_to_models`. Benchmark only: the file has no query names, so it cannot enter Path A/B | — |
+| 2026-11-21 | `train_models.sh --add-files` / `run_all.sh --retrain --add-files` / `ADD_FILES=` for `run_candidate_seeds.sh`: live model's training files + new ones; refuses when a live file is missing locally | — |
+| 2026-11-21 | **GraphTunnel data** converted and **`runs/v4_graphtunnel`** trained (514,896 rows, 26 families) — see Task 2 row and [GRAPHTUNNEL_V4_2026-11-21.md](GRAPHTUNNEL_V4_2026-11-21.md). `models/` unchanged | — |
+| 2026-11-21 | Whiteboard of the architecture, the 12-step training flow and the detection pipeline (claude.ai artifact) | — |
+| 2026-11-21 | **dmachard/datasets-malicious-dns** (5 small attack pcaps: dns2tcp, dnscat2, DNSExfiltrator, iodine, **sods**) converted → 553 rows, two new tunnel domains `hsc.fr`, `biillpi.com`. **`runs/v5_dmachard`** trained (515,449 rows, 31 families, 28 min): fusion recall 1.0, 0 false alarms on the frozen test; Path B unchanged (threshold 0.6009). **Four attack domains now** (`ggy666.tk`, `dns2tcp-key.com`, `hsc.fr`, `biillpi.com`) → domain-grouped split possible | — |
+| 2026-11-21 | Path C converter (`features/dnstunnel2026.py`, 9 tests) written, **not wired** — kept for a possible DNSTunnel2026-features path; nothing imports it | — |
+
+#### Earlier this week
+
+| Date | Work | Commit |
+|---|---|---|
 | 2026-11-19 | Mentor approval of the Isolation Forest Path B recorded in the Week 6 reports | `e553b8f` |
 | 2026-11-19 | `runs/v3_iforest` copied from the Kali VM (archive SHA-256 verified) and **promoted to `models/`**: autoencoder archived, `MODEL_CARD.md`, `PROMOTED.json`, smoke test 7/7 | `3ed0cce` → `main` `b204085` |
 | 2026-11-19 | **T9 error ranges** for every detector: exact Clopper–Pearson / Wilson, a 1,000-sample domain-cluster bootstrap, and seed spread (`uncertainty.py`, `evaluate_detectors.py`, 9 tests) | `e553b8f` |
@@ -52,7 +65,15 @@ All time estimates are guesses, not measurements.
 
 **Tests at the end of the day:** 282 ML + 101 dashboard and console tests pass. One test (`test_parent_domain_psl_private_suffixes`) needs `tldextract`, which isn't installed in my workspace.
 
-### Next
+### Next (updated 2026-11-21)
+
+1. **v4 on its own data:** later-traffic check on the held-out GraphTunnel files (Task 4), leave-one-tool-out over the 24 families, and the first **domain-grouped split** (Task 3).
+2. **Path B threshold:** budget-based (as Path A) instead of p99 — v4's Path B has recall 0.0 at p99 while its ranking is perfect.
+3. **3 seeds + gate** for v4 (`run_candidate_seeds.sh`); the rule baseline is no longer perfect on this data, so the gate can pass for the first time.
+4. **Copy the 7 Tu 2023 files** from the Kali VM so `--add-files` works and the live model's full data is reproducible here.
+5. Audit fixes #2 (timestamps, 2 lines) and #1 (drift baseline).
+
+#### Earlier plan
 
 1. **You:** Task 2 captures. Ask for the step-by-step capture guide.
 2. **Me (no new data needed):** Task 6 (drift warning) and Task 7 (review band); optionally the 1,000-tree Path A test (needs one 3-seed run, about 15 min).

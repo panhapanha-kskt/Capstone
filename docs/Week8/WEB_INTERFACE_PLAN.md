@@ -49,3 +49,7 @@ The real-mode walkthrough needs a reachable dashboard with representative Techni
 ## Code implementation update — 2026-11-24
 
 The follow-on code pass changed the server closure and run paths, disabled known training-admin token defaults, corrected mixed timestamp parsing, and corrected the Path B default in the root README. See the [implementation record](Results/CODE_IMPLEMENTATION_2026-11-24.md) for changed files, tests, and limits. The six interface work-order items above are still pending; no real-mode browser or external connector check was performed. The P0 identity work is still open, so the tier checks added to `/api/run` and alert closure must not be described as authenticated access control.
+
+## Premium overview implementation update — 2026-11-24
+
+The [premium SOC interface plan](SOC_PREMIUM_UI_PLAN.md) was researched and the first implementation pass landed in the working tree. It gives `/soc` a new overview hierarchy, restrained motion, and visible state/metrics freshness with retry; shared SOC styling was updated. The [implementation report](Results/SOC_PREMIUM_UI_REPORT_2026-11-24.md) records demo-mode browser and route checks and the remaining verification limits. This completes a portion of interface work-order items 2, 4, 5, and 6 for `/soc`; the real-mode walkthrough, full eight-route accessibility and responsive pass, injected stale-state browser test, and dashboard regressions remain open.

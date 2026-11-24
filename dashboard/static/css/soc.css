@@ -3,11 +3,11 @@
    Dark theme only; light theme is bespoke in index.html.
    ────────────────────────────────────────────────────────────── */
 :root{
-  --bg:#101320; --panel:#1b1f2e; --panel2:#171a27; --sidebar:#161926; --topbar:#1e2231;
-  --border:#2a2f42; --text:#d6dae6; --muted:#8a90a5; --dim:#5d6377;
+  --bg:#0c1421; --panel:#152335; --panel2:#101d2d; --sidebar:#0e1b2b; --topbar:#101e2e;
+  --border:#2b4257; --text:#e5edf5; --muted:#a7bbce; --dim:#9aafc3;
   --green:#8bc34a; --green2:#4caf50; --orange:#f09f33; --yellow:#e8d44d;
   --blue:#4a90d9; --red:#e0564a; --purple:#9575cd; --cyan:#4dd0e1;
-  --accent:#8bc34a;
+  --accent:#5bd8e8;
 }
 *{box-sizing:border-box;margin:0;padding:0}
 html,body{height:100%}
@@ -17,13 +17,13 @@ body{background:var(--bg);color:var(--text);font:13px/1.45 "Segoe UI",system-ui,
 
 /* page head */
 .page-head{display:flex;align-items:center;padding:14px 18px 10px}
-.page-head h1{font-size:24px;font-weight:400;color:#fff}
+.page-head h1{font-size:24px;font-weight:600;letter-spacing:-.025em;color:#f4f9fc}
 .page-head .subtitle{margin-left:12px;color:var(--muted);font-size:12.5px}
 .page-head .right{margin-left:auto;display:flex;gap:8px;align-items:center}
 
 /* stat tile row */
 .tilerow{display:grid;grid-template-columns:repeat(auto-fit, minmax(160px, 1fr));gap:12px;padding:12px 18px}
-.tile{background:var(--panel);border:1px solid var(--border);border-radius:5px;padding:12px 14px}
+.tile{background:linear-gradient(145deg,#1a2c3e,var(--panel));border:1px solid var(--border);border-radius:9px;padding:12px 14px;box-shadow:0 7px 20px #020b1633}
 .tile .label{font-size:11px;color:var(--muted);letter-spacing:.4px;text-transform:uppercase}
 .tile .value{font-size:22px;font-weight:600;color:#fff;margin-top:4px;font-variant-numeric:tabular-nums}
 .tile .foot{font-size:11px;color:var(--muted);margin-top:4px}
@@ -56,21 +56,22 @@ table.data tbody tr:hover{background:#1f2436;cursor:pointer}
   color:var(--text);padding:5px 8px;font:inherit;font-size:12px;outline:0;min-width:110px}
 .filterbar input:focus, .filterbar select:focus{border-color:var(--blue)}
 .filterbar .bar-label{color:var(--muted);font-size:12px;align-self:center}
-.btn{display:inline-flex;align-items:center;gap:6px;font-size:12.5px;border-radius:3px;padding:6px 12px;
-  cursor:pointer;border:0;color:#fff;font-family:inherit;background:var(--green2)}
+.btn{display:inline-flex;align-items:center;gap:6px;font-size:12.5px;border-radius:6px;padding:6px 12px;
+  cursor:pointer;border:1px solid #218ca4;color:#fff;font-family:inherit;background:#126177;transition:background 120ms ease,border-color 120ms ease}
+.btn:hover:not(:disabled){background:#197f98;border-color:#5bd8e8}
 .btn.sec{background:#2a2f42;color:#cfd4e2}
 .btn.blue{background:#2f6fb2}
 .btn:disabled{opacity:.4;cursor:default}
 
 /* panel */
-.panel{background:var(--panel);border:1px solid var(--border);border-radius:5px;margin:12px 18px;padding:14px}
+.panel{background:var(--panel);border:1px solid var(--border);border-radius:9px;margin:12px 18px;padding:14px}
 .panel h2{font-size:14px;color:#e7eaf2;font-weight:600;margin-bottom:10px}
 .panel .sub{color:var(--muted);font-size:11.5px;margin-bottom:8px}
 .kvtable{display:grid;grid-template-columns:200px 1fr;gap:6px 10px;font-size:12px}
 .kvtable .k{color:var(--muted)} .kvtable .v{color:#e8ebf4;word-break:break-all}
 
 /* drawer */
-.drawer{position:fixed;top:46px;right:0;bottom:0;width:420px;background:var(--panel);border-left:1px solid var(--border);
+.drawer{position:fixed;top:56px;right:0;bottom:0;width:min(420px,100vw);background:var(--panel);border-left:1px solid var(--border);
   box-shadow:-8px 0 24px #0008;z-index:20;display:flex;flex-direction:column;animation:slide .15s ease-out}
 @keyframes slide{from{transform:translateX(30px);opacity:0}}
 .drawer .d-head{display:flex;align-items:center;gap:10px;padding:14px 16px;border-bottom:1px solid var(--border);font-weight:600;color:#fff}
@@ -85,3 +86,4 @@ table.data tbody tr:hover{background:#1f2436;cursor:pointer}
 .nag b{color:#e7eaf2}
 .freshness{display:flex;gap:16px;flex-wrap:wrap;font-size:11.5px;color:var(--muted);padding:6px 18px;background:#141827;border-bottom:1px solid var(--border)}
 .freshness span b{color:#e7eaf2}
+@media (prefers-reduced-motion:reduce){.drawer{animation:none}.btn{transition:none}}

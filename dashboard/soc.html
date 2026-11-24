@@ -405,23 +405,86 @@
     .fp-tbl th { color: #8a90a5; font-weight: 600 }
   </style>
 <link rel="stylesheet" href="/static/css/shell.css">
+<link rel="stylesheet" href="/static/css/soc-premium.css">
 </head>
 
 <body>
 
   <div id="app-chrome">
   <main class="main">
+      <div class="soc-hero">
+        <div>
+          <div class="soc-eyebrow"><span class="soc-live-mark" aria-hidden="true"></span> SECURITY OPERATIONS / OVERVIEW</div>
+          <h1>Monitoring overview</h1>
+          <p>Live workflow signals, detection activity, and pipeline context in one place.</p>
+        </div>
+        <div class="soc-hero-actions" aria-label="Investigation routes">
+          <a href="/triage">Open triage <span aria-hidden="true">↗</span></a>
+          <a href="/alerts">Review alerts <span aria-hidden="true">↗</span></a>
+          <a href="/incidents">Incidents <span aria-hidden="true">↗</span></a>
+        </div>
+      </div>
+      <div class="soc-data-bar" aria-label="Data freshness">
+        <span class="soc-data-source" id="socDataSource">Connecting to /api/state · /api/metrics</span>
+        <span id="stateFreshness" role="status" aria-live="polite">State: Loading</span>
+        <span id="metricsFreshness" role="status" aria-live="polite">Metrics: Loading</span>
+        <button type="button" id="socRetry" class="soc-retry" hidden>Retry refresh</button>
+      </div>
+      <div class="soc-spotlight" id="socSpotlight" aria-label="Current operations">
+        <a class="soc-spotlight-card" href="/alerts"><span class="soc-card-label">Active alerts</span><strong id="spotActive">—</strong><small>Open workflow</small></a>
+        <a class="soc-spotlight-card" href="/alerts"><span class="soc-card-label">High / Critical</span><strong id="spotHigh">—</strong><small>Detector totals</small></a>
+        <a class="soc-spotlight-card" href="/triage"><span class="soc-card-label">Unacknowledged</span><strong id="spotOpen">—</strong><small>Needs triage</small></a>
+        <a class="soc-spotlight-card" href="/triage"><span class="soc-card-label">Escalated</span><strong id="spotEscalated">—</strong><small>Tier 2 queue</small></a>
+        <a class="soc-spotlight-card" href="/health"><span class="soc-card-label">Pipeline health</span><strong id="spotHealth">—</strong><small>Inspect collection</small></a>
+        <a class="soc-spotlight-card" href="/triage"><span class="soc-card-label">Close approvals</span><strong id="spotApprovals">—</strong><small>Pending review</small></a>
+      </div>
+      <p class="soc-context-note">Detection totals, the bounded feed, and workflow records have different scopes. Pipeline health can include a stored monitoring report; <a href="/health">inspect its source and freshness</a> before acting on drift.</p>
       <div class="grid">
+        <section class="panel c6">
+          <div class="p-head">QUERY RATE · PER SECOND · RECENT RUNS</div>
+          <div class="p-body chart-body"><svg id="rateChart" width="100%" height="100%"></svg></div>
+        </section>
+
+        <section class="panel c4">
+          <div class="p-head">ALERTS BY SEVERITY · DETECTOR TOTALS</div>
+          <div class="p-body">
+            <div class="donut-wrap">
+              <div class="donut-box"><svg id="sevDonut" viewBox="0 0 120 120"></svg>
+                <div class="donut-center">
+                  <div class="n" id="sevTotal">0</div>
+                  <div class="l">Alerts</div>
+                </div>
+              </div>
+              <div class="legend" id="sevLegend"></div>
+            </div>
+          </div>
+        </section>
+
+        <section class="panel c4">
+          <div class="p-head">ALERTS BY STATUS · LAST 24 H</div>
+          <div class="p-body">
+            <div class="donut-wrap">
+              <div class="donut-box"><svg id="stDonut" viewBox="0 0 120 120"></svg>
+                <div class="donut-center">
+                  <div class="n" id="stTotal">0</div>
+                  <div class="l">Alerts</div>
+                </div>
+              </div>
+              <div class="legend cols" id="stLegend"></div>
+            </div>
+          </div>
+        </section>
+
 
         <!-- summary strip -->
         <section class="panel summary">
-          <div class="p-head">SOC MONITORING SUMMARY <span class="info">ⓘ</span></div>
+          <div class="p-head">PIPELINE &amp; FEED SNAPSHOT <span class="info" title="DNS client and domain counts use the bounded alert feed. Detection alerts and processed queries use detector totals.">ⓘ</span></div>
           <div class="sum-row" id="summaryRow"></div>
         </section>
 
         <!-- Week 6: operational metrics (persisted alert workflow, pipeline health) -->
         <section class="panel summary">
-          <div class="p-head">OPERATIONAL METRICS <span class="info" title="Derived from persisted alert management + /api/health. 'Derived' statuses on the Alerts page are counted as Open unless the analyst has touched them.">ⓘ</span></div>
+          <div class="p-head">WORKFLOW METRICS <span class="info" title="Derived from persisted alert management + /api/health. 'Derived' statuses on the Alerts page are counted as Open unless the analyst has touched them.">ⓘ</span></div>
           <div class="sum-row" id="opRow"></div>
         </section>
 
@@ -442,37 +505,7 @@
 
         <!-- row of donuts + categories -->
         <section class="panel c4">
-          <div class="p-head">ALERTS BY SEVERITY <span class="close-details">Close details</span></div>
-          <div class="p-body">
-            <div class="donut-wrap">
-              <div class="donut-box"><svg id="sevDonut" viewBox="0 0 120 120"></svg>
-                <div class="donut-center">
-                  <div class="n" id="sevTotal">0</div>
-                  <div class="l">Alerts</div>
-                </div>
-              </div>
-              <div class="legend" id="sevLegend"></div>
-            </div>
-          </div>
-        </section>
-
-        <section class="panel c4">
-          <div class="p-head">ALERTS BY STATUS · LAST 24 H <span class="close-details">Close details</span></div>
-          <div class="p-body">
-            <div class="donut-wrap">
-              <div class="donut-box"><svg id="stDonut" viewBox="0 0 120 120"></svg>
-                <div class="donut-center">
-                  <div class="n" id="stTotal">0</div>
-                  <div class="l">Alerts</div>
-                </div>
-              </div>
-              <div class="legend cols" id="stLegend"></div>
-            </div>
-          </div>
-        </section>
-
-        <section class="panel c4">
-          <div class="p-head">ACK SLA · LAST 24 H <span class="close-details">Close details</span></div>
+          <div class="p-head">ACK SLA · LAST 24 H</div>
           <div class="p-body">
             <div class="donut-wrap">
               <div class="donut-box"><svg id="slaDonut" viewBox="0 0 120 120"></svg>
@@ -487,7 +520,7 @@
         </section>
 
         <section class="panel c4">
-          <div class="p-head">OPEN ALERTS BY CATEGORY <span class="close-details">Close details</span></div>
+          <div class="p-head">ALERTS BY DETECTION RULE · DETECTOR TOTALS</div>
           <div class="p-body cat-body">
             <svg id="catBars" class="cat-bars" preserveAspectRatio="none"></svg>
             <div class="cat-legend" id="catLegend"></div>
@@ -496,19 +529,14 @@
 
         <!-- bottom charts -->
         <section class="panel c6">
-          <div class="p-head">AVERAGE QUERY RATE (per second)</div>
-          <div class="p-body chart-body"><svg id="rateChart" width="100%" height="100%"></svg></div>
-        </section>
-
-        <section class="panel c6">
-          <div class="p-head">CUMULATIVE ALERTS BY SEVERITY
+          <div class="p-head">CUMULATIVE ALERTS BY SEVERITY · RECENT RUNS
             <span class="chart-legend" id="stackLegend"></span>
           </div>
           <div class="p-body chart-body"><svg id="stackChart" width="100%" height="100%"></svg></div>
         </section>
 
         <section class="panel c6">
-          <div class="p-head">NEW ALERTS PER RUN
+          <div class="p-head">NEW ALERTS PER RUN · RECENT RUNS
             <span class="chart-legend" id="trendLegend"></span>
           </div>
           <div class="p-body chart-body"><svg id="trendChart" width="100%" height="100%"></svg></div>
@@ -516,8 +544,7 @@
       </div>
 
       <div class="footer">
-        <a href="/">Classic</a><a href="#">Dashboards</a><a href="#">Reports</a><a href="#">Audit Logs</a>
-        <a href="#">Legal</a><a href="#">Privacy</a><a href="#">FAQ</a>
+        <a href="/">Classic dashboard</a><a href="/soc">Overview</a><a href="/health">Pipeline health</a><a href="/triage">Triage</a>
         <span class="copy">DNS Traffic Anomaly Detection — Capstone. All data local.</span>
       </div>
     </main>
@@ -527,10 +554,29 @@
 <script>
     "use strict";
 SOC.mount({active:"soc"});
+    document.body.classList.add("soc-overview");
     const $ = id => document.getElementById(id);
+    let stateUpdatedAt = null, metricsUpdatedAt = null;
+    let stateError = null, metricsError = null;
+    const stamp = d => d ? d.toLocaleTimeString([], {hour:"2-digit", minute:"2-digit", second:"2-digit"}) : "—";
+    function updateFreshness(){
+      $("stateFreshness").textContent = stateError
+        ? `State: ${stateUpdatedAt ? "Stale since " + stamp(stateUpdatedAt) : "Unavailable"} · ${stateError.message}`
+        : `State: ${stateUpdatedAt ? "Updated " + stamp(stateUpdatedAt) : "Loading"}`;
+      $("metricsFreshness").textContent = metricsError
+        ? `Metrics: ${metricsUpdatedAt ? "Stale since " + stamp(metricsUpdatedAt) : "Unavailable"} · ${metricsError.message}`
+        : `Metrics: ${metricsUpdatedAt ? "Updated " + stamp(metricsUpdatedAt) : "Loading"}`;
+      $("socRetry").hidden = !(stateError || metricsError);
+      document.body.classList.toggle("soc-data-stale", !!(stateError || metricsError));
+    }
+    function markMetrics(error){
+      metricsError = error;
+      if (!error) metricsUpdatedAt = new Date();
+      updateFreshness();
+    }
     const C = {
       green: "#8bc34a", green2: "#4caf50", orange: "#f09f33", yellow: "#e8d44d",
-      blue: "#4a90d9", red: "#e0564a", purple: "#9575cd", cyan: "#4dd0e1"
+      blue: "#4a90d9", red: "#e0564a", critical: "#bf4267", purple: "#9575cd", cyan: "#4dd0e1"
     };
     const CAT_COLORS = [C.orange, C.yellow, C.green, C.blue, C.purple, C.cyan, C.red];
     const fmt = n => n >= 1e6 ? (n / 1e6).toFixed(1) + "M" : n >= 1000 ? (n / 1000).toFixed(1) + "K" : String(n ?? 0);
@@ -545,6 +591,8 @@ SOC.mount({active:"soc"});
     /* ── donut ─────────────────────────────────── */
     function donut(svgId, parts) {                       // parts: [{v,color}]
       const svg = $(svgId), R = 46, CIRC = 2 * Math.PI * R;
+      svg.setAttribute("role", "img");
+      svg.setAttribute("aria-label", parts.map(p => `${p.label}: ${p.v}`).join(", ") || "No data");
       const total = parts.reduce((s, p) => s + p.v, 0) || 1;
       let off = 0, out = "";
       for (const p of parts) {
@@ -568,6 +616,8 @@ SOC.mount({active:"soc"});
     function catBars(rules) {
       const entries = Object.entries(rules || {}).sort((a, b) => b[1] - a[1]).slice(0, 6);
       const svg = $("catBars"), W = 300, max = Math.max(...entries.map(e => e[1]), 1);
+      svg.setAttribute("role", "img");
+      svg.setAttribute("aria-label", entries.map(([name, value]) => `${name}: ${value}`).join(", ") || "No open alerts by category");
       const rowH = 20, H = Math.max(entries.length * rowH, 20);
       svg.setAttribute("viewBox", `0 0 ${W} ${H}`);
       let out = "";
@@ -590,6 +640,8 @@ SOC.mount({active:"soc"});
 
     function areaChart(svgId, pts, color) {              // pts: [{t,v}]
       const svg = $(svgId), { w, h } = sizeOf(svg);
+      svg.setAttribute("role", "img");
+      svg.setAttribute("aria-label", pts.length ? `${pts.length} query-rate points; latest ${pts[pts.length-1].v.toFixed(2)} queries per second` : "No query-rate history");
       svg.setAttribute("viewBox", `0 0 ${w} ${h}`);
       const padL = 34, padB = 18, padT = 8;
       const max = Math.max(...pts.map(p => p.v), 1);
@@ -614,6 +666,8 @@ SOC.mount({active:"soc"});
 
     function stackChart(svgId, pts, series) {            // pts: [{t, vals:[..]}], series: [{label,color}]
       const svg = $(svgId), { w, h } = sizeOf(svg);
+      svg.setAttribute("role", "img");
+      svg.setAttribute("aria-label", pts.length ? `${pts.length} cumulative alert snapshots; latest total ${pts[pts.length-1].vals.reduce((a,b)=>a+b,0)}` : "No cumulative alert history");
       svg.setAttribute("viewBox", `0 0 ${w} ${h}`);
       const padL = 34, padB = 18, padT = 8;
       const totals = pts.map(p => p.vals.reduce((s, v) => s + v, 0));
@@ -642,6 +696,8 @@ SOC.mount({active:"soc"});
 
     function trendChart(svgId, pts, series) {            // pts: [{t, vals:[..]}]
       const svg = $(svgId), { w, h } = sizeOf(svg);
+      svg.setAttribute("role", "img");
+      svg.setAttribute("aria-label", pts.length ? `${pts.length} new-alert run points; latest ${pts[pts.length-1].vals[0]} alerts` : "No new-alert run history");
       svg.setAttribute("viewBox", `0 0 ${w} ${h}`);
       const padL = 34, padB = 18, padT = 8;
       const max = Math.max(...pts.flatMap(p => p.vals), 1);
@@ -696,7 +752,7 @@ SOC.mount({active:"soc"});
       metricsBusy = true;
       try {
         const r = await fetch("/api/metrics?hours=24", { cache: "no-store" });
-        if (!r.ok) return;
+        if (!r.ok) throw new Error("HTTP " + r.status);
         const m = await r.json();
         const fpr = m.false_positive_rate;
         const judged = Object.values(m.verdicts || {}).reduce((a, b) => a + b, 0);
@@ -705,13 +761,17 @@ SOC.mount({active:"soc"});
         const current = latestState || {};
         const currentHigh = current.totals?.by_severity?.High || 0;
         const band = current.health?.band || "Unknown";
+        $("spotActive").textContent = String(active);
+        $("spotOpen").textContent = String(counts.Open || 0);
+        $("spotEscalated").textContent = String(counts.Escalated || 0);
+        $("spotApprovals").textContent = String(m.pending_close_approvals ?? 0);
         opRow([
           { icon: "●", val: active, label: "Active Alerts", hint: "Open + Acknowledged + Investigating + Escalated" },
           { icon: "◔", val: counts.Open || 0, cls: "warn", label: "Unacknowledged", hint: "Untouched alerts count as Open" },
           { icon: "◑", val: counts.Investigating || 0, label: "Under Investigation" },
           { icon: "⮝", val: counts.Escalated || 0, cls: "bad", label: "Escalated" },
           { icon: "✓", val: counts.Resolved || 0, label: "Resolved" },
-          { icon: "🔺", val: currentHigh, cls: "warn", label: "High Severity (feed)" },
+          { icon: "▲", val: currentHigh, cls: "warn", label: "High severity (totals)" },
           { icon: "🖳", val: (current.sources || []).length, label: "Collection Sources" },
           { icon: "♥", val: band, cls: band === "Warning" ? "warn" : band === "Critical" ? "bad" : "", label: "Pipeline Health",
             hint: (current.health?.reasons || []).join("; ") },
@@ -768,29 +828,32 @@ SOC.mount({active:"soc"});
           }).join("");
           return `<div class="att-col"><div class="att-tac">${esc(tac)} <span>${total}</span></div>${cells}</div>`;
         }).join("") : `<div class="att-empty">No alerts in the last 24 h.</div>`;
-      } catch (e) { /* keep last values */ }
+        markMetrics(null);
+      } catch (e) { markMetrics(e); }
       finally { metricsBusy = false; }
     }
 
     /* ── render from /api/state ────────────────── */
     let lastVersion = -1;
     function render(s) {
+      $("socDataSource").textContent = `${s.mode === "demo" ? "DEMO · synthetic alerts" : "LIVE · observed data"} · /api/state · /api/metrics`;
       if (s.version === lastVersion) return;
-      lastVersion = s.version;
       latestState = s;
 
       const t = s.totals || {}, sev = t.by_severity || {}, feed = s.feed || [];
-      const high = sev.High || 0, med = sev.Medium || 0, low = sev.Low || 0;
+      const critical = sev.Critical || 0, high = sev.High || 0, med = sev.Medium || 0, low = sev.Low || 0;
+      $("spotHigh").textContent = String(high + critical);
+      $("spotHealth").textContent = s.health?.band || "Unknown";
       const total = t.alerts || 0;
       const uniq = (k) => new Set(feed.map(f => f[k]).filter(Boolean)).size;
 
       // 1. summary strip
       summary([
-        { icon: "🖳", val: uniq("client"), label: "Monitored Devices" },
-        { icon: "🌐", val: uniq("domain"), label: "Monitored Domains" },
+        { icon: "◫", val: uniq("client"), label: "DNS clients (feed)" },
+        { icon: "◎", val: uniq("domain"), label: "Domains (feed)" },
         { icon: "⟳", val: s.pipeline?.runs ?? 0, label: "Pipeline Runs" },
         { icon: "≣", val: fmt(t.queries || 0), label: "Processed Queries" },
-        { icon: "🛡", val: fmt(total), label: "Security Events" },
+        { icon: "◈", val: fmt(total), label: "Detection alerts" },
         { icon: "⚠", val: high, cls: "warn", label: "High Severity" },
         { icon: "⮝", val: t.new_alerts || 0, cls: "bad", label: "New Alerts (last 45 s)" },
       ]);
@@ -798,8 +861,10 @@ SOC.mount({active:"soc"});
 
       // 2. severity donut
       const sevItems = [
+        { label: "Critical", v: critical, color: C.critical },
         { label: "High", v: high, color: C.red }, { label: "Medium", v: med, color: C.orange },
-        { label: "Low", v: low, color: C.blue }];
+        { label: "Low", v: low, color: C.blue },
+        { label: "Other / unknown", v: Math.max(total - critical - high - med - low, 0), color: "#71879d" }];
       donut("sevDonut", sevItems);
       $("sevTotal").textContent = total;
       $("sevLegend").innerHTML = legendHTML(sevItems, total);
@@ -835,9 +900,19 @@ SOC.mount({active:"soc"});
       const trendPts = changes.slice(-24).map(p => ({ t: p.t, vals: [p.total, p.high, p.medium] }));
       trendChart("trendChart", trendPts, trendSeries);
       miniLegend("trendLegend", trendSeries);
+      lastVersion = s.version;
     }
 
-    const overviewPoll = SOC.pollState(render, 3000);
+    const overviewPoll = SOC.pollState(render, 3000, status => {
+      stateError = status.error;
+      if (!status.error) stateUpdatedAt = status.lastSuccess;
+      updateFreshness();
+    });
+    const metricsTimer = setInterval(() => { if (!document.hidden) loadMetrics(); }, 15000);
+    document.getElementById("socRetry").addEventListener("click", () => {
+      overviewPoll.forceTick();
+      loadMetrics();
+    });
     let resizeTimer = null;
     window.addEventListener("resize", () => {
       clearTimeout(resizeTimer);

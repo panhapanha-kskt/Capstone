@@ -92,8 +92,8 @@
 
   // GET /api/state polling helper; onUpdate(state) gets called when state.version changes.
   // Pauses while the tab is hidden and catches up as soon as it is visible again.
-  function pollState(onUpdate, interval){
-    let version = -1, alive = true, failed = 0, busy = false, queued = false;
+  function pollState(onUpdate, interval, onStatus = ()=>{}){
+    let version = -1, alive = true, failed = 0, busy = false, queued = false, lastSuccess = null;
     const etagRef = {etag:null};
     async function tick(force){
       if (!alive || (!force && document.hidden)) return;
@@ -107,13 +107,22 @@
         const s = await fetchState(etagRef);
         if (!alive) return;
         failed = 0;
-        if (s === null) return;
+        if (s === null){
+          if (!lastSuccess) throw new Error("State cache unavailable after 304");
+          lastSuccess = new Date();
+          onStatus({lastSuccess, error:null});
+          return;
+        }
         updateChromeFromState(s);
-        if (!force && s.version === version) return;
-        version = s.version;
-        try { onUpdate(s); } catch(e){ console.error(e); }
+        if (force || s.version !== version){
+          await onUpdate(s);
+          version = s.version;
+        }
+        lastSuccess = new Date();
+        onStatus({lastSuccess, error:null});
       } catch(e){
         failed++;
+        onStatus({lastSuccess, error:e});
         if (failed >= 2) markDisconnected();
       } finally {
         busy = false;

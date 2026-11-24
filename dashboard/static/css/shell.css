@@ -1,6 +1,9 @@
 .soc-shell {
   --shell-header: 56px;
-  --shell-focus: #b8e589;
+  --shell-focus: #83e4ef;
+  --shell-accent: #65d5e5;
+  --shell-radius: 8px;
+  --shell-motion: 120ms ease;
   color-scheme: dark;
 }
 .soc-shell .topbar {
@@ -11,7 +14,7 @@
   padding-inline: 16px;
   position: relative;
   z-index: 5;
-  background: var(--topbar);
+  background: linear-gradient(100deg, #101d2d, var(--topbar));
   border-bottom: 1px solid var(--border);
 }
 .soc-shell .logo {
@@ -30,8 +33,8 @@
   width: 24px;
   height: 24px;
   border-radius: 50%;
-  background: var(--green);
-  color: #162710;
+  background: var(--shell-accent);
+  color: #102330;
 }
 .soc-shell .topbar .right {
   display: flex;
@@ -77,9 +80,10 @@
   border-radius: 5px;
   color: var(--muted);
   text-decoration: none;
+  transition: color var(--shell-motion), background var(--shell-motion), border-color var(--shell-motion);
 }
 .soc-shell .sidebar .nav a:hover { color: #fff; background: #1c2032; }
-.soc-shell .sidebar .nav a.active { color: #fff; background: #222842; border-left-color: var(--green); }
+.soc-shell .sidebar .nav a.active { color: #fff; background: #23374a; border-left-color: var(--shell-accent); }
 .soc-shell .main { min-width: 0; }
 .soc-shell .page-head { flex-wrap: wrap; gap: 8px; }
 .soc-shell :is(a, button, input, select, textarea, [tabindex]):focus-visible {
@@ -133,4 +137,5 @@
 }
 @media (prefers-reduced-motion: reduce) {
   .soc-shell .statusdot.running { animation: none; }
+  .soc-shell .sidebar .nav a { transition: none; }
 }

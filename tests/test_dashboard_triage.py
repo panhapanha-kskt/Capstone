@@ -224,11 +224,34 @@ def test_claim_fans_out_and_conflicts(env):
 
 def test_four_eyes_close_on_high(env):
     k = case_by_label(env, "evil-tunnel.com")["key"]
+    high_fp = server.fp_hex(make_alerts()[0])
+    medium_fp = server.fp_hex(make_alerts()[3])
+    high_status = server.STORE.get_alert_mgmt(high_fp)["status"]
+    medium_record = server.STORE.get_alert_mgmt(medium_fp)
+    medium_status = medium_record["status"] if medium_record else "Open"
+    assert post(env, f"/api/alerts/{high_fp}/status",
+                {"actor": "analyst-1", "status": "Closed"})[0] == 409
+    assert post(env, f"/api/alerts/{high_fp}/verdict",
+                {"actor": "senior-1", "verdict": "fp_model_logic"})[0] == 200
+    assert post(env, f"/api/alerts/{high_fp}/status",
+                {"actor": "analyst-1", "status": "Closed"})[0] == 403
+    assert post(env, "/api/alerts/bulk", {"actor": "analyst-1", "action": "close",
+                                           "fps": [high_fp]})[2]["failed"] == 1
+    assert server.STORE.get_alert_mgmt(high_fp)["status"] == high_status
     body = {"actor": "analyst-1", "classification": "fp_model_logic", "comment": "known lab load test traffic"}
     code, _, r = post(env, f"/api/triage/case/{k}/close", body)
     assert code == 400 and {m["id"] for m in r["missing"]} == {"m_host_review", "m_owner"}
     for item in ("m_host_review", "m_owner"):
         assert post(env, f"/api/triage/case/{k}/checklist", {"actor": "analyst-1", "item_id": item, "checked": True})[0] == 200
+    assert post(env, f"/api/alerts/{high_fp}/status",
+                {"actor": "analyst-1", "status": "Closed"})[0] == 403
+    assert post(env, f"/api/alerts/{medium_fp}/verdict",
+                {"actor": "analyst-1", "verdict": "true_positive"})[0] == 200
+    code, _, bulk = post(env, "/api/alerts/bulk", {"actor": "senior-1", "action": "close",
+                                                  "fps": [high_fp, medium_fp]})
+    assert code == 200 and bulk["succeeded"] == 0 and bulk["failed"] == 2
+    assert server.STORE.get_alert_mgmt(high_fp)["status"] == high_status
+    assert server.STORE.get_alert_mgmt(medium_fp)["status"] == medium_status
     assert post(env, f"/api/triage/case/{k}/close", dict(body, comment="short"))[0] == 400
     code, _, r = post(env, f"/api/triage/case/{k}/close", body)
     assert code == 202 and r["pending_approval"]
@@ -319,9 +342,10 @@ def test_legacy_routes_guardrails(env):
     assert code == 200 and r["failed"] == 1 and r["results"][0]["code"] == 403
     assert post(env, f"/api/alerts/{hi}/verdict", {"actor": "senior-1", "verdict": "false_positive"})[0] == 200
     assert server.VERDICT_TO_LABEL["false_positive"] == 0 and server.VERDICT_TO_LABEL["undetermined"] is None
-    assert post(env, f"/api/alerts/{hi}/status", {"actor": "analyst-1", "status": "Closed"})[0] == 200
+    assert post(env, f"/api/alerts/{hi}/status", {"actor": "analyst-1", "status": "Closed"})[0] == 403
+    assert post(env, f"/api/alerts/{hi}/status", {"actor": "senior-1", "status": "Closed"})[0] == 200
     assert post(env, f"/api/alerts/{hi}/status", {"actor": "analyst-2", "status": "Open"})[0] == 403
-    assert post(env, f"/api/alerts/{hi}/status", {"actor": "analyst-1", "status": "Open"})[0] == 200
+    assert post(env, f"/api/alerts/{hi}/status", {"actor": "senior-1", "status": "Open"})[0] == 200
     assert post(env, "/api/suppressions", {"actor": "analyst-1", "field": "domain", "value": "x.com",
                                            "reason": "noise"})[0] == 403
     assert post(env, "/api/suppressions", {"field": "domain", "value": "x.com"})[0] == 400   # validated first

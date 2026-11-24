@@ -24,7 +24,13 @@ LABEL_COL = os.getenv("LABEL_COLUMN", "label")
 MAX_UPLOAD_MB = int(os.getenv("MAX_UPLOAD_MB", "0"))   # 0 = no limit; set e.g. MAX_UPLOAD_MB=500 to cap uploads
 # Large CSVs are checked on their first rows only, so "Upload and check" stays fast and light on memory.
 VALIDATE_SAMPLE_ROWS = int(os.getenv("VALIDATE_SAMPLE_ROWS", "200000"))
-ADMIN_TOKEN = os.getenv("ADMIN_TOKEN", "admin")
+# Training administration has no built-in credential, including in demo mode.
+ADMIN_TOKEN = os.getenv("ADMIN_TOKEN", "")
+
+
+def admin_token_configured():
+    """Keep missing and widely documented placeholder credentials disabled."""
+    return bool(ADMIN_TOKEN) and ADMIN_TOKEN == ADMIN_TOKEN.strip() and ADMIN_TOKEN.casefold() not in {"admin", "change-me"}
 
 # Directory the training command runs in (set to your Capstone repo for real training).
 DEFAULT_PROJECT_DIR = PROJECT_ROOT if MODE == "capstone" else ROOT

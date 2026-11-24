@@ -8,7 +8,7 @@ CADT Capstone Project, 2025-2026
 Detects DNS-based attacks (tunneling, NXDOMAIN floods, amplification, cache poisoning) using a two-path ML fusion approach:
 
 - **Path A:** Random Forest, with gradient boosting added only when it helps on validation (supervised classification); a Transformer is trained as a comparison only
-- **Path B:** unsupervised anomaly detection on 20-query windows per client, trained on benign traffic only. Two models: the Trafficformer autoencoder (default) or an **Isolation Forest** (`--path-b-model iforest`), which trains in about a minute and detects tunnels where the autoencoder no longer does (see [PATH_B_ISOLATION_FOREST.md](docs/Week6/PATH_B_ISOLATION_FOREST.md))
+- **Path B:** unsupervised anomaly detection on 20-query windows per client, trained on benign traffic only. `scripts/train_models.sh` defaults to **Isolation Forest** (`--path-b-model iforest`); the Trafficformer autoencoder remains available with `--path-b-model trafficformer`. Isolation Forest trains in about a minute and detects tunnels where the autoencoder no longer does (see [PATH_B_ISOLATION_FOREST.md](docs/Week6/PATH_B_ISOLATION_FOREST.md))
 - **ML Bridge:** Fuses both paths into a combined threat score
 - **Detection Engine:** 6 rules + Z-score + MITRE ATT&CK mapping
 

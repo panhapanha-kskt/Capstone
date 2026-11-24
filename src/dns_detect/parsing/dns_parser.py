@@ -411,12 +411,11 @@ def load_multifeature_with_meta(path: str, features=None):
     client_ip = (df["client_ip"].astype(str).to_numpy()
                  if "client_ip" in df.columns else np.array(["?"] * n))
     if "timestamp" in df.columns:
-        ts = pd.to_datetime(df["timestamp"], errors="coerce")
-        if getattr(ts.dt, "tz", None) is not None:
-            ts = ts.dt.tz_convert(None)
+        # Naive values are UTC; offset-aware values are normalized to UTC.
+        ts = pd.to_datetime(df["timestamp"], errors="coerce", format="mixed", utc=True)
         # Seconds since epoch; NaT → NaN (astype("int64") would raise on NaT,
         # and the datetime unit differs across pandas versions).
-        order = ((ts - pd.Timestamp("1970-01-01")) / pd.Timedelta(seconds=1)).to_numpy(dtype=float)
+        order = ((ts - pd.Timestamp("1970-01-01", tz="UTC")) / pd.Timedelta(seconds=1)).to_numpy(dtype=float)
         # Rows without a timestamp keep their file position as a stable fallback.
         order = np.where(np.isnan(order), np.arange(n, dtype=float), order)
     else:

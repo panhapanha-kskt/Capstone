@@ -115,3 +115,20 @@ def test_manifest_path_includes_strategy_and_seed():
     assert "time" in p and "seed7" in p
     p2 = manifest_path("lofo", 7, "/tmp/splits", held_out_family="dns2tcp")
     assert "dns2tcp" in p2
+
+
+def test_time_strategy_mixed_iso_precision_and_timezones():
+    # Per class, the fractional row is latest even though it appears near the start.
+    timestamps = [
+        "2026-01-01T00:00:09", "2026-01-01T00:00:10.500000",
+        "2026-01-01T00:00:08", "2026-01-01T01:00:07+01:00",
+        "2026-01-01T00:00:06.500000+00:00", "2026-01-01T00:00:05Z",
+        "2026-01-01T00:00:04", "2026-01-01T00:00:03.123456",
+        "2026-01-01T00:00:02", "not-a-time",
+    ]
+    df = pd.DataFrame({"timestamp": timestamps * 2})
+    y = np.repeat([0, 1], len(timestamps))
+    train, val, test, _ = build_indices(df, y, "time", seed=42)
+    assert set(test) == {1, 11}
+    assert set(val) == {0, 10}
+    assert set(train) == set(range(20)) - {0, 1, 10, 11}

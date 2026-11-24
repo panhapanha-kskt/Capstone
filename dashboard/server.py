@@ -21,6 +21,7 @@ Then open http://127.0.0.1:8000
 """
 
 import argparse
+import copy
 import hashlib
 import http.client
 import ipaddress
@@ -225,7 +226,7 @@ ACK_SLA_SECONDS = {"Critical": 15 * 60, "High": 15 * 60, "Medium": 60 * 60, "Low
 PERMISSIONS = {
     "note": 0, "acknowledge": 1, "assign": 1, "status": 1, "escalate": 1, "verdict": 1, "verdict_clear": 1,
     "claim": 1, "release": 1, "checklist": 1, "case_close": 1, "case_escalate": 1, "handover_ack": 1,
-    "incident_create": 1, "bulk": 1,
+    "incident_create": 1, "bulk": 1, "run": 2,
     "approve": 2, "suppress": 2, "incident_action": 2, "usecase_pref": 2, "force_claim": 2,
 }
 
@@ -386,6 +387,20 @@ class Store:
                 return role_tier(a.get("role"))
         return 0
 
+    def _closure_checklist_ready(self, fp, case_key=None):
+        """Use the stored checklist of a live case containing this alert."""
+        for mode in ("source", "entity"):
+            for key, case in triage_cases(mode).items():
+                if case_key is not None and key != case_key:
+                    continue
+                if not any(member_fp == fp for _, member_fp in case["items"]):
+                    continue
+                trec = self._cache["triage"]["records"]["cases"].get(key) or {}
+                checks = trec.get("checklist") or {}
+                if all((checks.get(item) or {}).get("checked") for item in REQUIRED_MANUAL):
+                    return True
+        return False
+
     def _apply_one_locked(self, fp, action, payload, actor, alert_hint, now):
         """Mutate one alert record in the cache (caller holds self.lock and persists).
         Returns (http_status, body_dict, audit_entries).
@@ -440,6 +455,15 @@ class Store:
                     and new_status != old_status and not rec.get("verdict")):
                 return 409, {"error": "set a verdict before resolving or closing this alert",
                              "verdicts": list(VALID_VERDICTS)}, []
+            if new_status == "Closed" and new_status != old_status:
+                if not rec.get("verdict"):
+                    return 409, {"error": "set a verdict before closing this alert",
+                                 "verdicts": list(VALID_VERDICTS)}, []
+                if (rec["verdict"] in FP_VERDICTS and severity in HIGH_SEVERITIES and tier < 2):
+                    return 403, {"error": "Tier 2 approval is required for a High/Critical false-positive closure",
+                                 "required_tier": 2}, []
+                if not self._closure_checklist_ready(fp, payload.get("_case_key")):
+                    return 409, {"error": "complete the triage case checklist before closing this alert"}, []
             rec["status"] = new_status
             if new_status == "Resolved":
                 rec["resolved_at"] = now
@@ -480,8 +504,7 @@ class Store:
             if reason is not None and (not isinstance(reason, str)
                                        or len(reason.encode("utf-8")) > NOTE_MAX_BYTES):
                 return 400, {"error": f"reason must be a string up to {NOTE_MAX_BYTES} bytes"}, []
-            if (verdict in FP_VERDICTS and severity in HIGH_SEVERITIES and tier < 2
-                    and not payload.get("_approved_by")):
+            if verdict in FP_VERDICTS and severity in HIGH_SEVERITIES and tier < 2:
                 return 403, {"error": "Tier 1 cannot mark a High/Critical alert as a false positive; "
                                       "request closure from the Triage page for Tier 2 approval",
                              "required_tier": 2}, []
@@ -544,7 +567,8 @@ class Store:
             STATE.bump()  # tell pollers something changed
             return code, body
 
-    def apply_case_action(self, fps, steps, actor, case_key, hints=None, audit_note=None, audit_action=None):
+    def apply_case_action(self, fps, steps, actor, case_key, hints=None, audit_note=None, audit_action=None,
+                          atomic=False):
         """Apply a sequence of (action, payload) steps to every alert in a case with ONE file write
         and one CASE_* audit row (per-alert rows only for small cases). A step that is invalid for a
         member (e.g. acknowledge on an already Closed alert) is skipped for that member, not fatal.
@@ -555,6 +579,23 @@ class Store:
         per_alert = len(fps) <= CASE_PER_ALERT_AUDIT_MAX
         changed = False
         with self.lock:
+            if atomic:
+                original = copy.deepcopy(self._cache["alerts"]["records"])
+                preflight_failed = []
+                try:
+                    for fp in fps:
+                        for action, payload in steps:
+                            p = dict(payload or {})
+                            if case_key:
+                                p["_case_key"] = case_key
+                            code, body, _ = self._apply_one_locked(fp, action, p, actor, hints.get(fp), now)
+                            if code != 200:
+                                preflight_failed.append({"fp": fp, "action": action, "code": code,
+                                                         "error": body.get("error")})
+                finally:
+                    self._cache["alerts"]["records"] = original
+                if preflight_failed:
+                    return {"ok": 0, "failed": preflight_failed, "aborted": True}
             for fp in fps:
                 member_ok = True
                 for action, payload in steps:
@@ -3028,6 +3069,11 @@ class Handler(BaseHTTPRequestHandler):
         if not ok:
             self.send_json(400, body)
             return
+        actor = _actor(body)
+        denied = authorize(actor, "run")
+        if denied:
+            self.send_json(*denied)
+            return
         allowed, wait = run_gate_allows()
         if not allowed:
             self.send(429, json.dumps({"error": "a run was requested recently",
@@ -3035,7 +3081,6 @@ class Handler(BaseHTTPRequestHandler):
                       "application/json; charset=utf-8",
                       extra_headers=(("Retry-After", str(max(1, int(wait + 0.999)))),))
             return
-        actor = _actor(body)
         with STORE.lock:
             STORE._append_audit(action="PIPELINE_RUN_REQUESTED", actor=actor,
                                 new={"mode": STATE.mode})
@@ -3187,10 +3232,14 @@ class Handler(BaseHTTPRequestHandler):
         if fps:
             res = STORE.apply_case_action(fps, [(internal, p)], actor, None,
                                           hints={fp: live.get(fp) for fp in fps},
-                                          audit_note=p.get("reason"), audit_action="BULK_" + action.upper())
+                                          audit_note=p.get("reason"), audit_action="BULK_" + action.upper(),
+                                          atomic=True)
         else:
             res = {"ok": 0, "failed": []}
         errors = {f["fp"]: f for f in res["failed"]}
+        if res.get("aborted"):
+            errors.update({fp: {"code": 409, "error": "bulk action aborted"}
+                           for fp in fps if fp not in errors})
         errors.update({f: {"fp": f, "code": 404, "error": "unknown alert"} for f in unknown})
         fps = requested
         results = [{"fp": fp, "code": errors[fp]["code"] if fp in errors else 200, "ok": fp not in errors,

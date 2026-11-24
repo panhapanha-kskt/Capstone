@@ -131,10 +131,10 @@ def _time_split(df: pd.DataFrame, y: np.ndarray, seed: int = 42,
     """
     if "timestamp" not in df.columns:
         raise ValueError("time strategy needs a 'timestamp' column")
-    ts = pd.to_datetime(df["timestamp"], errors="coerce")
-    if getattr(ts.dt, "tz", None) is not None:
-        ts = ts.dt.tz_convert(None)
-    secs = (ts - pd.Timestamp("1970-01-01")).dt.total_seconds().to_numpy()
+    # Mixed ISO precision is common across captures. Naive values are UTC;
+    # offset-aware values are normalized to UTC before chronological sorting.
+    ts = pd.to_datetime(df["timestamp"], errors="coerce", format="mixed", utc=True)
+    secs = (ts - pd.Timestamp("1970-01-01", tz="UTC")).dt.total_seconds().to_numpy()
     # Rows without a timestamp fall back to the row index (stable, deterministic).
     order_key = np.where(np.isnan(secs), np.arange(len(df), dtype=float), secs)
     y = np.asarray(y)

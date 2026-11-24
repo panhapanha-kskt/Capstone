@@ -30,7 +30,9 @@ requires Bash on `PATH` (for example, Git Bash or WSL).
 ## Try it with the demo trainer
 
 Set `TRAINGUI_MODE=demo` before starting the dashboard to opt into the synthetic demo trainer.
-The sample dataset is in `dashboard/training-gui/gui_data/datasets/`.
+Set `ADMIN_TOKEN` to a unique value for the demo too. The dashboard and its demo alerts can
+start without it, but training API requests return 503 until a token is configured and the
+server is restarted. The sample dataset is in `dashboard/training-gui/gui_data/datasets/`.
 
 ## Use it with your Capstone repo (scripts/train_models.sh)
 Start the GUI from the same Python environment you use for Capstone (it needs TensorFlow etc.):
@@ -59,6 +61,6 @@ How it works:
 - One training job at a time.
 - Training never touches production; only Promote does, and it warns when F1 drops or false positives rise.
 - Rollback restores the previous promoted version.
-- Admin token required (default `admin`; local use only. Set a stronger `ADMIN_TOKEN` before exposing the dashboard).
+- Training administration requires an explicitly set `ADMIN_TOKEN` in both Capstone and demo modes. Missing, blank, `admin`, and `change-me` values disable the training API (503) and Streamlit console; restart after changing it. The dashboard has no login for other actions.
 - Uploads: .csv only, size-limited, file name sanitised.
 - Demo mode runs on Linux, macOS and Windows. Capstone mode needs `bash` (your train_models.sh is a bash script): on Windows use WSL or Git Bash.

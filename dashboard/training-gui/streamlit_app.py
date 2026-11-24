@@ -9,6 +9,10 @@ from core import settings as S
 
 st.set_page_config(page_title="Training console", layout="wide")
 
+if not S.admin_token_configured():
+    st.sidebar.error("Training administration is disabled: set a non-default ADMIN_TOKEN and restart Streamlit.")
+    st.stop()
+
 if st.sidebar.text_input("Admin token", type="password") != S.ADMIN_TOKEN:
     st.sidebar.info("Enter the admin token to continue.")
     st.stop()

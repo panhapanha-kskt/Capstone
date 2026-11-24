@@ -3,6 +3,7 @@ FastAPI app and the Streamlit app can both read it and a page refresh loses noth
 import json, os, shutil, signal, subprocess, sys, time, uuid
 from datetime import datetime, timezone
 from pathlib import Path
+from typing import Optional
 from . import settings as S
 from .data import dataset_path
 
@@ -67,7 +68,7 @@ def running_job():
     return next((j for j in list_jobs() if j["status"] == "running"), None)
 
 
-def start_job(dataset: str, train_path: str = "both", params: dict | None = None,
+def start_job(dataset: str, train_path: str = "both", params: Optional[dict] = None,
               trainer: str = "pipeline") -> dict:
     if trainer not in ("pipeline", "feature_table"):
         raise ValueError("trainer must be pipeline or feature_table")

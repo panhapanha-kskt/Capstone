@@ -187,7 +187,9 @@ def test_f2_bulk_clear_verdict(base):
 def test_f2_require_verdict_blocks_clearing_on_closed_alert(base, monkeypatch):
     f = fp(4)
     monkeypatch.setitem(server.WORKFLOW, "require_verdict", True)
-    assert post(base, f"/api/alerts/{f}/status", {"actor": "analyst-1", "status": "Closed"})[0] == 200
+    # Seed a previously closed record; this test isolates the clear-verdict guard.
+    with server.STORE.lock:
+        server.STORE._cache["alerts"]["records"][f]["status"] = "Closed"
     assert post(base, f"/api/alerts/{f}/clearverdict", {"actor": "senior-1"})[0] == 409
     assert server.STORE.get_alert_mgmt(f)["verdict"] == "benign_positive"
 

@@ -4,13 +4,14 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
+import hmac
 import uuid
 
 from fastapi import Depends, FastAPI, Header, HTTPException, Request, UploadFile
 from fastapi.concurrency import run_in_threadpool
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
-from typing import Literal
+from typing import Literal, Optional
 
 from pydantic import BaseModel
 
@@ -21,7 +22,9 @@ app = FastAPI(title="DNS detection - admin training console")
 
 
 def admin(x_admin_token: str = Header(default="")):
-    if x_admin_token != S.ADMIN_TOKEN:
+    if not S.admin_token_configured():
+        raise HTTPException(503, "Training administration is disabled: set a non-default ADMIN_TOKEN and restart the server.")
+    if not hmac.compare_digest(x_admin_token, S.ADMIN_TOKEN):
         raise HTTPException(401, "Invalid admin token")
 
 
@@ -95,7 +98,7 @@ def _upload_name(raw: str) -> str:
     return name
 
 
-async def _store(name: str, chunks, expected: int | None = None) -> dict:
+async def _store(name: str, chunks, expected: Optional[int] = None) -> dict:
     """Write an async stream of byte chunks to the datasets folder, then check the file.
 
     Data goes to a unique '.part' file (never listed as a dataset) and is renamed into place

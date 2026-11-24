@@ -117,12 +117,16 @@ def test_security_headers_and_csp_nonce(base):
 
 def test_run_is_audited_and_rate_limited(base):
     server._RUN_GATE["last"] = 0.0
-    code, _, _ = req(base, "POST", "/api/run", {"actor": "analyst-2"}, JSON_HDRS)
+    code, _, denied = req(base, "POST", "/api/run", {"actor": "analyst-2"}, JSON_HDRS)
+    assert code == 403 and denied["required_tier"] == 2
+    assert server._RUN_GATE["last"] == 0.0
+    assert req(base, "POST", "/api/run", {"actor": "unknown"}, JSON_HDRS)[0] == 403
+    code, _, _ = req(base, "POST", "/api/run", {"actor": "senior-1"}, JSON_HDRS)
     assert code == 200
-    code, headers, _ = req(base, "POST", "/api/run", {"actor": "analyst-2"}, JSON_HDRS)
+    code, headers, _ = req(base, "POST", "/api/run", {"actor": "senior-1"}, JSON_HDRS)
     assert code == 429 and int(headers["Retry-After"]) >= 1
     audit = server.STORE.audit(limit=20)
-    assert any(r["action"] == "PIPELINE_RUN_REQUESTED" and r["actor"] == "analyst-2" for r in audit)
+    assert any(r["action"] == "PIPELINE_RUN_REQUESTED" and r["actor"] == "senior-1" for r in audit)
 
 
 def test_unknown_actor_not_trusted(base):
@@ -151,6 +155,14 @@ def test_state_is_superset_and_etag(base):
 
 def test_closed_alert_transitions(base):
     fp = fp_of(1)
+    assert req(base, "POST", f"/api/alerts/{fp}/status", {"actor": "analyst-1", "status": "Closed"}, JSON_HDRS)[0] == 409
+    assert req(base, "POST", f"/api/alerts/{fp}/verdict", {"actor": "analyst-1", "verdict": "undetermined"}, JSON_HDRS)[0] == 200
+    case = next((key for key, c in server.triage_cases("source").items()
+                 if any(member_fp == fp for _, member_fp in c["items"])), None)
+    assert case is not None
+    server.STORE.triage_touch([(case, "source")])
+    server.STORE.triage_update(lambda r: r["cases"][case].update(
+        checklist={item: {"checked": True} for item in server.REQUIRED_MANUAL}))
     assert req(base, "POST", f"/api/alerts/{fp}/status", {"actor": "analyst-1", "status": "Closed"}, JSON_HDRS)[0] == 200
     code, _, body = req(base, "POST", f"/api/alerts/{fp}/status", {"actor": "analyst-1", "status": "Investigating"}, JSON_HDRS)
     assert code == 409 and body["allowed"] == ["Open"]

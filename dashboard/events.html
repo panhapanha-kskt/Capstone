@@ -17,11 +17,17 @@
   @keyframes slide{from{transform:translateX(30px);opacity:0}}
   .detail .d-head{display:flex;align-items:center;gap:10px;padding:14px 16px;border-bottom:1px solid var(--border);font-weight:600;color:#fff}
   .detail .d-head .x{margin-left:auto;cursor:pointer;color:var(--muted);font-size:16px}
+  .ev-status{padding:8px 18px;border-bottom:1px solid var(--border);color:var(--muted);font-size:12px}
+  .ev-status.bad{color:var(--orange)}
+  .ev-status button{margin-left:10px}
+  .detail .d-head .x{background:transparent;border:0;font:inherit}
+  @media (prefers-reduced-motion:reduce){.detail{animation:none}}
   .detail .d-body{flex:1;overflow-y:auto;padding:14px 16px;display:flex;flex-direction:column;gap:12px}
   pre.json{background:var(--panel2);border:1px solid var(--border);border-radius:3px;padding:10px;font-size:11.5px;
     color:#e8ebf4;white-space:pre-wrap;word-break:break-all;max-height:300px;overflow:auto}
 </style>
 <link rel="stylesheet" href="/static/css/shell.css">
+<link rel="stylesheet" href="/static/css/soc-workbench.css">
 </head>
 <body>
 <div id="app-chrome"></div>
@@ -29,11 +35,19 @@
 <script>
 "use strict";
 const main = SOC.mount({active:"events"});
+document.body.classList.add("soc-workbench", "soc-events");
 main.innerHTML = `
   <div class="page-head">
-    <h1>Event Explorer</h1>
-    <span class="subtitle">DNS detection events with ML, statistical, and rule-based fields direct from the pipeline.</span>
-    <span class="right"><span id="mode-note" style="color:var(--muted);font-size:12px"></span></span>
+    <div class="wb-title"><span class="wb-kicker"><span class="wb-live" aria-hidden="true"></span>SECURITY OPERATIONS / EXPLORE</span>
+      <h1>Event explorer</h1><p class="subtitle">Investigate detection-alert evidence from the bounded feed.</p></div>
+    <span class="right"><a class="wb-link" href="/alerts">Review alerts ↗</a></span>
+  </div>
+  <div class="wb-data-bar"><strong>DETECTION ALERT EVENTS</strong><span id="mode-note"></span>
+    <span id="ev-status" class="ev-status" role="status" aria-live="polite">Loading events… <button type="button" id="ev-retry" class="btn sec" hidden>Retry</button></span></div>
+  <div class="wb-stats" aria-label="Event feed summary">
+    <div class="wb-stat"><span>Total matches</span><strong id="ev-total">—</strong><small>Matching detection alerts</small></div>
+    <div class="wb-stat"><span>Current page</span><strong id="ev-page">—</strong><small>50 records per page</small></div>
+    <div class="wb-stat"><span>Loaded records</span><strong id="ev-loaded">—</strong><small>Current page only</small></div>
   </div>
   <div class="filterbar">
     <span class="bar-label">Filters</span>
@@ -72,6 +86,20 @@ main.innerHTML = `
 
 let offset = 0, limit = 50, total = 0;
 let sources = new Set();
+let loadSeq = 0, lastGood = null;
+const statusEl = document.getElementById("ev-status");
+function status(message, failed=false){
+  statusEl.classList.toggle("bad", failed);
+  statusEl.firstChild.textContent = message + " ";
+  document.getElementById("ev-retry").hidden = !failed;
+}
+function validPage(data){
+  if (!data || !Array.isArray(data.records) || !Number.isSafeInteger(data.total) || data.total < 0 ||
+      !data.records.every(r=>r && typeof r.fp === "string" && typeof r.timestamp === "string" &&
+        (!r.tactics || Array.isArray(r.tactics)) && (!r.techniques || Array.isArray(r.techniques))))
+    throw new Error("Events API returned an invalid response");
+  return data;
+}
 
 function na(v){
   if (v === null || v === undefined || v === "" || Number.isNaN(v)) return '<span style="color:var(--dim)">N/A</span>';
@@ -111,9 +139,21 @@ function readFilters(){
 }
 
 async function load(){
+  const seq = ++loadSeq;
+  if (!lastGood) status("Loading events…");
   const q = readFilters();
-  const data = await SOC.apiGET("/api/events?" + q.toString());
-  total = data.total || 0;
+  let data;
+  try { data = validPage(await SOC.apiGET("/api/events?" + q.toString())); }
+  catch(e){
+    if (seq !== loadSeq) return;
+    const offline = !navigator.onLine || e instanceof TypeError;
+    status((offline ? "Offline. " : "Events unavailable. ") +
+      (lastGood ? "Showing results from " + lastGood.toLocaleTimeString() + "." : "No results loaded."), true);
+    if (!lastGood) document.getElementById("tbody").innerHTML = '<tr><td class="empty" colspan="12">Could not load events. Retry to continue.</td></tr>';
+    return;
+  }
+  if (seq !== loadSeq) return;
+  total = data.total;
   const tbody = document.getElementById("tbody");
   const nag = document.getElementById("demo-nag");
   // populate source filter options from first page
@@ -124,19 +164,26 @@ async function load(){
   const srcKey = [...sources].sort().join("\n");
   if (srcEl.dataset.key !== srcKey){   // rebuilding an open <select> closes it, so only on change
     const preserved = srcEl.value;
-    srcEl.innerHTML = '<option value="">Any source</option>' + [...sources].map(s=>`<option ${s===preserved?"selected":""}>${SOC.esc(s)}</option>`).join("");
+    srcEl.replaceChildren(new Option("Any source", ""), ...[...sources].sort().map(s=>new Option(s, s)));
+    srcEl.value = preserved;
     srcEl.dataset.key = srcKey;
   }
   SOC.patchList(tbody, data.records||[], r=>r.fp, row,
     '<tr><td class="empty" colspan="12">No events match these filters.</td></tr>');
   document.getElementById("count").textContent = total;
+  document.getElementById("ev-total").textContent = total.toLocaleString();
+  document.getElementById("ev-page").textContent = Math.floor(offset/limit) + 1;
+  document.getElementById("ev-loaded").textContent = data.records.length;
   document.getElementById("p-cur").textContent = Math.floor(offset/limit) + 1;
   document.getElementById("p-total").textContent = Math.max(Math.ceil(total/limit), 1);
   document.getElementById("p-prev").disabled = offset <= 0;
   document.getElementById("p-first").disabled = offset <= 0;
   document.getElementById("p-next").disabled = offset + limit >= total;
   document.getElementById("p-last").disabled = offset + limit >= total;
+  lastGood = new Date();
+  status("Updated " + lastGood.toLocaleTimeString());
 }
+document.getElementById("ev-retry").addEventListener("click", load);
 
 document.getElementById("tbody").addEventListener("click", ev=>{
   const tr = ev.target.closest("tr[data-fp]");
@@ -146,7 +193,7 @@ document.getElementById("tbody").addEventListener("click", ev=>{
 async function openDetail(fp){
   const host = document.getElementById("detail-host");
   host.innerHTML = `<div class="detail"><div class="d-head">Event ${SOC.esc(fp.slice(0,8))}
-    <span class="x" id="d-close">✕</span></div><div class="d-body">Loading…</div></div>`;
+    <button type="button" class="x" id="d-close" aria-label="Close event details">✕</button></div><div class="d-body">Loading…</div></div>`;
   document.getElementById("d-close").addEventListener("click", ()=>host.innerHTML="");
   try {
     const data = await SOC.apiGET("/api/events/" + encodeURIComponent(fp));
@@ -173,9 +220,9 @@ async function openDetail(fp){
         <span class="num">${SOC.esc(SOC.fmtDate(a.timestamp))}</span> · <b style="color:#cfd4e2">${SOC.esc(a.action)}</b> by <i>${SOC.esc(a.actor)}</i></div>`).join("")
         : '<div class="nag">No audit entries for this event.</div>'}
     `;
-    host.querySelector(".d-body").innerHTML = body;
+    if (host.querySelector(".d-body")) host.querySelector(".d-body").innerHTML = body;
   } catch(e){
-    host.querySelector(".d-body").innerHTML = `<div class="nag bad">Failed to load: ${SOC.esc(e.message)}</div>`;
+    if (host.querySelector(".d-body")) host.querySelector(".d-body").innerHTML = `<div class="nag bad">Failed to load: ${SOC.esc(e.message)}</div>`;
   }
 }
 

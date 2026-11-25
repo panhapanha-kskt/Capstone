@@ -24,11 +24,20 @@
   };
 
   const main = SOC.mount({active: "triage"});
+  document.body.classList.add("soc-workbench", "soc-triage");
+  const emptyCaseHtml = `<div class="case-empty" role="status">
+    <span class="case-empty-mark" aria-hidden="true">◎</span>
+    <span class="wb-kicker">CASE WORKSPACE</span>
+    <h2>Ready for the next case</h2>
+    <p>Select a case from the queue to review evidence, complete the checklist, and record a decision.</p>
+    <div class="case-empty-steps"><span>01 · Review signals</span><span>02 · Validate evidence</span><span>03 · Decide or escalate</span></div>
+  </div>`;
   main.innerHTML = `
     <div class="page-head tri-head">
-      <h1>Triage</h1><span class="subtitle">Tier 1 workbench: claim → validate → enrich → scope → close with a reason, or escalate to Tier 2.</span>
+      <div class="wb-title"><span class="wb-kicker"><span class="wb-live" aria-hidden="true"></span>SECURITY OPERATIONS / INVESTIGATE</span>
+        <h1>Triage workbench</h1><p class="subtitle">Prioritize the queue, validate evidence, and move each case to a defensible outcome.</p></div>
       <span class="right">
-        <label style="font-size:12px;color:var(--muted)">Acting as
+        <label class="wb-actor">Acting as
           <select id="actor" aria-label="Acting analyst"></select></label>
         <button class="btn sec" id="btn-approvals" hidden>Approvals <b id="n-approvals">0</b></button>
         <button class="btn sec" id="btn-handover">Shift handover</button>
@@ -54,15 +63,15 @@
             <option>Critical</option><option>High</option><option>Medium</option><option>Low</option></select>
           <input id="f-q" type="search" placeholder="Search host, domain, rule" aria-label="Search">
         </div>
-        <div class="queue-status" id="queue-status" hidden>
-          <span id="queue-message" role="status"></span>
-          <button class="btn sec" type="button" id="queue-retry">Retry</button>
+        <div class="queue-status" id="queue-status" role="status" aria-live="polite">
+          <span id="queue-message">Loading queue…</span>
+          <button class="btn sec" type="button" id="queue-retry" hidden>Retry</button>
         </div>
         <div class="qlist" id="qlist" role="listbox" aria-label="Cases" tabindex="0"><div class="empty">Loading…</div></div>
         <div class="pager"><button id="p-prev" aria-label="Previous page">‹</button><span id="p-info">—</span><button id="p-next" aria-label="Next page">›</button></div>
       </section>
       <section class="tri-col" aria-label="Case">
-        <div class="case" id="case"><div class="empty">Select a case (or press <span class="kbd">j</span>).</div></div>
+        <div class="case" id="case">${emptyCaseHtml}</div>
       </section>
     </div>
 
@@ -171,15 +180,25 @@
   // In-flight guard (audit fix F3): the same request can't be sent again while it is still running,
   // so a double-click or a repeated key press does not write twice.
   const inFlight = new Set();
+  let pendingButtons = [];
   async function post(url, body){
     if (inFlight.has(url)) throw Object.assign(new Error("Already working on it…"), {inFlight: true});
     inFlight.add(url);
     document.body.classList.add("busy");
+    if (inFlight.size === 1){
+      pendingButtons = [...document.querySelectorAll(".acts .btn, dialog .btn:not([data-close])")]
+        .filter(button=>!button.disabled);
+      pendingButtons.forEach(button=>button.disabled = true);
+    }
     try {
       return await SOC.apiPOST(url, Object.assign({actor: actor()}, body || {}));
     } finally {
       inFlight.delete(url);
-      if (!inFlight.size) document.body.classList.remove("busy");
+      if (!inFlight.size){
+        document.body.classList.remove("busy");
+        pendingButtons.forEach(button=>button.disabled = false);
+        pendingButtons = [];
+      }
     }
   }
   function fail(e){
@@ -195,6 +214,7 @@
     st.analysts = list;
     const sel = $("actor");
     sel.innerHTML = list.map(a=>`<option value="${esc(a.id)}">${esc(a.name)} · ${esc(a.role)}</option>`).join("");
+    sel.disabled = list.length === 1;
     if (!list.some(a=>a.id === actor()) && list.length) SOC.setActor(list[0].id);
     sel.value = actor();
     applyTier();
@@ -258,6 +278,9 @@
     </div>`;
   }
   function renderQueue(q){
+    if (!q || !Array.isArray(q.cases) || !Number.isSafeInteger(q.total) || q.total < 0 ||
+        !q.cases.every(c=>c && typeof c.key === "string" && typeof c.label === "string"))
+      throw new Error("Triage API returned an invalid queue");
     st.queue = q;
     st.skew = q.now - Date.now()/1000;
     renderCounts(q);
@@ -271,16 +294,19 @@
     if (st.selected) loadCase(st.selected, true);
     loadMe();
   }
+  let queueUpdated = null;
   const poller = SOC.pollJSON(queueUrl, renderQueue, 5000, error=>{
     const retry = $("queue-retry");
+    $("queue-status").classList.toggle("bad", !!error);
     if (!error && document.activeElement === retry) $("qlist").focus();
-    $("queue-status").hidden = !error;
+    retry.hidden = !error;
     if (error){
-      const message = st.queue ? "Queue update failed. Showing the last loaded results." : "Could not load the queue.";
+      const message = st.queue && queueUpdated ? "Queue stale since " + queueUpdated.toLocaleTimeString() + ". Showing saved results." : "Could not load the queue.";
       if ($("queue-message").textContent !== message) $("queue-message").textContent = message;
       if (!st.queue) $("qlist").textContent = "";
     } else {
-      $("queue-message").textContent = "";
+      queueUpdated = new Date();
+      $("queue-message").textContent = "Updated " + queueUpdated.toLocaleTimeString();
     }
   });
   $("queue-retry").addEventListener("click", ()=>poller.refresh());
@@ -330,7 +356,7 @@
   }
 
   /* ── case pane ───────────────────────────── */
-  function showEmpty(){ $("case").innerHTML = '<div class="empty">Select a case (or press <span class="kbd">j</span>).</div>'; st.view = null; }
+  function showEmpty(){ $("case").innerHTML = emptyCaseHtml; st.view = null; }
   let caseReq = 0;
   async function loadCase(key, quiet){
     if (key !== st.selected) return;

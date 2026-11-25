@@ -186,8 +186,16 @@
   .rel-row:hover{background:#1f2436}
   .rel-main{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis}
   .playbook{padding-left:18px;display:flex;flex-direction:column;gap:7px;font-size:12.5px;color:#e8ebf4}
+  .alerts-status{padding:8px 16px;color:var(--muted);font-size:12px;border-bottom:1px solid var(--border)}
+  .alerts-status.bad{color:var(--orange)}
+  .alerts-status button{margin-left:10px}
+  .widgets>*{animation:alerts-enter .24s ease-out both}
+  .widgets>*:nth-child(2){animation-delay:.06s}
+  @keyframes alerts-enter{from{opacity:0;transform:translateY(5px)}}
+  @media(prefers-reduced-motion:reduce){.widgets>*{animation:none}}
 </style>
 <link rel="stylesheet" href="/static/css/shell.css">
+<link rel="stylesheet" href="/static/css/soc-workbench.css">
 </head>
 <body>
 
@@ -199,6 +207,7 @@
 <script>
 "use strict";
 SOC.mount({active:"alerts"});
+document.body.classList.add("soc-workbench", "soc-alerts");
 /* ════════════════════════════════════════════════════════════
    Alerts — React 18 single-page app (FortiSOAR-style module)
    Data source: GET /api/state (feed) + POST /api/alerts/{fp}/* (persistent mgmt).
@@ -206,6 +215,20 @@ SOC.mount({active:"alerts"});
    ════════════════════════════════════════════════════════════ */
 const { useState, useEffect, useMemo, useCallback, useRef } = React;
 const html = htm.bind(React.createElement);
+class WidgetBoundary extends React.Component {
+  constructor(props){ super(props); this.state = {failed:false}; }
+  static getDerivedStateFromError(){ return {failed:true}; }
+  componentDidCatch(error){ console.error("Alerts widget failed", error); }
+  render(){ return this.state.failed ? html`<div class="nag bad" role="alert">${this.props.name} could not render. Refresh the page to retry.</div>` : this.props.children; }
+}
+function validState(s){
+  if (!s || typeof s !== "object" || !Array.isArray(s.feed) ||
+      !s.feed.every(f=>f && typeof f.fp === "string" &&
+        (!f.tactics || Array.isArray(f.tactics)) && (!f.techniques || Array.isArray(f.techniques)) &&
+        (!f.management || (typeof f.management === "object" && !Array.isArray(f.management)))))
+    throw new Error("Alerts API returned an invalid response");
+  return s;
+}
 
 /* ── simple API wrappers ──────────────────────── */
 async function apiPOST(url, body){
@@ -336,8 +359,8 @@ function enrich(f){
 /* ── widgets ────────────────────────────────── */
 function AssignedTo({scope, setScope}){
   return html`<div class="assigned"><b>Assigned To:</b>${" "}
-    <a class=${scope==="me"?"on":""} onClick=${()=>setScope("me")}>Me</a> | ${" "}
-    <a class=${scope==="all"?"on":""} onClick=${()=>setScope("all")}>All</a></div>`;
+    <button type="button" class=${scope==="me"?"on":""} aria-pressed=${scope==="me"} onClick=${()=>setScope("me")}>Me</button>
+    <button type="button" class=${scope==="all"?"on":""} aria-pressed=${scope==="all"} onClick=${()=>setScope("all")}>All</button></div>`;
 }
 
 function scoped(alerts, scope){
@@ -364,17 +387,20 @@ function SeverityPie({alerts}){
       slices.push(html`<path key=${p.k} fill=${p.c}
         d=${`M${cx},${cy} L${x0.toFixed(1)},${y0.toFixed(1)} A${r},${r} 0 ${frac>0.5?1:0} 1 ${x1.toFixed(1)},${y1.toFixed(1)} Z`}/>`);
     }
-    const mid=(a0+a1)/2, lr = frac>0.25 ? r*0.55 : r*0.8;
+    const mid=(a0+a1)/2, lr = frac>0.25 ? r*0.78 : r*0.85;
     if (frac >= 0.04) labels.push(html`<text key=${p.k+"t"} x=${(cx+lr*Math.cos(mid)).toFixed(1)} y=${(cy+lr*Math.sin(mid)).toFixed(1)}
       textAnchor="middle" fill="#fff" fontSize="14">${(frac*100).toFixed(1)}%</text>`);
     a0 = a1;
   }
   return html`<div class="widget">
-    <div class="w-head">Open Alerts By Severity<span class="tools"><span>⟳</span><span>▴</span></span></div>
+    <div class="w-head">Open alerts by severity</div>
     <${AssignedTo} scope=${scope} setScope=${setScope}/>
     <div class="w-body">
-      <svg viewBox="0 0 320 320" width="300" height="300">
+      <svg viewBox="0 0 320 320" width="300" height="300" role="img" aria-label=${`Open alerts by severity: ${total} total`}>
         ${total ? [...slices, ...labels] : html`<circle cx="160" cy="160" r="125" fill="#262b3d"/>`}
+        <circle cx="160" cy="160" r="63" fill="#18293a"/>
+        <text x="160" y="156" textAnchor="middle" fill="#f4f9fc" fontSize="28" fontWeight="700">${total}</text>
+        <text x="160" y="176" textAnchor="middle" fill="#a7bbce" fontSize="11">Open alerts</text>
       </svg>
     </div>
     <div class="w-legend">
@@ -402,10 +428,10 @@ function TypeBars({alerts}){
   const ticks = Math.min(xmax, 11);
   const rowH = Math.min((h-padT-padB)/Math.max(entries.length,1), 56);
   return html`<div class="widget">
-    <div class="w-head">Alerts by Type<span class="tools"><span>⟳</span><span>▴</span></span></div>
+    <div class="w-head">Alerts by type</div>
     <${AssignedTo} scope=${scope} setScope=${setScope}/>
     <div class="w-body">
-      <svg viewBox=${`0 0 ${w} ${h}`} width="100%" height="100%" preserveAspectRatio="xMidYMid meet">
+      <svg viewBox=${`0 0 ${w} ${h}`} width="100%" height="100%" preserveAspectRatio="xMidYMid meet" role="img" aria-label="Open and investigating alerts by detection type">
         ${Array.from({length:ticks+1}, (_,i)=>{
           const v = Math.round(i*xmax/ticks), gx = X(v);
           return html`<g key=${i}><line x1=${gx} x2=${gx} y1=${padT} y2=${h-padB} class="gridline"/>
@@ -959,18 +985,19 @@ function AlertsGrid({alerts, analysts, model, doAction, refresh, busy}){
 /* ── app root ───────────────────────────────── */
 function useApiStateWithRefresh(){
   const [state, setState] = useState(null);
+  const [status, setStatus] = useState({lastSuccess:null,error:null});
   const forceRef = useRef(null);
   const refresh = useCallback(()=>forceRef.current?.(), []);
   useEffect(()=>{
-    const poll = SOC.pollState(setState, 3000);
+    const poll = SOC.pollState(s=>setState(validState(s)), 3000, setStatus);
     forceRef.current = poll.forceTick;
     return poll.stop;
   }, []);
-  return [state, refresh];
+  return [state, refresh, status];
 }
 
 function App(){
-  const [state, refresh] = useApiStateWithRefresh();
+  const [state, refresh, status] = useApiStateWithRefresh();
   const [analysts, setAnalysts] = useState([]);
 
   const [model, setModel] = useState(null);
@@ -1003,21 +1030,31 @@ function App(){
     }
   }, [refresh]);
 
-  if (!state) return html`<div class="empty" style=${{paddingTop:80}}>Connecting to /api/state…</div>`;
+  const stateMessage = status.error ? (!navigator.onLine ? "Offline. " : "") +
+      (state ? "Alert feed is stale since " + (status.lastSuccess?.toLocaleTimeString() || "last update") : "Could not load alerts")
+    : status.lastSuccess ? "Updated " + status.lastSuccess.toLocaleTimeString() : "Loading alerts…";
+  if (!state) return html`<div class="empty" role="status" style=${{paddingTop:80}}>${stateMessage}
+    ${status.error ? html`<button class="btn" type="button" onClick=${refresh}>Retry</button>` : null}</div>`;
 
   return html`<${React.Fragment}>
-    <div class="page-head"><h1>Alerts</h1>
-      <span style=${{marginLeft:12, color:"var(--muted)", fontSize:"12px"}}>
-        ${state.mode==="demo" ? "Demo mode — alerts and their ML scores are synthetic (marked demo=true), not model output." : ""}
-        ${state.model_version ? html` · model ${state.model_version}` : null}
-      </span>
-      <a href="/triage" style=${{marginLeft:"auto", color:"var(--cyan)", fontSize:"12.5px"}}>Tier 1? Use the Triage workbench →</a>
-      <span class="edit">✎</span></div>
-    <div class="widgets">
-      <${SeverityPie} alerts=${alerts}/>
-      <${TypeBars} alerts=${alerts}/>
+    <div class="page-head"><div class="wb-title">
+      <span class="wb-kicker"><span class="wb-live" aria-hidden="true"></span>SECURITY OPERATIONS / DETECTIONS</span>
+      <h1>Alert intelligence</h1><p>Review the current alert feed, investigate evidence, and record analyst decisions.</p>
+      </div><a class="wb-link" href="/triage">Open triage ↗</a></div>
+    <div class="wb-data-bar"><strong>${state.mode === "demo" ? "DEMO · SYNTHETIC ALERTS" : "LIVE ALERT FEED"}</strong>
+      <span>Current feed · up to 150 records${state.model_version ? " · model " + state.model_version : ""}</span>
+      <span class=${"alerts-status"+(status.error?" bad":"")} role="status" aria-live="polite">${stateMessage}
+        ${status.error ? html`<button class="btn" type="button" onClick=${refresh}>Retry</button>` : null}</span></div>
+    <div class="wb-stats" aria-label="Alert feed summary">
+      <div class="wb-stat"><span>Feed records</span><strong>${alerts.length}</strong><small>Current bounded feed</small></div>
+      <div class="wb-stat"><span>High / critical</span><strong>${alerts.filter(a=>a.severity==="High"||a.severity==="Critical").length}</strong><small>Priority in current feed</small></div>
+      <div class="wb-stat"><span>Open workflow</span><strong>${alerts.filter(a=>a.is_open).length}</strong><small>Not closed or resolved</small></div>
     </div>
-    <${AlertsGrid} alerts=${alerts} analysts=${analysts} model=${model} doAction=${doAction} refresh=${refresh} busy=${busyCount>0}/>
+    <div class="widgets">
+      <${WidgetBoundary} name="Severity chart"><${SeverityPie} alerts=${alerts}/><//>
+      <${WidgetBoundary} name="Type chart"><${TypeBars} alerts=${alerts}/><//>
+    </div>
+    <${WidgetBoundary} name="Alert table"><${AlertsGrid} alerts=${alerts} analysts=${analysts} model=${model} doAction=${doAction} refresh=${refresh} busy=${busyCount>0}/><//>
   <//>`;
 }
 

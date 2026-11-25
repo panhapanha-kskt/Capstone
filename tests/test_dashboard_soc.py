@@ -77,6 +77,17 @@ def fp_of(i):
 
 
 # ── security ───────────────────────────────────────────────────
+def test_internal_gateway_token_guards_reads_and_writes(base, monkeypatch):
+    token = "test-internal-token-01234567890123456789"
+    monkeypatch.setenv("SOC_INTERNAL_TOKEN", token)
+    code, _, body = req(base, "GET", "/api/state")
+    assert code == 403 and body["error"] == "gateway authentication required"
+    code, _, body = req(base, "POST", "/api/run", {}, JSON_HDRS)
+    assert code == 403 and body["error"] == "gateway authentication required"
+    code, _, _ = req(base, "GET", "/api/state", headers={"X-SOC-Internal-Token": token})
+    assert code == 200
+
+
 def test_post_requires_json_content_type(base):
     code, _, body = req(base, "POST", "/api/run", "x", {"Content-Type": "text/plain", "X-SOC-Request": "1"})
     assert code == 415

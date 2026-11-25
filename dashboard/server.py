@@ -1586,6 +1586,10 @@ def is_training_api(path):
 
 def check_request(method, headers, path=""):
     """Returns None when the request may proceed, else (http_status, error_message)."""
+    internal_token = os.environ.get("SOC_INTERNAL_TOKEN", "")
+    if internal_token and not secrets.compare_digest(
+            headers.get("X-SOC-Internal-Token", ""), internal_token):
+        return 403, "gateway authentication required"
     host = headers.get("Host") or ""
     if _host_name(host) not in SECURITY["allowed_hosts"]:
         return 403, "Host header not allowed"

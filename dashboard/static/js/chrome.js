@@ -183,12 +183,18 @@
 
   // Analyst list (cached) + current actor helpers
   let analystsPromise = null;
+  let authenticatedActor = null;
   function analysts(){
-    if (!analystsPromise) analystsPromise = apiGET("/api/analysts").then(r=>r.records||[]).catch(()=>[]);
+    if (!analystsPromise) analystsPromise = apiGET("/api/analysts").then(r=>{
+      const records = r.records || [];
+      if (r.authenticated && records.length === 1) authenticatedActor = records[0].id;
+      return records;
+    }).catch(()=>[]);
     return analystsPromise;
   }
-  function actor(){ try { return localStorage.getItem("soc_actor") || "analyst-1"; } catch(e){ return "analyst-1"; } }
+  function actor(){ if (authenticatedActor) return authenticatedActor; try { return localStorage.getItem("soc_actor") || "analyst-1"; } catch(e){ return "analyst-1"; } }
   function setActor(a){
+    if (authenticatedActor) return;
     try { localStorage.setItem("soc_actor", a); } catch(e){}
     updateActorLabel();
   }

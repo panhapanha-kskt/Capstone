@@ -3,84 +3,33 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Training console</title>
-<style>
-:root{--bg:#eef1f4;--panel:#fff;--ink:#14213d;--mute:#4d5869;--line:#d5dbe3;--accent:#1f6f8b;--accent-ink:#fff;
---ok:#256b42;--warn:#8a5300;--bad:#b3261e;--sel:#e7f2f6;--r:6px}
-*{box-sizing:border-box}
-body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.5 system-ui,-apple-system,"Segoe UI",sans-serif;display:flex;min-height:100vh}
-nav{width:230px;background:var(--ink);color:#dfe6f0;padding:22px 14px;flex-shrink:0}
-nav h1{font-size:16px;margin:0 0 4px;color:#fff}
-nav>p{margin:0 0 18px;font-size:13px;color:#b7c4d6}
-nav a{color:inherit;text-decoration:none}
-nav .back{display:block;padding:8px 10px;border-radius:var(--r);font-size:14px;margin-bottom:12px}
-nav .back:hover{background:#1c2c4d}
-ol.steps{list-style:none;margin:0;padding:0}
-ol.steps a{display:flex;gap:10px;align-items:flex-start;padding:9px 10px;border-radius:var(--r);margin-bottom:4px}
-ol.steps a:hover{background:#1c2c4d}
-ol.steps a[aria-current=page]{background:#2a3f69;color:#fff;box-shadow:inset 3px 0 0 #8cc4d8}
-.num{flex:0 0 22px;height:22px;border-radius:50%;border:1px solid #9fb0c6;display:grid;place-items:center;font-size:12px}
-.done .num{background:#3f9b6b;border-color:#3f9b6b;color:#fff}
-.blocked .num{border-style:dashed}
-.sname{display:block}
-.sstat{display:block;font-size:12px;color:#c3cfdf}
-main{flex:1;padding:26px 30px;max-width:1040px;min-width:0}
-h2{margin:0 0 4px;font-size:22px}
-h2:focus,h3:focus{outline:none}
-h3{margin:0 0 8px;font-size:17px}
-.lead{color:var(--mute);margin:0 0 20px}
-.panel{background:var(--panel);border:1px solid var(--line);border-radius:var(--r);padding:18px;margin-bottom:16px}
-label{display:block;font-size:13px;color:var(--mute);margin:10px 0 3px}
-input,select{width:100%;padding:8px;border:1px solid #8994a5;border-radius:var(--r);font:inherit;background:#fff;color:var(--ink)}
-.row{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px}
-button.act,a.act{display:inline-block;background:var(--accent);color:var(--accent-ink);border:0;border-radius:var(--r);padding:9px 16px;font:inherit;cursor:pointer;margin-top:14px;margin-right:8px;text-decoration:none}
-button.act.quiet,a.act.quiet{background:#fff;color:var(--ink);border:1px solid #8994a5}
-button.act.danger{background:var(--bad)}
-button.small{margin-top:0;padding:5px 12px}
-button:disabled,input:disabled{opacity:.55;cursor:not-allowed}
-a:focus-visible,button:focus-visible,input:focus-visible,select:focus-visible{outline:3px solid #8cc4d8;outline-offset:2px}
-table{width:100%;border-collapse:collapse;font-size:14px}
-th,td{text-align:left;padding:7px 8px;border-bottom:1px solid var(--line);vertical-align:top}
-th{color:var(--mute);font-weight:600}
-tr.sel{background:var(--sel)}
-.tablewrap{overflow-x:auto}
-.tag{padding:2px 8px;border-radius:99px;font-size:12px;border:1px solid currentColor;white-space:nowrap}
-.running{color:var(--accent)}.done-t,.prod,.up{color:var(--ok)}.failed,.cancelled,.down,.err{color:var(--bad)}.cand,.muted{color:var(--mute)}
-.warn{color:var(--warn)}
-pre{background:#101a2e;color:#d6e2f5;padding:12px;border-radius:var(--r);max-height:360px;overflow:auto;font-size:12.5px;margin:0;white-space:pre-wrap;word-break:break-word}
-.gate{position:fixed;inset:0;background:var(--bg);display:flex;align-items:center;justify-content:center;z-index:9}
-.gate .panel{width:320px}
-[hidden]{display:none!important}
-body[data-mode=capstone] .demo,body[data-mode=demo] .cap{display:none}
-.chk{display:flex;gap:8px;align-items:center;color:var(--ink);margin-top:10px}.chk input{width:auto}
-.hint{color:var(--mute);font-size:13px;margin:2px 0 0 26px}
-.notice{border-left:4px solid var(--accent);background:#f4f9fb;padding:12px 14px;border-radius:var(--r);margin-bottom:16px}
-.notice.bad{border-color:var(--bad);background:#fdf3f2}
-.notice.good{border-color:var(--ok);background:#f2f9f5}
-dl.kv{display:grid;grid-template-columns:max-content 1fr;gap:4px 14px;margin:0}dl.kv dt{color:var(--mute)}dl.kv dd{margin:0}
-#upstate{margin-top:14px}#upstate p{margin:6px 0 0}progress{width:100%;height:14px;accent-color:var(--accent)}
-.review{margin:14px 0 0;padding-left:18px}
-details.panel>summary{cursor:pointer;padding:2px 0}details.panel[open]>summary{margin-bottom:8px}
-#trainform[data-kind=feature_table] .pipe,#trainform:not([data-kind=feature_table]) .ft{display:none}
-.lblrow{display:grid;grid-template-columns:minmax(120px,1fr) minmax(160px,220px);gap:10px;align-items:center;padding:6px 0;border-bottom:1px solid var(--line)}
-.lblrow label{margin:0;color:var(--ink)}
-fieldset{border:1px solid var(--line);border-radius:var(--r);margin:12px 0;padding:8px 12px;max-height:320px;overflow:auto}
-legend{color:var(--mute);font-size:13px;padding:0 4px}
-.pick{display:flex;gap:8px;align-items:center;margin:3px 0;color:var(--ink);font-size:14px}.pick input{width:auto}
-@media(max-width:760px){body{flex-direction:column}nav{width:100%;padding:12px}nav>p{display:none}
-  ol.steps{display:grid;grid-template-columns:1fr 1fr;gap:4px}ol.steps a{margin:0}main{padding:16px}}
-</style>
+<title>Model training · DNS Operations</title>
+<link rel="stylesheet" href="/static/css/soc.css">
+<link rel="stylesheet" href="/static/css/shell.css">
+<link rel="stylesheet" href="/static/css/soc-premium.css">
+<link rel="stylesheet" href="/static/css/training.css">
 </head>
-<body>
-<div class="gate" id="gate"><div class="panel">
+<body class="soc-training">
+<div id="app-chrome">
+<main class="main">
+<div class="trn-gate" id="gate"><div class="panel trn-gate-card">
+  <div class="soc-eyebrow">MODEL TRAINING / ADMIN</div>
   <h2>Admin sign-in</h2><p class="lead">Enter the admin token.</p>
+  <p class="trn-gate-note">This is the training console's admin token (ADMIN_TOKEN), separate from your SOC sign-in. It is kept only for this browser tab.</p>
   <label for="tok">Admin token</label><input id="tok" type="password" autocomplete="current-password">
   <button class="act" id="signin">Sign in</button><p class="err" id="gerr" role="alert"></p>
 </div></div>
 
+<div class="soc-hero trn-hero">
+  <div>
+    <div class="soc-eyebrow">SECURITY OPERATIONS / MODEL TRAINING</div>
+    <h1>Model training</h1>
+    <p>Check a dataset, train a candidate model, follow the run and compare it with production. Training never changes production; only Promote does.</p>
+  </div>
+</div>
+
+<div class="trn-stepper">
 <nav aria-label="Training steps">
-  <h1>Training console</h1><p>DNS threat detection</p>
-  <a class="back" href="/">← Back to dashboard</a>
   <ol class="steps">
     <li><a href="#/data" data-step="data"><span class="num">1</span><span><span class="sname">Data</span><span class="sstat" id="st-data"></span></span></a></li>
     <li><a href="#/train" data-step="train"><span class="num">2</span><span><span class="sname">Train</span><span class="sstat" id="st-train"></span></span></a></li>
@@ -88,8 +37,9 @@ legend{color:var(--mute);font-size:13px;padding:0 4px}
     <li><a href="#/models" data-step="models"><span class="num">4</span><span><span class="sname">Models</span><span class="sstat" id="st-models"></span></span></a></li>
   </ol>
 </nav>
+</div>
 
-<main>
+<div class="trn-stage" id="trn-stage">
 <section id="data" hidden>
   <h2 tabindex="-1">1. Data</h2><p class="lead">Upload a dataset or check one already here. A dataset that passes the check can be used for training.</p>
   <div class="panel"><label for="file">Upload a dataset file</label><input id="file" type="file" accept=".csv">
@@ -170,10 +120,24 @@ legend{color:var(--mute);font-size:13px;padding:0 4px}
     <button class="act quiet" id="rollback">Roll back</button><span id="rbmsg" role="status" aria-live="polite"></span></div>
   <div class="panel" id="cmp" hidden></div>
 </section>
+</div>
 </main>
+</div>
 
+<script src="/static/js/chrome.js"></script>
 <script>
 "use strict";
+// ── SOC shell: top bar + sidebar from /static/js/chrome.js ────────────────
+const SHELL=window.SOC||null;     // missing only when the page is opened outside the dashboard
+if(SHELL)SHELL.mount({active:"training"});
+function refreshShellHealth(){   // health pill: once on load and when the tab is shown again (no extra timer)
+  if(!SHELL||document.hidden)return;
+  SHELL.fetchState().then(s=>{if(s)SHELL.updateChromeFromState(s)})
+    .catch(e=>{console.warn("SOC status:",e.message);SHELL.markDisconnected()});
+}
+refreshShellHealth();
+document.addEventListener("visibilitychange",refreshShellHealth);
+
 // ── Basics ───────────────────────────────────────────────────────────────
 const $=id=>document.getElementById(id);
 const esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
@@ -204,9 +168,9 @@ async function api(path,opt={}){
   if(!r.ok)throw new ApiError(detailOf(j,r),r.status);
   return j;
 }
-const loading=(el,msg)=>{el.innerHTML=`<p class="muted">${esc(msg)}</p>`};
+const loading=(el,msg)=>{el.innerHTML=`<p class="muted trn-loading">${esc(msg)}</p>`};
 function showError(el,e,retry){
-  el.innerHTML=`<p class="err">${esc(e.message)}</p>`+(retry&&e.status!==401&&e.status!==404?`<button class="act quiet small">Try again</button>`:"");
+  el.innerHTML=`<p class="err trn-error">${esc(e.message)}</p>`+(retry&&e.status!==401&&e.status!==404?`<button class="act quiet small">Try again</button>`:"");
   const b=el.querySelector("button");if(b)b.onclick=retry;
 }
 const fmtBytes=b=>b>=1e9?(b/1e9).toFixed(2)+" GB":b>=1e6?(b/1e6).toFixed(1)+" MB":Math.max(1,Math.round(b/1e3))+" kB";
@@ -254,19 +218,35 @@ function go(hash){if(location.hash===hash)render();else location.hash=hash}
 function replaceHash(hash){history.replaceState(null,"",hash);st.route=parseHash()}   // update the URL without re-rendering
 window.addEventListener("hashchange",render);
 
+const reducedMotion=()=>!!(window.matchMedia&&matchMedia("(prefers-reduced-motion: reduce)").matches);
+// Synchronous part of a route change: no network, so it can run inside a view transition.
+function showStep(route,stepChanged){
+  document.querySelectorAll("main section").forEach(s=>s.hidden=s.id!==route.step);
+  document.querySelectorAll("ol.steps a").forEach(a=>a.dataset.step===route.step?a.setAttribute("aria-current","page"):a.removeAttribute("aria-current"));
+  document.title=`${STEPS[route.step]}${route.id?" "+route.id:""} · Model training`;
+  if(!stepChanged)return;
+  $(route.step).setAttribute("aria-busy","true");
+  const main=$("soc-main"),stage=$("trn-stage"),bar=document.querySelector(".trn-stepper");
+  if(main&&stage){const top=Math.max(0,stage.offsetTop-(bar?bar.offsetHeight:0));if(main.scrollTop>top)main.scrollTop=top}   // new step starts at its heading
+}
 async function render(){
   const route=parseHash();
   if(!STEPS[route.step]){location.replace("#/data");return}
   const prev=st.route;st.route=route;
-  document.querySelectorAll("main section").forEach(s=>s.hidden=s.id!==route.step);
-  document.querySelectorAll("ol.steps a").forEach(a=>a.dataset.step===route.step?a.setAttribute("aria-current","page"):a.removeAttribute("aria-current"));
-  document.title=`${STEPS[route.step]}${route.id?" "+route.id:""} · Training console`;
-  stopPolling();
-  if(!$("gate").hidden)return;                       // after sign-in, boot() renders this same route
   const stepChanged=!prev||prev.step!==route.step;
+  stopPolling();
+  // animate only real step changes; polling redraws and #/runs/<id> selection never get here with a new step
+  if(stepChanged&&prev&&$("gate").hidden&&typeof document.startViewTransition==="function"&&!reducedMotion()){
+    const vt=document.startViewTransition(()=>showStep(route,true));
+    vt.ready.catch(e=>console.debug("step transition skipped:",e.message));
+    try{await vt.updateCallbackDone}catch(e){console.warn("step switch:",e.message);showStep(route,true)}
+  }else showStep(route,stepChanged);
+  if(!$("gate").hidden)return;                       // after sign-in, boot() renders this same route
+  if(st.route!==route)return;                        // a newer route took over during the swap
   try{
     await ({data:viewData,train:viewTrain,runs:viewRuns,models:viewModels})[route.step](route);
   }finally{
+    $(route.step).removeAttribute("aria-busy");
     if(stepChanged)document.querySelector(`#${route.step} h2`).focus();
     else if(route.id){const h=document.querySelector(`#${route.step} h3[tabindex]`);if(h)h.focus()}
     refreshStatus();
@@ -312,9 +292,10 @@ function drawDatasets(){
     ds.map(d=>{const p=passed(d.name),isSel=d.name===sel;
       return `<tr class="${isSel?"sel":""}"><td>${esc(d.label||d.name)}${isSel?' <span class="tag">selected</span>':""}</td>
       <td>${d.size_mb==null?"-":esc(d.size_mb)+" MB"}</td><td>${p?'<span class="up">✓ passed</span>':'<span class="muted">not checked</span>'}</td>
-      <td><button class="act quiet small" data-v="${esc(d.name)}">Check</button>${d.kind==="bundle"?` <button class="act quiet small" data-del="${esc(d.name)}" aria-label="Delete ${esc(d.label)}">Delete</button>`:""}</td></tr>`}).join("")+"</table>";
+      <td><button class="act quiet small" data-v="${esc(d.name)}">Check</button>${d.kind==="bundle"?` <button class="act quiet small" data-del="${esc(d.name)}" aria-label="Delete ${esc(d.label)}">Delete</button>`:d.kind==="file"&&d.size_mb!=null?` <button class="act quiet small" data-delfile="${esc(d.name)}" data-mb="${esc(d.size_mb)}" aria-label="Delete ${esc(d.label)}">Delete</button>`:""}</td></tr>`}).join("")+"</table>";
   $("dslist").querySelectorAll("button[data-v]").forEach(b=>b.onclick=()=>check(b.dataset.v,b));
   $("dslist").querySelectorAll("button[data-del]").forEach(b=>b.onclick=()=>deleteBundle(b.dataset.del,b));
+  $("dslist").querySelectorAll("button[data-delfile]").forEach(b=>b.onclick=()=>deleteDataset(b.dataset.delfile,b.dataset.mb,b));
 }
 async function check(name,btn){
   if(btn)btn.disabled=true;
@@ -370,6 +351,13 @@ $("bcreate").onclick=async()=>{
   }catch(e){$("bmsg").innerHTML=`<span class=err>Not created: ${esc(e.message)}</span>`}
   finally{$("bcreate").disabled=false}
 };
+async function deleteDataset(name,mb,btn){
+  if(!confirm(`Permanently delete ${name} (${mb} MB) from the training datasets folder?\n\nThis cannot be undone. Past runs and trained models keep their results.`))return;
+  btn.disabled=true;
+  try{await api("/datasets/"+enc(name)+"/delete",{method:"POST"});ss.del("check:"+name);if(ss.get("ds")===name)ss.del("ds");
+    st.datasets=await api("/datasets");drawDatasets();$("dsreport").hidden=true;refreshStatus()}
+  catch(e){btn.disabled=false;$("dsreport").hidden=false;showError($("dsreport"),e,()=>deleteDataset(name,mb,btn))}
+}
 async function deleteBundle(name,btn){
   if(!confirm(`Delete the combined dataset ${name.slice(7)}? Only the list is removed; the data files stay where they are.`))return;
   btn.disabled=true;

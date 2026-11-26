@@ -15,6 +15,7 @@
     {href:"/devices", label:"Sources & collection", key:"devices"},
     {href:"/health", label:"Pipeline health", key:"health"},
     {href:"/usecases", label:"Monitoring use cases", key:"usecases"},
+    {href:"/training", label:"Model training", key:"training"},
     {href:"/", label:"Classic dashboard", key:"classic"},
   ];
 

@@ -2730,7 +2730,7 @@ class Handler(BaseHTTPRequestHandler):
             except OSError:
                 self.send(500, b"Training console page not found", "text/plain")
                 return
-            self.send(200, page, "text/html; charset=utf-8")
+            self.send_html(page)          # CSP + a fresh nonce on every <script>, like the SOC pages
             return
 
         if path == "/training/api" or path.startswith("/training/api/"):

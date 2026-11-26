@@ -139,3 +139,17 @@
   .soc-shell .statusdot.running { animation: none; }
   .soc-shell .sidebar .nav a { transition: none; }
 }
+/* Cross-page navigation: the top bar and sidebar stay put while the page body crossfades.
+   Each name is used once per page (one .topbar, one .sidebar). */
+@media (prefers-reduced-motion: no-preference) {
+  @view-transition { navigation: auto; }
+}
+.soc-shell .topbar { view-transition-name: soc-topbar; }
+.soc-shell .sidebar { view-transition-name: soc-sidebar; }
+::view-transition-old(soc-topbar), ::view-transition-old(soc-sidebar) { display: none; }
+::view-transition-new(soc-topbar), ::view-transition-new(soc-sidebar) { animation: none; }
+::view-transition-group(soc-topbar), ::view-transition-group(soc-sidebar) { animation-duration: 0s; }
+::view-transition-old(root), ::view-transition-new(root) { animation-duration: 160ms; }
+@media (prefers-reduced-motion: reduce) {
+  ::view-transition-group(*), ::view-transition-old(*), ::view-transition-new(*) { animation: none !important; }
+}

@@ -525,3 +525,58 @@ def test_promote_refuses_a_run_the_gate_cannot_score(monkeypatch):
 
 def test_page_has_no_override_prompt_in_capstone_mode():
     assert 'document.body.dataset.mode!=="demo")throw e' in PAGE.read_text(encoding="utf-8")
+
+
+# ── Dataset delete (2026-11-26) ────────────────────────────────
+
+def test_uploaded_dataset_can_be_deleted(project):
+    c = TestClient(main.app)
+    _write("old.csv", "query,label", ["a.example.com,0"])
+    assert "old.csv" in [d["name"] for d in c.get("/api/datasets", headers=TOKEN).json()]
+    r = c.post("/api/datasets/old.csv/delete", headers=TOKEN)
+    assert r.status_code == 200 and r.json() == {"deleted": "old.csv"}
+    assert not (S.DATASETS / "old.csv").exists()
+    assert "old.csv" not in [d["name"] for d in c.get("/api/datasets", headers=TOKEN).json()]
+
+
+def test_dataset_delete_needs_admin_token(project):
+    _write("keep.csv", "query,label", ["a.example.com,0"])
+    assert TestClient(main.app).post("/api/datasets/keep.csv/delete").status_code == 401
+    assert (S.DATASETS / "keep.csv").is_file()
+
+
+@pytest.mark.parametrize("name,code", [
+    ("missing.csv", 404),
+    ("project-default", 409),            # data/raw is never deleted from the console
+    ("bundle:anything", 409),            # combined datasets use their own delete
+    ("..%2Fsecret.csv", 404),            # no path tricks out of the datasets folder
+])
+def test_dataset_delete_refuses_non_uploads(project, name, code):
+    assert TestClient(main.app).post(f"/api/datasets/{name}/delete", headers=TOKEN).status_code == code
+    assert (project / "data" / "raw" / "2026-03-18.log").is_file()
+
+
+def test_dataset_delete_refused_while_combined_dataset_uses_it(project):
+    c = TestClient(main.app)
+    _write("up.csv", "query,label", ["a.example.com,0"])
+    r = c.post("/api/bundles", headers=TOKEN, json={"name": "mix", "files": [
+        {"source": "upload", "path": "up.csv"}, {"source": "project", "path": PF[0]}]})
+    assert r.status_code == 200
+    r = c.post("/api/datasets/up.csv/delete", headers=TOKEN)
+    assert r.status_code == 409 and "mix" in r.json()["detail"]
+    assert (S.DATASETS / "up.csv").is_file()
+
+
+def test_dataset_delete_refused_while_training_on_it(project, monkeypatch):
+    _write("busy.csv", "query,label", ["a.example.com,0"])
+    monkeypatch.setattr(jobs, "running_job", lambda: {"run_id": "r1", "dataset": "busy.csv", "status": "running"})
+    r = TestClient(main.app).post("/api/datasets/busy.csv/delete", headers=TOKEN)
+    assert r.status_code == 409 and "r1" in r.json()["detail"]
+    assert (S.DATASETS / "busy.csv").is_file()
+
+
+def test_page_offers_dataset_delete_with_confirmation():
+    page = PAGE.read_text(encoding="utf-8")
+    fn = page[page.index("async function deleteDataset"):page.index("async function deleteBundle")]
+    assert "confirm(" in fn and "cannot be undone" in fn and '"/datasets/"+enc(name)+"/delete"' in fn
+    assert 'data-delfile="' in page and 'button[data-delfile]' in page

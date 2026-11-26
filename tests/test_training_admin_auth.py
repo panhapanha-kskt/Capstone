@@ -1,6 +1,8 @@
 """Training administration must stay disabled until a non-default token is configured."""
 
+import os
 import sys
+import tempfile
 from pathlib import Path
 
 import pytest
@@ -10,6 +12,10 @@ pytest.importorskip("pandas")
 pytest.importorskip("httpx")
 
 ROOT = Path(__file__).resolve().parent.parent
+# Isolate core.settings from the real gui_data/ before it is imported: in a full run this module is
+# collected before test_training_console.py, whose autouse fixture empties S.DATASETS and S.RUNS.
+os.environ.setdefault("TRAINGUI_HOME", tempfile.mkdtemp(prefix="traingui_test_"))
+os.environ.setdefault("ADMIN_TOKEN", "test-token")   # same token the other training test modules use; tests here monkeypatch S.ADMIN_TOKEN
 sys.path.insert(0, str(ROOT / "dashboard" / "training-gui"))
 
 from fastapi.testclient import TestClient  # noqa: E402

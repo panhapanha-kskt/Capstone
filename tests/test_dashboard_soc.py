@@ -405,3 +405,27 @@ def test_training_console_requests_pass_the_guard():
     assert server.check_request("POST", raw, "/api/run")[0] == 415
     assert server.check_request("POST", {**host, "Content-Type": "application/json", "X-Admin-Token": "t"},
                                 "/api/run")[0] == 403
+
+
+# ── /training inside the SOC shell (2026-11-26) ─────────────────
+def test_training_page_gets_a_csp_nonce_on_every_script(base):
+    code, headers, page = req(base, "GET", "/training")
+    assert code == 200
+    csp = headers["Content-Security-Policy"]
+    nonce = re.search(r"'nonce-([^']+)'", csp).group(1)
+    tags = re.findall(r"<script[^>]*>", page)
+    assert len(tags) >= 2 and all(f'nonce="{nonce}"' in t for t in tags)     # chrome.js + the inline console script
+    assert " on" not in "".join(re.findall(r"<[^>]+>", page)).replace(" one", "")   # no inline handlers
+    _, headers2, _ = req(base, "GET", "/training/")
+    assert headers2["Content-Security-Policy"] != csp
+
+
+def test_sidebar_links_to_model_training_and_the_page_mounts_the_shell():
+    chrome = (ROOT / "dashboard" / "static" / "js" / "chrome.js").read_text(encoding="utf-8")
+    assert '{href:"/training", label:"Model training", key:"training"}' in chrome
+    assert chrome.index('href:"/training"') < chrome.index('label:"Classic dashboard"')
+    page = (ROOT / "dashboard" / "training-gui" / "api" / "static" / "index.html").read_text(encoding="utf-8")
+    assert '<div id="app-chrome">' in page and 'SHELL.mount({active:"training"})' in page
+    assert '<script src="/static/js/chrome.js"></script>' in page and 'href="/static/css/training.css"' in page
+    assert 'class="soc-training"' in page and "Back to dashboard" not in page
+    assert "startViewTransition" in page and "prefers-reduced-motion: reduce" in page

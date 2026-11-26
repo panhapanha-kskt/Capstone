@@ -1,0 +1,217 @@
+/* Model training (/training) inside the SOC shell.
+   Same graphite tokens as /soc (soc-premium.css body.soc-overview). Every rule is scoped to
+   body.soc-training so the shared shell (soc.css / shell.css) is never restyled. */
+body.soc-training {
+  --bg: #0c1421;
+  --panel: #152335;
+  --panel2: #101d2d;
+  --sidebar: #0e1b2b;
+  --topbar: #101e2e;
+  --border: #2b4257;
+  --text: #e5edf5;
+  --muted: #a7bbce;
+  --dim: #9aafc3;
+  --cyan: #5bd8e8;
+  --accent: #5bd8e8;
+  --trn-field: #6a879e;   /* form borders: >= 3:1 against panel2 */
+  --trn-ok: #8fd694;
+  --trn-warn: #ffbd77;
+  --trn-bad: #ff897f;     /* >= 4.5:1 on the panels */
+  --trn-link: #89dfea;
+  --trn-motion: 120ms ease;
+  background: radial-gradient(ellipse at 70% -20%, #19384a 0, transparent 46%), var(--bg);
+}
+body.soc-training [hidden] { display: none !important; }
+body.soc-training[data-mode=capstone] .demo, body.soc-training[data-mode=demo] .cap { display: none; }
+
+/* page frame: .main is the scroll container (soc.css keeps body overflow hidden) */
+.soc-training .main { position: relative; padding: 0 24px 32px; font-size: 13.5px; }
+.soc-training .trn-hero { padding: 28px 4px 20px; border-bottom: 0; }
+.soc-training .trn-hero p { max-width: 70ch; }
+.soc-training .main a:not(.act) { color: var(--trn-link); text-underline-offset: 2px; }
+.soc-training .main code { font: 12px ui-monospace, "Cascadia Mono", Consolas, monospace; color: #d6e4f0;
+  background: #0d1a28; border: 1px solid #22384b; border-radius: 4px; padding: 0 4px; }
+
+/* ── step navigation (horizontal stepper, sticky inside .main) ───────────── */
+.soc-training .trn-stepper {
+  position: sticky; top: 0; z-index: 3; view-transition-name: training-stepper;
+  margin: 0 -24px; padding: 10px 24px;
+  background: #0c1421ee; border-block: 1px solid var(--border);
+  backdrop-filter: blur(6px);
+}
+.soc-training ol.steps { list-style: none; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; max-width: 1120px; }
+.soc-training ol.steps a {
+  position: relative; display: flex; gap: 10px; align-items: flex-start; height: 100%; min-height: 54px;
+  padding: 9px 12px 10px; border: 1px solid var(--border); border-radius: 9px;
+  background: #132637; color: var(--muted); text-decoration: none;
+  transition: background var(--trn-motion), border-color var(--trn-motion), color var(--trn-motion);
+}
+.soc-training ol.steps a:hover { background: #1a3145; border-color: #4d7189; color: #fff; }
+.soc-training ol.steps a[aria-current=page] { background: #1b3548; border-color: #3f7f93; color: #fff; }
+.soc-training ol.steps a[aria-current=page]::after {
+  content: ""; position: absolute; left: 10px; right: 10px; bottom: -1px; height: 3px;
+  border-radius: 3px 3px 0 0; background: var(--cyan);
+}
+.soc-training ol.steps .num {
+  flex: 0 0 24px; height: 24px; display: grid; place-items: center; border-radius: 50%;
+  border: 1.5px solid var(--trn-field); color: #dbe7f0; font-size: 12px; font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+.soc-training ol.steps a[aria-current=page] .num { border-color: var(--cyan); color: var(--cyan); }
+.soc-training ol.steps a.done .num { border-color: var(--trn-ok); color: var(--trn-ok); background: #173a2c; box-shadow: 0 0 0 3px #8fd69426; }
+.soc-training ol.steps a.blocked .num { border-style: dashed; color: var(--muted); }
+.soc-training ol.steps a.blocked .sstat { color: var(--trn-warn); }
+.soc-training ol.steps .sname { display: block; color: #eef5fa; font-weight: 650; }
+.soc-training ol.steps .sstat { display: block; margin-top: 1px; font-size: 11.5px; line-height: 1.35; color: var(--muted); overflow-wrap: anywhere; }
+
+/* ── step content ─────────────────────────────────────────────────────────── */
+.soc-training .trn-stage { view-transition-name: training-step; max-width: 1120px; padding-top: 22px; }
+.soc-training .trn-stage h2 { margin-bottom: 4px; color: #f4f9fc; font-size: 20px; font-weight: 650; letter-spacing: -.02em; }
+.soc-training .main :is(h2, h3)[tabindex="-1"]:is(:focus, :focus-visible) { outline: none; }
+.soc-training .main h3 { margin-bottom: 10px; color: #e7f1f7; font-size: 14.5px; font-weight: 650; }
+.soc-training .main .lead { margin: 0 0 16px; color: var(--muted); font-size: 13.5px; }
+.soc-training .trn-stage p, .soc-training .trn-gate p { margin: 6px 0; }
+.soc-training .trn-stage section[aria-busy=true] > .lead { opacity: .8; }
+
+/* panels: graphite cards */
+.soc-training .main .panel {
+  margin: 0 0 14px; padding: 16px 18px; border: 1px solid var(--border); border-radius: 10px;
+  background: linear-gradient(155deg, #18293a, #132233); box-shadow: 0 8px 20px #020b162b;
+}
+.soc-training details.panel > summary { cursor: pointer; padding: 2px 0; color: #e7f1f7; }
+.soc-training details.panel[open] > summary { margin-bottom: 8px; }
+
+/* forms */
+.soc-training .main label { display: block; margin: 12px 0 4px; color: var(--muted); font-size: 12.5px; font-weight: 600; }
+.soc-training .main input:not([type=checkbox]):not([type=radio]), .soc-training .main select {
+  width: 100%; min-height: 36px; padding: 7px 10px; border: 1px solid var(--trn-field); border-radius: 7px;
+  background: var(--panel2); color: var(--text); font: inherit;
+  transition: border-color var(--trn-motion), background var(--trn-motion);
+}
+.soc-training .main input:not([type=checkbox]):not([type=radio]):hover, .soc-training .main select:hover { border-color: #8aa6bb; }
+.soc-training .main input:focus, .soc-training .main select:focus { border-color: var(--cyan); }
+.soc-training .main select option { background: var(--panel2); color: var(--text); }
+.soc-training .main input[type=file] { padding: 5px 8px; }
+.soc-training .main input[type=file]::file-selector-button {
+  margin-right: 10px; padding: 5px 11px; border: 1px solid var(--trn-field); border-radius: 6px;
+  background: #1b3548; color: var(--text); font: inherit; cursor: pointer;
+}
+.soc-training .main input[type=checkbox] { width: auto; accent-color: var(--cyan); }
+.soc-training .row { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 12px; }
+.soc-training .main label.chk { display: flex; gap: 8px; align-items: center; margin-top: 12px; color: var(--text); font-weight: 500; }
+.soc-training .hint { margin: 2px 0 0 26px; color: var(--muted); font-size: 12.5px; }
+.soc-training .lblrow { display: grid; grid-template-columns: minmax(120px, 1fr) minmax(160px, 240px); gap: 10px;
+  align-items: center; padding: 7px 0; border-bottom: 1px solid #22384b; }
+.soc-training .main .lblrow label { margin: 0; color: var(--text); font-weight: 500; }
+.soc-training fieldset { margin: 12px 0; padding: 8px 12px; max-height: 320px; overflow: auto;
+  border: 1px solid var(--border); border-radius: 8px; background: var(--panel2); }
+.soc-training legend { padding: 0 4px; color: var(--muted); font-size: 12.5px; }
+.soc-training .main .pick { display: flex; gap: 8px; align-items: center; margin: 4px 0; color: var(--text); font-size: 13px; font-weight: 400; }
+
+/* buttons */
+.soc-training .main button.act, .soc-training .main a.act {
+  display: inline-flex; align-items: center; gap: 6px; min-height: 36px; margin: 14px 8px 0 0; padding: 7px 14px;
+  border: 1px solid var(--cyan); border-radius: 8px; background: var(--cyan); color: #082029;
+  font: inherit; font-weight: 650; text-decoration: none; cursor: pointer;
+  transition: background var(--trn-motion), border-color var(--trn-motion), color var(--trn-motion);
+}
+.soc-training .main button.act:hover:not(:disabled), .soc-training .main a.act:hover { background: #83e4ef; border-color: #83e4ef; }
+.soc-training .main :is(button, a).act.quiet { background: transparent; border-color: var(--trn-field); color: var(--text); }
+.soc-training .main :is(button, a).act.quiet:hover:not(:disabled) { background: #1b3548; border-color: var(--cyan); color: #fff; }
+.soc-training .main button.act.danger { background: var(--trn-bad); border-color: var(--trn-bad); color: #2a0b08; }
+.soc-training .main button.act.danger:hover:not(:disabled) { background: #ffa59d; border-color: #ffa59d; }
+.soc-training .main button.small { min-height: 30px; margin-top: 0; padding: 4px 11px; font-size: 12.5px; }
+.soc-training .main :is(button, input, select):disabled { opacity: .5; cursor: not-allowed; }
+
+/* tables: long lists scroll inside their own box */
+.soc-training .tablewrap { overflow: auto; max-height: min(60vh, 520px); border: 1px solid var(--border);
+  border-radius: 8px; background: var(--panel2); }
+.soc-training .tablewrap > p { padding: 12px 14px; margin: 0; }
+.soc-training .tablewrap > a.act { margin: 0 14px 14px; }
+.soc-training .main table { width: 100%; border-collapse: collapse; font-size: 13px; font-variant-numeric: tabular-nums; }
+.soc-training .main caption { caption-side: top; padding: 8px 10px; text-align: left; color: var(--muted); font-size: 12px; }
+.soc-training .main th, .soc-training .main td { padding: 8px 10px; border-bottom: 1px solid #22384b; text-align: left; vertical-align: top; }
+.soc-training .main th { position: sticky; top: 0; z-index: 1; background: #1a2d40; color: #cfdde8;
+  font-size: 12px; font-weight: 600; white-space: nowrap; }
+.soc-training .main tr:last-child td { border-bottom: 0; }
+.soc-training .main tr:hover td { background: #ffffff05; }
+.soc-training .main tr.sel td { background: #173548; }
+.soc-training .main tr.sel td:first-child { box-shadow: inset 3px 0 0 var(--cyan); }
+
+/* logs */
+.soc-training .main pre {
+  max-height: min(55vh, 420px); overflow: auto; margin: 0; padding: 12px 14px;
+  border: 1px solid var(--border); border-radius: 8px; background: #08111c; color: #d6e4f0;
+  font: 12px/1.5 ui-monospace, "Cascadia Mono", Consolas, monospace; white-space: pre-wrap; word-break: break-word;
+}
+
+/* chips + status text (scoped: soc.css/shell.css also use .warn/.err/.running) */
+.soc-training .main .tag { display: inline-flex; align-items: center; padding: 1px 9px; border: 1px solid currentColor;
+  border-radius: 99px; background: #ffffff08; font-size: 11.5px; font-weight: 600; white-space: nowrap; }
+.soc-training .main .running { color: var(--cyan); }
+.soc-training .main :is(.done-t, .prod, .up) { color: var(--trn-ok); }
+.soc-training .main :is(.failed, .cancelled, .down, .err) { color: var(--trn-bad); }
+.soc-training .main :is(.cand, .muted) { color: var(--muted); }
+.soc-training .main .warn { color: var(--trn-warn); }
+
+/* notices */
+.soc-training .main .notice { margin: 0 0 14px; padding: 12px 14px; border: 1px solid var(--border);
+  border-left: 4px solid var(--cyan); border-radius: 8px; background: #12283a; }
+.soc-training .main .notice.bad { border-left-color: var(--trn-bad); background: #2a1d25; }
+.soc-training .main .notice.good { border-left-color: var(--trn-ok); background: #15291f; }
+.soc-training .main .notice > .act:first-of-type { margin-top: 10px; }
+
+/* key/value, upload progress, review list */
+.soc-training dl.kv { display: grid; grid-template-columns: max-content 1fr; gap: 5px 16px; margin: 0; }
+.soc-training dl.kv dt { color: var(--muted); }
+.soc-training dl.kv dd { margin: 0; overflow-wrap: anywhere; }
+.soc-training #upstate { margin-top: 14px; }
+.soc-training progress { width: 100%; height: 10px; accent-color: var(--cyan); }
+.soc-training .review { margin: 6px 0 0; padding-left: 18px; }
+.soc-training .review li { margin: 3px 0; }
+.soc-training #trainform[data-kind=feature_table] .pipe, .soc-training #trainform:not([data-kind=feature_table]) .ft { display: none; }
+
+/* loading / error states */
+.soc-training .trn-loading { display: flex; align-items: center; gap: 9px; color: var(--muted); }
+.soc-training .trn-loading::before { content: ""; flex: 0 0 12px; height: 12px; border-radius: 50%;
+  border: 2px solid #3a5a72; border-top-color: var(--cyan); animation: trn-spin .8s linear infinite; }
+.soc-training .trn-error { display: flex; align-items: baseline; gap: 8px; }
+.soc-training .trn-error::before { content: "!"; flex: 0 0 18px; height: 18px; display: inline-grid; place-items: center;
+  border: 1.5px solid currentColor; border-radius: 50%; font-size: 11px; font-weight: 800; }
+@keyframes trn-spin { to { transform: rotate(360deg); } }
+
+/* ── admin token gate: covers the main area only, the sidebar stays usable ── */
+.soc-training .trn-gate { position: absolute; inset: 0; z-index: 6; display: grid; place-items: center; padding: 24px;
+  background: radial-gradient(ellipse at 50% 0, #19384a 0, transparent 60%), var(--bg); }
+.soc-training .main:has(> #gate:not([hidden])) > :not(#gate) { display: none; }
+.soc-training .main .trn-gate-card { width: min(400px, 100%); margin: 0; padding: 22px 22px 18px; }
+.soc-training .trn-gate h2 { margin: 6px 0 4px; color: #f4f9fc; font-size: 20px; font-weight: 650; }
+.soc-training .trn-gate-note { color: var(--muted); font-size: 12.5px; }
+.soc-training .trn-gate #gerr:empty { display: none; }
+
+/* ── step switch (document.startViewTransition in render) ─────────────────── */
+::view-transition-group(training-step) { animation-duration: 200ms; }
+::view-transition-old(training-step) { animation: 160ms ease both trn-step-out; }
+::view-transition-new(training-step) { animation: 200ms ease both trn-step-in; }
+@keyframes trn-step-out { to { opacity: 0; transform: translateY(-4px); } }
+@keyframes trn-step-in { from { opacity: 0; transform: translateY(6px); } }
+
+@media (max-width: 760px) {
+  .soc-training .main { padding: 0 14px 24px; }
+  .soc-training .trn-hero { padding-top: 22px; }
+  .soc-training .trn-stepper { margin: 0 -14px; padding: 8px 14px; }
+  .soc-training ol.steps { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px; }
+  .soc-training .lblrow { grid-template-columns: 1fr; gap: 4px; }
+}
+@media (max-width: 440px) {
+  .soc-training ol.steps a { gap: 8px; min-height: 0; padding: 7px 8px 8px; }
+  .soc-training ol.steps .num { flex-basis: 20px; height: 20px; font-size: 11px; }
+  .soc-training ol.steps .sname { font-size: 12.5px; }
+  .soc-training ol.steps .sstat { font-size: 11px; }
+  .soc-training .main .panel { padding: 14px; }
+  .soc-training dl.kv { grid-template-columns: 1fr; }
+}
+@media (prefers-reduced-motion: reduce) {
+  body.soc-training *, body.soc-training *::before, body.soc-training *::after { transition: none !important; animation: none !important; }
+  ::view-transition-group(training-step), ::view-transition-old(training-step), ::view-transition-new(training-step) { animation: none !important; }
+}

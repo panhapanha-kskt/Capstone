@@ -150,6 +150,15 @@ async def upload(file: UploadFile):
     return await _store(_upload_name(file.filename), _uploadfile_chunks(file))
 
 
+@app.post("/api/datasets/{name}/delete", dependencies=[Depends(admin)])
+def delete_dataset(name: str):
+    """Permanently delete an uploaded dataset file (not while a run is training on it)."""
+    job = jobs.running_job()
+    if job and job.get("dataset") == name:
+        raise HTTPException(409, f"Run {job['run_id']} is training on {name}. Cancel or wait for it first.")
+    return guarded(data.delete_dataset, name)
+
+
 @app.get("/api/project-files", dependencies=[Depends(admin)])
 def project_files():
     """Data files in the project's data/ folder, for multi-file datasets."""

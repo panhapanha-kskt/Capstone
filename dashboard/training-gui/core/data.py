@@ -190,6 +190,35 @@ def delete_bundle(name: str) -> dict:
     return {"deleted": p.stem}
 
 
+def delete_dataset(name: str) -> dict:
+    """Permanently remove one uploaded dataset file from the datasets folder.
+
+    Only plain uploaded files qualify: not the project default (data/raw), not multi-file
+    datasets (use delete_bundle), not folders. A file still listed in a multi-file dataset is
+    refused so that dataset does not silently break."""
+    if name == S.DEFAULT_DATASET or name.startswith(BUNDLE_PREFIX):
+        raise ValueError(f"{name} cannot be deleted here.")
+    if Path(name).name != name or name.startswith("."):
+        raise ValueError(f"Not an uploaded dataset: {name}")
+    p = S.DATASETS / name
+    if not p.exists() and not p.is_symlink():
+        raise FileNotFoundError(f"Dataset not found: {name}")
+    if p.is_dir() and not p.is_symlink():
+        raise ValueError(f"{name} is a folder; remove it on the server instead.")
+    users = []
+    for b in sorted(S.BUNDLES.glob("*.json")):
+        try:
+            members = json.loads(b.read_text(encoding="utf-8")).get("files", [])
+        except (OSError, json.JSONDecodeError):
+            continue
+        if any(m.get("source") == "upload" and m.get("path") == name for m in members):
+            users.append(b.stem)
+    if users:
+        raise ValueError(f"{name} is used by the combined dataset(s) {', '.join(users)}. Delete those first.")
+    p.unlink()
+    return {"deleted": name}
+
+
 def list_splits() -> list:
     d = S.PROJECT_DIR / "data" / "processed" / "splits"
     if S.MODE != "capstone" or not d.is_dir():

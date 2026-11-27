@@ -214,12 +214,49 @@ def test_claim_fans_out_and_conflicts(env):
     assert code == 200 and body["members"]["ok"] == 3
     mgmt = server.STORE.all_alert_mgmt()
     fps = [server.fp_hex(a) for a in make_alerts()[:3]]
-    assert all(mgmt[fp]["assigned_to"] == "analyst-1" and mgmt[fp]["status"] == "Acknowledged" for fp in fps)
+    assert all(mgmt[fp]["assigned_to"] == "analyst-1" and mgmt[fp]["status"] == "Investigating" for fp in fps)
     assert post(env, f"/api/triage/case/{k}/claim", {"actor": "analyst-2"})[0] == 409
     assert post(env, f"/api/triage/case/{k}/claim", {"actor": "analyst-2", "force": True})[0] == 403
     assert post(env, f"/api/triage/case/{k}/claim", {"actor": "senior-1", "force": True})[0] == 200
     assert post(env, f"/api/triage/case/{k}/release", {"actor": "senior-1", "next_step": "back to L1"})[0] == 200
     assert post(env, f"/api/triage/case/{k}/claim", {"actor": "analyst-1"})[0] == 200
+
+
+def test_claimed_case_declares_one_linked_incident(env):
+    k = case_by_label(env, "other-bad.net")["key"]
+    body = {"actor": "analyst-1", "title": "Suspected DNS tunnel from shared source",
+            "severity": "High", "reason": "Suspicious DNS activity needs incident response review"}
+    assert post(env, f"/api/triage/case/{k}/declare", body)[0] == 409
+    assert post(env, f"/api/triage/case/{k}/claim", {"actor": "analyst-1"})[0] == 200
+    assert case_by_label(env, "other-bad.net")["status"] == "Investigating"
+    assert post(env, f"/api/triage/case/{k}/declare", dict(body, actor="analyst-2"))[0] == 409
+    assert post(env, f"/api/triage/case/{k}/declare", dict(body, reason="short"))[0] == 400
+    code, _, created = post(env, f"/api/triage/case/{k}/declare", body)
+    assert code == 201
+    incident = created["record"]
+    assert incident["source_case_key"] == k and incident["created_by"] == "analyst-1"
+    assert incident["status"] == "Investigating"
+    assert incident["source_alert_count"] == 1 and incident["alert_fps"]
+    assert incident["declaration_reason"] == body["reason"]
+    assert incident["triage_snapshot"]["evidence"] and incident["triage_snapshot"]["history"]
+    _, _, view = req(env["port"], "GET", f"/api/triage/case/{k}?actor=analyst-1")
+    assert view["case"]["incident_id"] == incident["id"]
+    assert "declare" not in view["allowed_actions"]
+    code, _, again = post(env, f"/api/triage/case/{k}/declare", body)
+    assert code == 200 and again["already_declared"] and again["record"]["id"] == incident["id"]
+    _, _, read = req(env["port"], "GET", f"/api/incidents/{incident['id']}")
+    assert read["record"]["source_case_key"] == k
+
+
+def test_manual_incident_uses_reason_without_placeholder_alert(env):
+    body = {"actor": "analyst-1", "alert_fps": [], "title": "Reported suspicious host activity",
+            "severity": "Medium", "reason": "User reported activity that meets incident criteria"}
+    assert post(env, "/api/incidents", dict(body, reason="short"))[0] == 400
+    code, _, created = post(env, "/api/incidents", body)
+    assert code == 200
+    incident = created["record"]
+    assert incident["source_type"] == "manual" and incident["alert_fps"] == []
+    assert incident["declaration_reason"] == body["reason"]
 
 
 def test_four_eyes_close_on_high(env):

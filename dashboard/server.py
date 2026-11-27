@@ -225,7 +225,8 @@ ACK_SLA_SECONDS = {"Critical": 15 * 60, "High": 15 * 60, "Medium": 60 * 60, "Low
 # Minimum analyst tier per write. Workflow control only: there is no login, so the actor is self-declared.
 PERMISSIONS = {
     "note": 0, "acknowledge": 1, "assign": 1, "status": 1, "escalate": 1, "verdict": 1, "verdict_clear": 1,
-    "claim": 1, "release": 1, "checklist": 1, "case_close": 1, "case_escalate": 1, "handover_ack": 1,
+    "claim": 1, "release": 1, "checklist": 1, "case_close": 1, "case_escalate": 1,
+    "case_declare": 1, "handover_ack": 1,
     "incident_create": 1, "bulk": 1, "run": 2,
     "approve": 2, "suppress": 2, "incident_action": 2, "usecase_pref": 2, "force_claim": 2,
 }
@@ -711,11 +712,13 @@ class Store:
         with self.lock:
             return self._cache["incidents"]["records"].get(incident_id)
 
-    def create_incident(self, alert_fps, title, severity, actor):
-        if not isinstance(alert_fps, list) or not alert_fps:
-            return 400, {"error": "alert_fps required"}
+    def create_incident(self, alert_fps, title, severity, actor, reason=None):
+        if not isinstance(alert_fps, list) or any(not isinstance(fp, str) or not fp for fp in alert_fps):
+            return 400, {"error": "alert_fps must be a list of nonempty strings"}
         if not title or not isinstance(title, str):
             return 400, {"error": "title required"}
+        if not alert_fps and (not isinstance(reason, str) or len(reason.strip()) < 10):
+            return 400, {"error": "a manual incident needs a reason of at least 10 characters"}
         severity = severity if severity in ("Low", "Medium", "High", "Critical") else "Medium"
         incident_id = "inc-" + uuid.uuid4().hex[:10]
         now = _iso_now()
@@ -724,7 +727,9 @@ class Store:
             "title": title[:240],
             "severity": severity,
             "status": "Open",
-            "alert_fps": list(alert_fps)[:200],
+            "alert_fps": list(dict.fromkeys(alert_fps))[:200],
+            "source_type": "alerts" if alert_fps else "manual",
+            "declaration_reason": reason.strip() if isinstance(reason, str) and reason.strip() else None,
             "created_at": now,
             "created_by": actor,
             "updated_at": now,
@@ -737,6 +742,47 @@ class Store:
                                incident_id=incident_id, new=rec)
             STATE.bump()
         return 200, {"ok": True, "record": rec}
+
+    def declare_case_incident(self, case, actor, title, severity, reason, context):
+        """Create one incident for a claimed triage case and retain its investigation snapshot.
+
+        The source-case key also lets a retry repair a link after a partial file write.
+        """
+        key = case["key"]
+        with self.lock:
+            triage = self._cache["triage"]["records"]["cases"].get(key)
+            if not triage:
+                return 404, {"error": "triage case not found"}
+            if triage.get("claimed_by") != actor:
+                return 409, {"error": "claim the case before declaring an incident"}
+            records = self._cache["incidents"]["records"]
+            linked = next((inc for inc in records.values() if inc.get("source_case_key") == key), None)
+            if linked:
+                if triage.get("incident_id") != linked["id"]:
+                    triage["incident_id"] = linked["id"]
+                    self._atomic_write(STORE_FILES["triage"], self._cache["triage"])
+                    STATE.bump()
+                return 200, {"ok": True, "already_declared": True, "record": linked}
+            now = _iso_now()
+            incident_id = "inc-" + uuid.uuid4().hex[:10]
+            rec = {
+                "id": incident_id, "title": title[:240], "severity": severity,
+                "status": "Investigating", "alert_fps": [fp for _, fp in case["items"]][:200],
+                "source_alert_count": len(case["items"]), "source_type": "triage",
+                "source_case_key": key, "source_case_mode": case["mode"],
+                "source_client": case["client"], "declaration_reason": reason,
+                "triage_snapshot": context, "created_at": now, "created_by": actor,
+                "updated_at": now, "actions": [],
+            }
+            records[incident_id] = rec
+            self._atomic_write(STORE_FILES["incidents"], self._cache["incidents"])
+            triage["incident_id"] = incident_id
+            self._atomic_write(STORE_FILES["triage"], self._cache["triage"])
+            self._append_audit(action="INCIDENT_DECLARED_FROM_CASE", actor=actor,
+                               incident_id=incident_id, new={"case_key": key, "incident_id": incident_id,
+                                                            "members": len(case["items"])}, note=reason)
+            STATE.bump()
+            return 201, {"ok": True, "record": rec}
 
     def record_incident_action(self, incident_id, action, payload, actor):
         if action not in VALID_RESPONSE_ACTIONS:
@@ -1468,6 +1514,7 @@ def build_state():
 MAX_BODY_BYTES = 64 * 1024   # 64 KiB per POST
 PAGE_ROUTES = {
     "/": "index.html", "/index.html": "index.html",
+    "/classic": "index.html", "/classic.html": "index.html",
     "/soc": "soc.html", "/soc.html": "soc.html",
     "/usecases": "usecases.html", "/usecases.html": "usecases.html",
     "/alerts": "alerts.html", "/alerts.html": "alerts.html",
@@ -2099,7 +2146,7 @@ def case_summary(case, mgmt_all, trec, requests, now):
         "ack_due": ack_due, "triage_due": tri_due, "ack_met": claimed is not None and claimed <= ack_due,
         "ack_breached": ack_breached, "triage_breached": tri_breached,
         "ml_max": round(max(ml), 4) if ml else None,
-        "next_step": trec.get("next_step"),
+        "next_step": trec.get("next_step"), "incident_id": trec.get("incident_id"),
         "pending_close": ({"id": req["id"], "classification": req["classification"],
                            "requested_by": req["requested_by"]} if req and req.get("status") == "pending" else None),
         "source_flags": evidence.ip_flags(case["client"], triage_config()["resolvers"]),
@@ -2232,6 +2279,8 @@ def allowed_actions(summary, actor):
         "checklist": tier >= 1 and not closed,
         "close": tier >= (2 if l2 else 1) and not closed and not pending,
         "escalate": tier >= 1 and st not in ("Closed", "Escalated") and not pending,
+        "declare": tier >= 1 and st in ("Acknowledged", "Investigating") and owner == actor
+                   and not pending and not summary.get("incident_id"),
         "approve": tier >= 2 and bool(pending) and pending["requested_by"] != actor,
         "fp_needs_approval": tier < 2 and summary["priority"] in HIGH_SEVERITIES,
         "suppress": tier >= 2,
@@ -2327,7 +2376,8 @@ def triage_action(key, action, body):
             return 409, {"error": "case is closed"}
         if summary["status"] == "Escalated" and actor_tier(actor) < 2:
             return 403, {"error": "escalated cases are worked by Tier 2+", "required_tier": 2}
-        res = STORE.apply_case_action(open_fps, [("acknowledge", {}), ("assign", {"analyst_id": actor})], actor, key,
+        res = STORE.apply_case_action(open_fps, [("acknowledge", {}), ("assign", {"analyst_id": actor}),
+                                                 ("status", {"status": "Investigating"})], actor, key,
                                       hints=_hints(case), audit_action="CASE_CLAIM")
         now = _iso_now()
 
@@ -2337,6 +2387,29 @@ def triage_action(key, action, body):
         STORE.triage_update(upd)
         EXPORTS.trigger()
         return 200, {"ok": True, "claimed_by": actor, "members": res}
+
+    if action == "declare":
+        denied = authorize(actor, "case_declare")
+        if denied:
+            return denied
+        if summary["status"] not in ("Acknowledged", "Investigating") or summary["pending_close"]:
+            return 409, {"error": "claim and investigate an open case before declaring an incident"}
+        if summary["owner"] != actor:
+            return 409, {"error": "claim the case before declaring an incident"}
+        title, err = _text(body, "title", max_bytes=240, min_len=3)
+        if err:
+            return 400, {"error": err}
+        reason, err = _text(body, "reason", min_len=10)
+        if err:
+            return 400, {"error": err}
+        severity = body.get("severity") or summary["priority"]
+        if severity not in ("Low", "Medium", "High", "Critical"):
+            return 400, {"error": "severity must be Low, Medium, High, or Critical"}
+        view = triage_case_view(key, actor=actor, limit=200)
+        context = {"case": view["case"], "evidence": view["evidence"], "ml": view["ml"],
+                   "suggestion": view["suggestion"], "checklist": view["checklist"],
+                   "history": view["history"], "sample_members": view["members"]}
+        return STORE.declare_case_incident(case, actor, title, severity, reason, context)
 
     if action == "release":
         owner = trec.get("claimed_by")
@@ -3290,6 +3363,7 @@ class Handler(BaseHTTPRequestHandler):
             title=body.get("title") or "",
             severity=body.get("severity") or "Medium",
             actor=actor,
+            reason=body.get("reason"),
         )
         self.send_json(code, resp)
 

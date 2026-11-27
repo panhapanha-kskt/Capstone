@@ -74,8 +74,9 @@ Closed (no open member) > least-advanced open status.
 |---|---|
 | `GET /api/triage/queue?group=&actor=&mine=1&status=open\|<status>&severity=&q=&offset=&limit=` | Counts (`by_status`, `by_severity`, `mine`, `unassigned`, `sla_breached`, `pending_approval`, `alerts`) and a page of cases sorted by priority then triage due time. Each case has `priority`, `members`, `owner`, `ack_due` / `triage_due` (epoch), breach flags, `checklist_done/total`, `suggestion`, `source_flags`. ETag / 304. |
 | `GET /api/triage/case/{key}?actor=&offset=&limit=` | `case`, paged `members`, `evidence` (query counts, types, response codes, label lengths, encodings, 5-minute volume, timeline, longest names, parsed Z-scores), `checklist`, `ml` (per-model scores, signatures, top deviations from the client baseline), `suggestion`, `source` (IP flags), `pivots`, `escalations`, `close_request`, `history`, `allowed_actions`. |
-| `POST /api/triage/case/{key}/claim` `{actor, force?}` | Acknowledge + assign every open member. 409 if owned by someone else (Tier 2 may `force`). |
+| `POST /api/triage/case/{key}/claim` `{actor, force?}` | Acknowledge + assign every open member and move it to Investigating. 409 if owned by someone else (Tier 2 may `force`). |
 | `POST .../release` `{actor, next_step?}` | Unassign members; keep the next step on the case. |
+| `POST .../declare` `{actor, title, severity, reason}` | Claimed analyst declares a linked incident from an Investigating case. Stores a snapshot of evidence, checklist, ML context, and triage history. Returns 201 for a new incident or 200 with `already_declared` on retry. |
 | `POST .../checklist` `{actor, item_id, checked, note?}` | Tick a checklist item. `m_host_review` and `m_owner` are required before close/escalate. |
 | `POST .../close` `{actor, classification, comment}` | Comment ≥ 10 chars. 200 closed, or **202** with a close request when Tier 1 closes a High/Critical case as a false positive. |
 | `POST .../escalate` `{actor, summary, evidence, checks_done, hypothesis, recommended_action}` | All fields required; members become Escalated; case returns to the queue for Tier 2. |
@@ -263,8 +264,9 @@ Body: `{ "actor": "…", "rule_name": "DNS Tunneling Detection",
 `{ "records": [...], "integrations": {fortigate:{...}, ...} }`
 
 ### `POST /api/incidents`
-Body: `{ "actor": "…", "alert_fps": [...], "title": "...", "severity": "..." }`.
-Returns the created record (id = `inc-<10hex>`).
+Body: `{ "actor": "…", "alert_fps": [...], "title": "...", "severity": "...", "reason": "..." }`.
+`alert_fps` may be empty for a manual incident when `reason` has at least 10 characters. Manual incidents keep `source_type: "manual"` and no placeholder alert ID.
+Returns the created record (id = `inc-<10hex>`). Linked incidents declared from `/triage` also include `source_case_key`, `source_case_mode`, `source_client`, `declaration_reason`, and a `triage_snapshot` of the investigation. `/incidents?id=<incident_id>` opens a linked incident; its source link points back to `/triage?case=<case_key>&group=<mode>`.
 
 ### `GET /api/incidents/{id}`
 `{ "record": {...} }` or 404.

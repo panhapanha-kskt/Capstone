@@ -290,8 +290,16 @@
       flex: none
     }
 
+    /* Fixed-size chart box (audit 2026-11-27): .p-body's flex:1 made the stated height ignored, and the
+       inline SVG's baseline gap fed back into it, so each 3 s redraw grew every chart by ~5 px. */
     .chart-body {
-      height: 190px
+      flex: none;
+      height: 190px;
+      overflow: hidden
+    }
+
+    .chart-body > svg {
+      display: block
     }
 
     .chart-legend {

@@ -26,8 +26,55 @@
   .badge.fail{background:var(--red)}
 </style>
 <link rel="stylesheet" href="/static/css/shell.css">
+<link rel="stylesheet" href="/static/css/soc-workbench.css">
+<style>
+  body.soc-incidents .page-head { align-items: center; }
+  body.soc-incidents .inc-stats { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; margin: 16px 0; }
+  body.soc-incidents .inc-stat { padding: 14px 16px; border: 1px solid var(--border); border-radius: 10px; background: #132637; }
+  body.soc-incidents .inc-stat span { display: block; color: var(--muted); font-size: 11px; text-transform: uppercase; letter-spacing: .08em; }
+  body.soc-incidents .inc-stat strong { display: block; margin-top: 6px; color: #f0f9fc; font-size: 23px; }
+  body.soc-incidents .inc-grid { grid-template-columns: minmax(280px, 360px) minmax(0, 1fr); padding: 0 0 18px; }
+  body.soc-incidents .inc-list, body.soc-incidents .inc-detail { border-radius: 11px; background: #142638; box-shadow: 0 8px 20px #020b162b; }
+  body.soc-incidents .inc-detail { padding: 20px 22px; }
+  body.soc-incidents .inc-row { padding: 13px 15px; }
+  body.soc-incidents .inc-row.sel { background: #1c4050; border-left-color: var(--cyan); }
+  body.soc-incidents .inc-row h3 { justify-content: space-between; gap: 10px; }
+  body.soc-incidents .inc-row .meta { line-height: 1.5; }
+  body.soc-incidents .inc-row .source-tag { display: inline-block; margin-top: 5px; color: var(--cyan); font-size: 11px; }
+  body.soc-incidents .incident-kicker { display: block; margin-bottom: 6px; color: var(--cyan); font-size: 10px; font-weight: 700; letter-spacing: .13em; text-transform: uppercase; }
+  body.soc-incidents .incident-title { color: #f4f9fc; font-size: 23px; line-height: 1.2; }
+  body.soc-incidents .incident-facts { display: flex; gap: 6px; flex-wrap: wrap; margin: 10px 0 18px; }
+  body.soc-incidents .incident-facts span { padding: 4px 8px; border: 1px solid var(--border); border-radius: 6px; color: #dceaf3; font-size: 11px; }
+  body.soc-incidents .source-card { margin: 18px 0; padding: 16px; border: 1px solid #426177; border-radius: 10px; background: linear-gradient(145deg,#193847,#122b3b); }
+  body.soc-incidents .source-card h3 { color: #f0f8fc; font-size: 15px; }
+  body.soc-incidents .source-card p { margin-top: 7px; color: #d9e8f0; font-size: 12px; line-height: 1.55; }
+  body.soc-incidents .source-card .source-facts { display: flex; flex-wrap: wrap; gap: 8px 16px; margin: 11px 0; color: var(--muted); font-size: 11px; }
+  body.soc-incidents .source-history { margin: 12px 0; padding-top: 10px; border-top: 1px solid var(--border); color: var(--muted); font-size: 11px; }
+  body.soc-incidents .source-history b, body.soc-incidents .source-history span { display: block; margin-bottom: 4px; }
+  body.soc-incidents .source-history b { color: #e8f2f8; }
+  body.soc-incidents .source-card a { display: inline-flex; margin-top: 3px; color: var(--cyan); font-weight: 700; text-decoration: none; }
+  body.soc-incidents .source-card a:hover { text-decoration: underline; }
+  body.soc-incidents .inc-section { margin: 20px 0 8px; color: #f0f8fc; font-size: 13px; }
+  body.soc-incidents .action-btn { border-radius: 8px; background: #1b3445; }
+  body.soc-incidents .action-btn:hover { background: #245066; }
+  body.soc-incidents .inc-head-actions { display: flex; gap: 8px; flex-wrap: wrap; margin-left: auto; }
+  body.soc-incidents .inc-head-actions .btn { min-height: 36px; text-decoration: none; }
+  body.soc-incidents .inc-dialog { width: min(540px, 94vw); padding: 0; border: 1px solid #426177; border-radius: 12px;
+    background: #142638; color: var(--text); box-shadow: 0 24px 70px #000a; }
+  body.soc-incidents .inc-dialog::backdrop { background: #020b16ad; }
+  body.soc-incidents .inc-dialog .dh { padding: 16px 18px; border-bottom: 1px solid var(--border); color: #f0f8fc; font-size: 16px; font-weight: 700; }
+  body.soc-incidents .inc-dialog .db { display: grid; gap: 12px; padding: 18px; }
+  body.soc-incidents .inc-dialog label { display: grid; gap: 5px; color: var(--muted); font-size: 12px; }
+  body.soc-incidents .inc-dialog :is(input,select,textarea) { width: 100%; padding: 9px; border: 1px solid var(--border);
+    border-radius: 7px; background: #102233; color: var(--text); font: inherit; }
+  body.soc-incidents .inc-dialog textarea { min-height: 80px; resize: vertical; }
+  body.soc-incidents .inc-dialog .df { display: flex; justify-content: flex-end; gap: 8px; padding: 12px 18px; border-top: 1px solid var(--border); }
+  body.soc-incidents .inc-dialog .err { min-height: 18px; color: var(--red); font-size: 12px; }
+  @media (max-width: 980px) { body.soc-incidents .inc-grid { grid-template-columns: 1fr; } body.soc-incidents .inc-list { max-height: 300px; } }
+  @media (max-width: 600px) { body.soc-incidents .inc-stats { grid-template-columns: 1fr 1fr; } body.soc-incidents .inc-grid { gap: 10px; } body.soc-incidents .inc-detail { padding: 16px; } body.soc-incidents .action-grid { grid-template-columns: 1fr; } }
+</style>
 </head>
-<body>
+<body class="soc-workbench soc-incidents">
 <div id="app-chrome"></div>
 <script src="/static/js/chrome.js"></script>
 <script>
@@ -35,13 +82,15 @@
 const main = SOC.mount({active:"incidents"});
 main.innerHTML = `
   <div class="page-head">
-    <h1>Incidents</h1>
-    <span class="subtitle">Confirmed-incident queue with SOAR-ready response-action workflow.</span>
-    <span class="right">
+    <div class="wb-title"><span class="wb-kicker"><span class="wb-live" aria-hidden="true"></span>SECURITY OPERATIONS / RESPONSE</span>
+      <h1>Incidents</h1><p class="subtitle">Track declared incidents and the investigation that led to each decision.</p></div>
+    <span class="inc-head-actions">
+      <a class="btn sec" href="/triage">Start investigation</a>
       <button class="btn" id="new-inc">+ New incident</button>
     </span>
   </div>
-  <div class="panel" style="margin-bottom:0">
+  <div class="inc-stats" id="inc-stats" aria-label="Incident overview"></div>
+  <div class="panel" style="margin:0 0 14px">
     <div class="nag info">
       Response actions here are <b>SIMULATED</b> or <b>NOT CONFIGURED</b> — this project does not ship with real FortiSOAR / FortiGate / FortiEDR integrations.
       No request on this page actually blocks IPs, isolates endpoints, or disrupts the network.
@@ -51,18 +100,48 @@ main.innerHTML = `
     <div class="inc-list" id="inc-list"><div class="empty">Loading incidents…</div></div>
     <div class="inc-detail" id="inc-detail"><div class="empty">Select an incident to view actions.</div></div>
   </div>
+  <dialog class="inc-dialog" id="inc-create" aria-labelledby="inc-create-title">
+    <div class="dh" id="inc-create-title">New incident</div>
+    <div class="db">
+      <div class="nag info">Create a manual incident when no triage case exists yet. For alerts in the queue, start an investigation in Triage and declare from there.</div>
+      <label>Title <input id="inc-title" maxlength="240" placeholder="Describe the affected asset and activity"></label>
+      <label>Severity <select id="inc-severity"><option>Critical</option><option>High</option><option selected>Medium</option><option>Low</option></select></label>
+      <label>Why this is an incident <textarea id="inc-reason" placeholder="Summarize the observed facts and incident criteria."></textarea></label>
+      <label>Alert fingerprints (optional) <textarea id="inc-fps" placeholder="One per line, if available"></textarea></label>
+      <div class="err" id="inc-error" role="alert"></div>
+    </div>
+    <div class="df"><button class="btn sec" id="inc-cancel">Cancel</button><button class="btn" id="inc-submit">Create incident</button></div>
+  </dialog>
 `;
 
 let incidents = [];
 let integrations = {};
-let selectedId = null;
+let selectedId = new URLSearchParams(location.search).get("id");
 
 async function load(){
   const data = await SOC.apiGET("/api/incidents");
   incidents = data.records || [];
   integrations = data.integrations || {};
+  if (!incidents.some(i=>i.id===selectedId)) selectedId = incidents[0]?.id || null;
+  renderStats();
   renderList();
-  if (selectedId) renderDetail(incidents.find(i=>i.id===selectedId));
+  renderDetail(incidents.find(i=>i.id===selectedId));
+}
+
+function renderStats(){
+  const open = incidents.filter(i=>i.status!=="Closed").length;
+  const linked = incidents.filter(i=>i.source_case_key).length;
+  const urgent = incidents.filter(i=>i.status!=="Closed" && ["High","Critical"].includes(i.severity)).length;
+  document.getElementById("inc-stats").innerHTML = [["Open incidents",open],["High / Critical",urgent],["Linked investigations",linked]]
+    .map(([label,count])=>`<div class="inc-stat"><span>${SOC.esc(label)}</span><strong>${SOC.esc(count)}</strong></div>`).join("");
+}
+
+function caseUrl(inc){
+  return `/triage?case=${encodeURIComponent(inc.source_case_key)}&group=${encodeURIComponent(inc.source_case_mode || "source")}`;
+}
+
+function fmtCounts(o){
+  return Object.entries(o || {}).map(([k,v])=>`${SOC.esc(k)} ${SOC.esc(v)}`).join(" · ") || "—";
 }
 
 function sevCls(s){
@@ -75,7 +154,8 @@ function renderList(){
   SOC.patchList(el, sorted, inc=>inc.id, inc=>`
     <div class="inc-row ${inc.id===selectedId?"sel":""}" data-id="${SOC.esc(inc.id)}">
       <h3>${SOC.esc(inc.title)}<span class="chip ${sevCls(inc.severity)}">${SOC.esc(inc.severity)}</span></h3>
-      <div class="meta">${SOC.esc(inc.id)} · ${SOC.esc(inc.status)} · ${(inc.alert_fps||[]).length} alerts · created ${SOC.esc(SOC.fmtDate(inc.created_at))}</div>
+      <div class="meta">${SOC.esc(inc.id)} · ${SOC.esc(inc.status)} · ${SOC.esc(inc.source_alert_count ?? (inc.alert_fps||[]).length)} alerts · ${SOC.esc(SOC.fmtDate(inc.created_at))}</div>
+      ${inc.source_case_key ? `<span class="source-tag">Linked to triage case ${SOC.esc(inc.source_case_key)}</span>` : ""}
     </div>`,
     '<div class="empty">No incidents yet. Create one from the Alerts page bulk menu, or use <b>+ New incident</b> above.</div>');
 }
@@ -84,6 +164,7 @@ document.getElementById("inc-list").addEventListener("click", ev=>{
   const row = ev.target.closest("[data-id]");
   if (!row) return;
   selectedId = row.dataset.id;
+  history.replaceState(null, "", `/incidents?id=${encodeURIComponent(selectedId)}`);
   renderList();
   renderDetail(incidents.find(i=>i.id===selectedId));
 });
@@ -105,16 +186,29 @@ function statusBadge(s){
 function renderDetail(inc){
   const el = document.getElementById("inc-detail");
   if (!inc){ el.innerHTML = '<div class="empty">Select an incident.</div>'; return; }
+  const snap = inc.triage_snapshot || {};
+  const ev = snap.evidence || {};
+  const checks = (snap.checklist || []).filter(item=>item.kind === "manual" && item.checked);
   el.innerHTML = `
-    <h2 style="color:#fff;font-size:15px;margin-bottom:8px">${SOC.esc(inc.title)}</h2>
-    <div class="kvtable">
-      <span class="k">Incident ID</span><span class="v">${SOC.esc(inc.id)}</span>
-      <span class="k">Severity</span><span class="v"><span class="chip ${sevCls(inc.severity)}">${SOC.esc(inc.severity)}</span></span>
-      <span class="k">Status</span><span class="v">${SOC.esc(inc.status)}</span>
-      <span class="k">Created</span><span class="v">${SOC.esc(SOC.fmtDate(inc.created_at))} by ${SOC.esc(inc.created_by)}</span>
-      <span class="k">Alert fingerprints</span><span class="v">${(inc.alert_fps||[]).map(f=>SOC.esc(f.slice(0,8))).join(", ")}</span>
-    </div>
-    <h3 style="font-size:13px;color:#e7eaf2;margin:14px 0 6px">Response actions</h3>
+    <span class="incident-kicker">Incident ${SOC.esc(inc.id)}</span>
+    <h2 class="incident-title">${SOC.esc(inc.title)}</h2>
+    <div class="incident-facts"><span>${SOC.esc(inc.severity)} priority</span><span>${SOC.esc(inc.status)}</span>
+      <span>Created ${SOC.esc(SOC.fmtDate(inc.created_at))} by ${SOC.esc(inc.created_by)}</span>
+      <span>${SOC.esc(inc.source_alert_count ?? (inc.alert_fps||[]).length)} linked alerts</span></div>
+    ${inc.source_case_key ? `<section class="source-card" aria-label="Source investigation">
+      <span class="incident-kicker">Source investigation</span><h3>${SOC.esc(inc.source_case_key)} · ${SOC.esc(inc.source_client || "Unknown host")}</h3>
+      <p><b>Why declared:</b> ${SOC.esc(inc.declaration_reason || "No reason recorded")}</p>
+      <div class="source-facts"><span>${SOC.esc(ev.total_queries ?? "—")} DNS queries</span>
+        <span>${SOC.esc(ev.distinct_names ?? "—")} distinct names</span>
+        <span>${SOC.esc(checks.length)} manual checks recorded</span></div>
+      <p><b>Query types:</b> ${fmtCounts(ev.query_types)}</p>
+      <p><b>Automated assessment at declaration:</b> ${SOC.esc((snap.suggestion || {}).text || "No assessment recorded")}</p>
+      ${(snap.history || []).length ? `<div class="source-history"><b>Investigation history</b>
+        ${(snap.history || []).slice(0, 6).map(h=>`<span>${SOC.esc(SOC.fmtDate(h.timestamp))} · ${SOC.esc(h.action)} by ${SOC.esc(h.actor || "unknown")}</span>`).join("")}</div>` : ""}
+      <a href="${caseUrl(inc)}">Open source triage case ↗</a>
+    </section>` : `<section class="source-card"><span class="incident-kicker">Manually created</span><h3>Investigation origin</h3>
+      <p>${SOC.esc(inc.declaration_reason || "This incident was created without a linked triage case.")}</p></section>`}
+    <h3 class="inc-section">Response actions</h3>
     <div class="action-grid" id="act-grid">
       ${RESPONSE_ACTIONS.map(a=>{
         const cfg = a.integ ? !!(integrations[a.integ] && integrations[a.integ].configured) : true;
@@ -122,7 +216,7 @@ function renderDetail(inc){
         return `<button class="action-btn" data-k="${SOC.esc(a.key)}"><b>${SOC.esc(a.label)}</b><span style="color:var(--muted)">${SOC.esc(hint)||"SIMULATED"}</span></button>`;
       }).join("")}
     </div>
-    <h3 style="font-size:13px;color:#e7eaf2;margin:14px 0 6px">Action history</h3>
+    <h3 class="inc-section">Action history</h3>
     ${(inc.actions||[]).length ? (inc.actions.slice().reverse().map(a=>`<div style="padding:6px 0;border-bottom:1px dashed #262b3d;font-size:12px">
       <span class="num" style="color:var(--muted)">${SOC.esc(SOC.fmtDate(a.ts))}</span> ·
       <b style="color:#e7eaf2">${SOC.esc(a.action)}</b> ${statusBadge(a.status)} <span style="color:var(--muted)">by ${SOC.esc(a.actor)}</span>
@@ -139,18 +233,29 @@ function renderDetail(inc){
   }
 }
 
-document.getElementById("new-inc").addEventListener("click", async ()=>{
-  const title = prompt("Incident title?");
-  if (!title) return;
+document.getElementById("new-inc").addEventListener("click", ()=>{
+  document.getElementById("inc-error").textContent = "";
+  document.getElementById("inc-create").showModal();
+  document.getElementById("inc-title").focus();
+});
+document.getElementById("inc-cancel").addEventListener("click", ()=>document.getElementById("inc-create").close());
+document.getElementById("inc-submit").addEventListener("click", async ()=>{
+  const title = document.getElementById("inc-title").value.trim();
+  const reason = document.getElementById("inc-reason").value.trim();
+  const alert_fps = document.getElementById("inc-fps").value.split(/[\n,]+/).map(x=>x.trim()).filter(Boolean);
+  const error = document.getElementById("inc-error"), submit = document.getElementById("inc-submit");
+  if (title.length < 3){ error.textContent = "Give this incident a specific title."; return; }
+  if (reason.length < 10){ error.textContent = "Explain why this activity meets incident criteria (at least 10 characters)."; return; }
+  submit.disabled = true;
   try {
-    const r = await SOC.apiPOST("/api/incidents", {
-      alert_fps: ["manual-" + Date.now().toString(36)],   // placeholder when created ad-hoc
-      title, severity: "Medium",
-      actor: localStorage.getItem("soc_actor") || "analyst-1",
-    });
+    const r = await SOC.apiPOST("/api/incidents", {title, severity: document.getElementById("inc-severity").value,
+      reason, alert_fps, actor: localStorage.getItem("soc_actor") || "analyst-1"});
     selectedId = r.record.id;
+    history.replaceState(null, "", `/incidents?id=${encodeURIComponent(selectedId)}`);
+    document.getElementById("inc-create").close();
     await load();
-  } catch(e){ alert("Create failed: " + e.message); }
+  } catch(e){ error.textContent = e.message; }
+  finally { submit.disabled = false; }
 });
 
 // incident writes bump the server state version, so one poller covers both the pill and the list

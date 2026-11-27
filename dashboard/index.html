@@ -106,24 +106,28 @@ ul.reasons { margin: 0; padding-left: 18px; color: var(--ink-2); font-size: 13px
 footer { color: var(--ink-3); font-size: 12px; }
 @media (prefers-reduced-motion: reduce) { .bar { transition: none; } }
 </style>
+<link rel="stylesheet" href="/static/css/shell.css">
+<link rel="stylesheet" href="/static/css/soc-premium.css">
+<link rel="stylesheet" href="/static/css/classic-premium.css">
 </head>
-<body>
-<div class="wrap">
-  <div class="top">
+<body class="soc-overview classic-dashboard">
+<div id="app-chrome"><main class="main"><div class="classic-page">
+  <div class="soc-hero">
     <div>
-      <div class="eyebrow">CADT capstone · DNS tunnel detection</div>
+      <div class="soc-eyebrow"><span class="soc-live-mark" aria-hidden="true"></span> SECURITY OPERATIONS / LIVE DASHBOARD</div>
       <h1>DNS Detect Live</h1>
+      <p>Live alerts, detection trends, and pipeline context in one place.</p>
     </div>
-    <div class="top-right">
-      <span class="badge" id="mode">LIVE</span>
-      <span class="conn"><span class="dot" id="dot"></span><span id="connText">Connecting</span></span>
-      <a class="btn" href="/soc" title="Open the SOC monitoring view">SOC view</a>
-      <a class="btn" href="/alerts" title="Alert management">Alerts</a>
-      <a class="btn" href="/events" title="Event explorer">Events</a>
-      <a class="btn" href="/health" title="Pipeline health">Health</a>
-      <a class="btn" href="/training" title="Open the model training console">Training</a>
+    <div class="soc-hero-actions">
+      <a href="/soc">Monitoring overview</a>
+      <a href="/alerts">Review alerts</a>
       <button id="runBtn" type="button">Run now</button>
     </div>
+  </div>
+
+  <div class="soc-data-bar" aria-label="Connection status">
+      <span class="badge" id="mode">LIVE</span>
+      <span class="conn"><span class="dot" id="dot"></span><span id="connText">Connecting</span></span>
   </div>
 
   <section class="card" aria-label="Pipeline status">
@@ -137,11 +141,11 @@ footer { color: var(--ink-3); font-size: 12px; }
     <div class="errbox" id="err" hidden></div>
   </section>
 
-  <section class="card kpis" aria-label="Summary">
-    <div class="kpi"><div class="eyebrow">Alerts</div><div class="v num"><span id="kAlerts">0</span><small id="kNew"></small></div><div class="d">Total from the latest run</div></div>
-    <div class="kpi"><div class="eyebrow">High</div><div class="v num" id="kHigh">0</div><div class="d">Needs a look first</div></div>
-    <div class="kpi"><div class="eyebrow">Medium</div><div class="v num" id="kMed">0</div><div class="d">Worth reviewing</div></div>
-    <div class="kpi"><div class="eyebrow">Queries analysed</div><div class="v num" id="kQ">0</div><div class="d" id="kMl">ML rules: –</div></div>
+  <section class="soc-spotlight" aria-label="Summary">
+    <a class="soc-spotlight-card kpi" href="/alerts"><span class="eyebrow">Alerts</span><strong class="v num"><span id="kAlerts">0</span><small id="kNew"></small></strong><span class="d">Total from the latest run</span></a>
+    <a class="soc-spotlight-card kpi" href="/alerts"><span class="eyebrow">High</span><strong class="v num" id="kHigh">0</strong><span class="d">Needs a look first</span></a>
+    <a class="soc-spotlight-card kpi" href="/alerts"><span class="eyebrow">Medium</span><strong class="v num" id="kMed">0</strong><span class="d">Worth reviewing</span></a>
+    <a class="soc-spotlight-card kpi" href="/health"><span class="eyebrow">Queries analysed</span><strong class="v num" id="kQ">0</strong><span class="d" id="kMl">ML rules: –</span></a>
   </section>
 
   <div class="grid">
@@ -183,10 +187,12 @@ footer { color: var(--ink-3); font-size: 12px; }
       <dl class="facts" id="monFacts"></dl>
     </section>
   </div>
-  <footer>Reads <code>data/processed/week4_unified_alerts.json</code> and <code>monitoring_report.json</code>. The page refreshes every 2 seconds; new results appear after each pipeline run.</footer>
-</div>
+  <footer>Reads <code>data/processed/week4_unified_alerts.json</code> and <code>monitoring_report.json</code>. The page refreshes every 3 seconds; new results appear after each pipeline run.</footer>
+</div></main></div>
 
+<script src="/static/js/chrome.js"></script>
 <script>
+SOC.mount({active:"classic"});
 (function () {
   "use strict";
   var $ = function (id) { return document.getElementById(id); };

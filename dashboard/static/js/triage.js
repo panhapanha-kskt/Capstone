@@ -19,9 +19,16 @@
   const STATUS_CLS = {Open:"sev-High", Acknowledged:"ok", Investigating:"ok", Escalated:"bad", PendingApproval:"bad", Closed:""};
 
   const st = {
-    group: LS.get("tri_group", "source"), status: LS.get("tri_status", "open"), severity: "", q: "", mine: false,
+    group: LS.get("tri_group", "source"), status: LS.get("tri_status", "open"), severity: LS.get("tri_sev", ""), q: "", mine: false,
     offset: 0, limit: 50, selected: null, queue: null, view: null, skew: 0, analysts: [], tier: 0,
   };
+  const deepLink = new URLSearchParams(location.search);
+  const linkedCase = deepLink.get("case");
+  if (/^c-[0-9a-f]{12}$/.test(linkedCase || "")){
+    st.selected = linkedCase;
+    st.group = ["source", "entity"].includes(deepLink.get("group")) ? deepLink.get("group") : "source";
+    st.status = ""; st.severity = "";
+  }
 
   const main = SOC.mount({active: "triage"});
   document.body.classList.add("soc-workbench", "soc-triage");
@@ -47,6 +54,7 @@
     <div class="me-strip" id="me" aria-label="My shift"></div>
     <div class="tri-grid">
       <section class="tri-col" aria-label="Case queue">
+        <div class="tri-col-title"><h2>Case queue</h2><span>Work by priority and due time</span></div>
         <div class="counts" id="counts"></div>
         <div class="qfilters">
           <select id="f-group" aria-label="Group alerts by">
@@ -56,6 +64,7 @@
           <select id="f-status" aria-label="Status">
             <option value="open">Open cases</option><option value="">All</option>
             <option value="Open">Open (untouched)</option><option value="Acknowledged">Acknowledged</option>
+            <option value="Investigating">Investigating</option>
             <option value="PendingApproval">Pending approval</option><option value="Escalated">Escalated</option>
             <option value="Closed">Closed</option>
           </select>
@@ -81,6 +90,7 @@
         <label>Classification (becomes the training label for the next model retraining)
           <select id="c-class"></select></label>
         <div class="banner" id="c-fp-note" hidden>High/Critical false-positive closures need a <b>Tier 2 approval</b> (four-eyes). Your request will be queued.</div>
+        <div id="c-manual"></div>
         <label>Comment: why? (required, at least 10 characters)
           <textarea id="c-comment" placeholder="e.g. Internal update service; names are product SKUs, not encoded data. Checked with the asset owner."></textarea></label>
         <div class="err" id="c-err"></div>
@@ -92,6 +102,7 @@
       <div class="dh" id="dlg-esc-h">Escalate to Tier 2</div>
       <div class="db">
         <div class="nag info">Every field is required. Tier 2 should not have to redo your triage.</div>
+        <div id="e-manual"></div>
         <label>Summary <textarea id="e-summary"></textarea></label>
         <label>Evidence (observed facts) <textarea id="e-evidence"></textarea></label>
         <label>Checks done and results <textarea id="e-checks"></textarea></label>
@@ -100,6 +111,18 @@
         <div class="err" id="e-err"></div>
       </div>
       <div class="df"><button class="btn sec" data-close>Cancel</button><button class="btn dng" id="e-submit">Escalate</button></div>
+    </dialog>
+
+    <dialog id="dlg-declare" aria-labelledby="dlg-declare-h">
+      <div class="dh" id="dlg-declare-h">Declare a security incident</div>
+      <div class="db">
+        <div class="nag info">Use this when the evidence meets your incident criteria. The incident will link to this investigation and keep a snapshot of its evidence and history.</div>
+        <label>Incident title <input id="d-title" maxlength="240" placeholder="e.g. Suspected DNS tunneling from host"></label>
+        <label>Severity <select id="d-severity"><option>Critical</option><option>High</option><option>Medium</option><option>Low</option></select></label>
+        <label>Why this is an incident <textarea id="d-reason" placeholder="State the observed activity, affected asset, and why it needs incident response."></textarea></label>
+        <div class="err" id="d-err" role="alert"></div>
+      </div>
+      <div class="df"><button class="btn sec" data-close>Cancel</button><button class="btn" id="d-submit">Declare incident</button></div>
     </dialog>
 
     <dialog id="dlg-release" aria-labelledby="dlg-release-h">
@@ -263,24 +286,23 @@
   }
   function rowHtml(c){
     const shared = c.source_flags && c.source_flags.shared;
+    const mode = c.suggestion === "escalate" ? "Escalate suggested" : c.suggestion === "close" ? "Close suggested" : "Review needed";
     return `<div class="qrow ${c.key === st.selected ? "sel" : ""}" role="option" aria-selected="${c.key === st.selected}" data-case="${esc(c.key)}" tabindex="-1">
-      ${chipSev(c.priority)}
-      <span class="t" title="${esc(c.label)}">${esc(c.label)}</span>
-      ${chipStatus(c.status)}
-      <span class="meta">
-        <span>${shared ? '<span class="warnip" title="Shared source IP">⚠ </span>' : ""}${esc(c.client)}</span>
-        <span>${esc(c.members)} alert${c.members === 1 ? "" : "s"}</span>
-        <span>owner: ${esc(c.owner || "—")}</span>
-        <span>checklist ${esc(c.checklist_done ?? "–")}/${esc(c.checklist_total ?? "–")}</span>
-        ${c.suggestion ? `<span>ML/checks: ${esc(c.suggestion)}</span>` : ""}
-        ${slaHtml(c, c.owner ? "triage" : "ack")}
-      </span>
+      <div class="qrow-top">${chipSev(c.priority)}<span class="t" title="${esc(c.label)}">${esc(c.label)}</span>${chipStatus(c.status)}</div>
+      <div class="qrow-identity">${shared ? '<span class="warnip" title="Shared source IP">⚠ </span>' : ""}${esc(c.client)} · ${esc(c.members)} alert${c.members === 1 ? "" : "s"}</div>
+      <div class="qrow-bottom"><span>Owner: ${esc(c.owner || "unassigned")}</span><span class="qrow-signal">${esc(mode)}</span>${slaHtml(c, c.owner ? "triage" : "ack")}</div>
     </div>`;
   }
   function renderQueue(q){
     if (!q || !Array.isArray(q.cases) || !Number.isSafeInteger(q.total) || q.total < 0 ||
         !q.cases.every(c=>c && typeof c.key === "string" && typeof c.label === "string"))
       throw new Error("Triage API returned an invalid queue");
+    if (q.total > 0 && st.offset >= q.total){
+      // cases left the queue (closed/escalated) and this page is now past the end: go to the last page
+      st.offset = Math.floor((q.total - 1) / st.limit) * st.limit;
+      setTimeout(refreshAll, 0);
+      return;
+    }
     st.queue = q;
     st.skew = q.now - Date.now()/1000;
     renderCounts(q);
@@ -314,9 +336,10 @@
 
   $("f-group").value = st.group;
   $("f-status").value = st.status;
+  $("f-sev").value = st.severity;
   $("f-group").addEventListener("change", e=>{ st.group = e.target.value; LS.set("tri_group", st.group); st.offset = 0; st.selected = null; showEmpty(); refreshAll(); });
   $("f-status").addEventListener("change", e=>{ st.status = e.target.value; LS.set("tri_status", st.status); st.offset = 0; refreshAll(); });
-  $("f-sev").addEventListener("change", e=>{ st.severity = e.target.value; st.offset = 0; refreshAll(); });
+  $("f-sev").addEventListener("change", e=>{ st.severity = e.target.value; LS.set("tri_sev", st.severity); st.offset = 0; refreshAll(); });
   let qTimer = null;
   $("f-q").addEventListener("input", e=>{ clearTimeout(qTimer); qTimer = setTimeout(()=>{ st.q = e.target.value.trim(); st.offset = 0; refreshAll(); }, 250); });
   $("p-prev").addEventListener("click", ()=>{ st.offset = Math.max(0, st.offset - st.limit); refreshAll(); });
@@ -328,6 +351,7 @@
     else if (k === "pending") st.status = st.status === "PendingApproval" ? "open" : "PendingApproval";
     else if (k.startsWith("sev:")) st.severity = st.severity === k.slice(4) ? "" : k.slice(4);
     $("f-status").value = st.status; $("f-sev").value = st.severity;
+    LS.set("tri_status", st.status); LS.set("tri_sev", st.severity);
     st.offset = 0; refreshAll();
   });
   $("qlist").addEventListener("click", e=>{
@@ -335,7 +359,7 @@
   });
   function select(key){
     if (st.selected !== key){
-      st.view = null;
+      st.view = null; st.changed = null;
       $("case").innerHTML = '<div class="empty" role="status">Loading case…</div>';
     }
     st.selected = key;
@@ -356,18 +380,50 @@
   }
 
   /* ── case pane ───────────────────────────── */
-  function showEmpty(){ $("case").innerHTML = emptyCaseHtml; st.view = null; }
+  function showEmpty(){ $("case").innerHTML = emptyCaseHtml; st.view = null; caseSig = ""; st.changed = null; }
+  // History entries another analyst added to the open case since it was last shown (newest last).
+  const histSig = h=>`${h.timestamp}|${h.action}|${h.actor}`;
+  function othersChanges(prev, next){
+    if (!prev || prev.case.key !== next.case.key) return [];
+    const seen = new Set((prev.history || []).map(histSig));
+    return (next.history || []).filter(h=>!seen.has(histSig(h)) && h.actor && h.actor !== actor());
+  }
   let caseReq = 0;
+  // The queue poll reloads the open case every 5 s. Re-render only when the case actually changed,
+  // and keep keyboard focus and the last lookup result when it does (audit 2026-11-26, T1).
+  let caseSig = "";
+  function focusToken(){
+    const a = document.activeElement;
+    if (!a || !$("case").contains(a)) return null;
+    for (const attr of ["data-act", "data-check", "data-goto", "data-enrich", "data-enrich-ip"])
+      if (a.hasAttribute(attr)) return `[${attr}="${CSS.escape(a.getAttribute(attr))}"]`;
+    return null;
+  }
   async function loadCase(key, quiet){
     if (key !== st.selected) return;
     const my = ++caseReq;
     try {
       const v = await SOC.apiGET(`/api/triage/case/${encodeURIComponent(key)}?limit=50&actor=${encodeURIComponent(actor())}`);
       if (my !== caseReq || key !== st.selected) return;
-      const scroll = $("case").scrollTop;
-      st.view = v;
+      const sig = JSON.stringify(v);
+      if (quiet && st.view && sig === caseSig){ st.view = v; return; }
+      const scroll = $("case").scrollTop, focus = quiet ? focusToken() : null;
+      const enrich = quiet && $("enrich-out") ? $("enrich-out").textContent : "";
+      const theirs = quiet ? othersChanges(st.view, v) : [];
+      if (!quiet) st.changed = null;
+      else if (theirs.length){
+        const last = theirs.reduce((a, b)=>String(a.timestamp) >= String(b.timestamp) ? a : b);
+        st.changed = {count: theirs.length + (st.changed ? st.changed.count : 0), actor: last.actor, action: last.action, at: last.timestamp};
+        toast(`${last.actor} updated this case: ${last.action}.`);
+      }
+      st.view = v; caseSig = sig;
       renderCase(v);
-      if (quiet) $("case").scrollTop = scroll;
+      if (quiet){
+        $("case").scrollTop = scroll;
+        if (enrich && $("enrich-out")) $("enrich-out").textContent = enrich;
+        const el = focus && $("case").querySelector(focus);
+        if (el) el.focus({preventScroll: true});
+      }
     } catch(e){
       if (my !== caseReq || key !== st.selected) return;
       if (!quiet) $("case").innerHTML = `<div class="nag bad">Could not load the case: ${esc(e.message)}</div>`;
@@ -389,34 +445,45 @@
     const maxTl = Math.max(1, ...ev.timeline.map(t=>t.count));
     const score = s => s ? `${esc(s.max)} max · ${esc(s.mean)} mean (n=${esc(s.n)})` : "—";
     const pend = v.close_request && v.close_request.status === "pending" ? v.close_request : null;
+    const missing = v.checklist.filter(item=>item.kind === "manual" && item.required && !item.checked);
+    const indicatorIds = [...(sg.tunnel_indicators || []), ...(sg.benign_indicators || [])];
+    const indicators = indicatorIds.map(id=>v.checklist.find(item=>item.id === id)).filter(Boolean);
+    const assessment = sg.action === "escalate" ? "Escalation suggested" : sg.action === "close" ? "Closure suggested" : "Review required";
     $("case").innerHTML = `
-      <div class="chead">
-        <div>
-          <h2>${esc(c.label)}</h2>
-          <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center">
-            ${chipSev(c.priority)} ${chipStatus(c.status)}
-            <span class="pill2">${esc(c.client)}</span><span class="pill2">${esc(c.members)} alerts (${esc(c.open_members)} open)</span>
-            <span class="pill2">owner: ${esc(c.owner || "unassigned")}</span>
-            ${slaHtml(c, "ack")} ${slaHtml(c, "triage")}
+      <header class="case-overview">
+        <span class="case-key">Case ${esc(c.key)}</span>
+        <h2>${esc(c.label)}</h2>
+        <div class="case-facts">${chipSev(c.priority)} ${chipStatus(c.status)}
+          <span class="pill2">${esc(c.client)}</span><span class="pill2">${esc(c.members)} alerts (${esc(c.open_members)} open)</span>
+          <span class="pill2">Owner: ${esc(c.owner || "unassigned")}</span>
+          ${slaHtml(c, "ack")} ${slaHtml(c, "triage")}
+        </div>
+      </header>
+      ${st.changed ? `<div class="banner changed" role="status"><b>Case changed while you had it open.</b>
+        ${esc(st.changed.actor)}: ${esc(st.changed.action)} at ${esc(SOC.fmtDate(st.changed.at))}${st.changed.count > 1 ? ` (+${esc(st.changed.count - 1)} more)` : ""}.
+        Re-check the status and owner before you act. <button class="btn sec" data-act="ackchange" style="margin-left:6px">Got it</button></div>` : ""}
+      <div class="case-layout">
+        <div class="case-main">
+          <div class="case-brief">
+            <span class="eyebrow">Case brief</span>
+            <p>${esc(c.members)} ${c.members === 1 ? "alert" : "alerts"} for ${esc(c.client)}. DNS evidence contains ${esc(ev.total_queries)} queries across ${esc(ev.distinct_names)} distinct names. Review the signals and confirm the affected endpoint before deciding.</p>
+            ${c.incident_id ? `<a class="incident-context-link" href="/incidents?id=${encodeURIComponent(c.incident_id)}">View linked incident ${esc(c.incident_id)} ↗</a>` : ""}
+            <div class="brief-facts"><span>Priority: <b>${esc(c.priority)}</b> from the highest member alert</span>
+              <span>First seen: <b>${esc(SOC.fmtDate(c.first_seen_at))}</b></span>
+              <span>Asset impact: <b>not recorded</b></span></div>
           </div>
-        </div>
-        <div class="acts">
-          <button class="btn blue" data-act="claim" ${can("claim") ? "" : "disabled"}>Claim<span class="kbd">c</span></button>
-          <button class="btn sec" data-act="release" ${can("release") ? "" : "disabled"}>Release</button>
-          <button class="btn" data-act="close" ${can("close") ? "" : "disabled"}>Close…<span class="kbd">x</span></button>
-          <button class="btn dng" data-act="escalate" ${can("escalate") ? "" : "disabled"}>Escalate…<span class="kbd">e</span></button>
-          ${v.members.some(m=>m.verdict) ? `<button class="btn sec" data-act="clearverdict" title="Withdraw the verdicts on the alerts shown below; they leave the training export">Clear verdicts</button>` : ""}
-        </div>
-      </div>
-      ${v.source.warning ? `<div class="banner"><span class="warnip">⚠ Shared source.</span> ${esc(v.source.warning)}</div>` : ""}
-      ${pend ? `<div class="banner"><b>Close requested</b> by ${esc(pend.requested_by)} as <b>${esc(CLASS_LABELS[pend.classification] || pend.classification)}</b>: “${esc(pend.comment)}”
-        ${can("approve") ? `<div style="margin-top:6px;display:flex;gap:6px"><button class="btn" data-act="approve">Approve and close</button><button class="btn sec" data-act="reject">Reject</button></div>`
-          : `<div style="color:var(--muted);margin-top:4px">Waiting for a Tier 2 analyst other than the requester.</div>`}</div>` : ""}
-      ${c.next_step ? `<div class="banner"><b>Next step:</b> ${esc(c.next_step)}</div>` : ""}
-      <div class="sugg ${esc(sg.action)}"><b>Suggested:</b> ${esc(sg.text)}
-        <div style="color:var(--muted);font-size:11.5px;margin-top:2px">From the checklist and ML scores below. You decide; the suggestion is never applied automatically.</div></div>
-
-      <h3>Evidence <span style="color:var(--muted);font-weight:400;font-size:11.5px">· ${esc(ev.source)}</span></h3>
+          ${v.source.warning ? `<div class="banner"><span class="warnip">⚠ Shared source.</span> ${esc(v.source.warning)}</div>` : ""}
+          ${pend ? `<div class="banner"><b>Close requested</b> by ${esc(pend.requested_by)} as <b>${esc(CLASS_LABELS[pend.classification] || pend.classification)}</b>: “${esc(pend.comment)}”
+            ${can("approve") ? `<div style="margin-top:6px;display:flex;gap:6px"><button class="btn" data-act="approve">Approve and close</button><button class="btn sec" data-act="reject">Reject</button></div>`
+              : `<div style="color:var(--muted);margin-top:4px">Waiting for a Tier 2 analyst other than the requester.</div>`}</div>` : ""}
+          ${c.next_step ? `<div class="banner"><b>Next step:</b> ${esc(c.next_step)}</div>` : ""}
+          <div class="assessment ${esc(sg.action)}" aria-label="Automated assessment">
+            <span class="eyebrow">Automated assessment</span><strong>${esc(assessment)}</strong>
+            <p>${esc(sg.text)}</p>
+            <div class="assessment-signals">${indicators.length ? indicators.map(item=>`<span>${esc(item.label)}</span>`).join("") : '<span>No decisive signal yet</span>'}</div>
+            <small>Based on the checks and ML data below. This is a suggestion; only an analyst can decide the outcome.</small>
+          </div>
+      <h3 class="case-section" id="case-evidence">Evidence <span style="color:var(--muted);font-weight:400;font-size:11.5px">· ${esc(ev.source)}</span></h3>
       <div class="kvtable">
         ${kv("Queries", `${esc(ev.total_queries)} total · ${esc(ev.distinct_names)} distinct names`)}
         ${kv("Busiest 5 min", `${esc(ev.max_5min_queries)} queries · ${esc(ev.max_5min_distinct)} distinct`)}
@@ -435,7 +502,7 @@
       <div style="margin-top:8px;color:var(--muted);font-size:11px">Longest names</div>
       <div class="samples">${ev.samples.map(s=>`<div>${esc(s)}</div>`).join("") || "—"}</div>
 
-      <h3>DNS-tunnel checklist <span style="color:var(--muted);font-weight:400;font-size:11.5px">· ${esc(c.checklist_done)}/${esc(c.checklist_total)} done · ✓ indicator present, ✗ absent, – no data</span></h3>
+      <h3 class="case-section" id="case-checklist">DNS-tunnel checklist <span style="color:var(--muted);font-weight:400;font-size:11.5px">· ${esc(c.checklist_done)}/${esc(c.checklist_total)} done · ✓ indicator present, ✗ absent, – no data</span></h3>
       <div id="checklist">${v.checklist.map(item=>{
         const [cls, sym] = icon(item);
         const detail = item.kind === "manual"
@@ -476,7 +543,27 @@
       <h3>History</h3>
       ${v.history.length ? v.history.map(h=>`<div style="font-size:11.5px;color:var(--muted);border-bottom:1px dashed #262b3d;padding:3px 0">
         <span class="num">${esc(SOC.fmtDate(h.timestamp))}</span> · <b style="color:#cfd4e2">${esc(h.action)}</b> by ${esc(h.actor)}${h.note ? " · " + esc(String(h.note).slice(0, 160)) : ""}</div>`).join("") : '<div class="nag">No case actions yet.</div>'}
-      <div style="color:var(--dim);font-size:11px;margin-top:12px">${esc(v.guardrail_note)}</div>`;
+      <div style="color:var(--dim);font-size:11px;margin-top:12px">${esc(v.guardrail_note)}</div>
+        </div>
+        <aside class="decision-rail" aria-label="Case decisions">
+          <span class="eyebrow">Analyst decision</span><h3>Next action</h3>
+          <div class="rail-owner">${c.owner ? `Owned by ${esc(c.owner)}` : "Unassigned case"} · ${esc(c.status)}</div>
+          <div class="rail-progress"><b>Required checks</b>
+            ${missing.length ? missing.map(item=>`<span>○ ${esc(item.label)}</span>`).join("") : '<span>✓ All required manual checks recorded</span>'}
+          </div>
+          <div class="acts">
+            <button class="btn blue" data-act="claim" title="Assign this case to yourself" ${can("claim") ? "" : "disabled"}>Claim<span class="kbd">c</span></button>
+            <button class="btn sec" data-act="release" title="Return this open case to the queue" ${can("release") ? "" : "disabled"}>Release</button>
+            <button class="btn" data-act="close" title="Record a classification and reason" ${can("close") ? "" : "disabled"}>Close…<span class="kbd">x</span></button>
+            <button class="btn dng" data-act="escalate" title="Send evidence and next steps to Tier 2" ${can("escalate") ? "" : "disabled"}>Escalate…<span class="kbd">e</span></button>
+            ${c.incident_id ? `<a class="btn declare-incident" href="/incidents?id=${encodeURIComponent(c.incident_id)}">Open linked incident ↗</a>`
+              : `<button class="btn declare-incident" data-act="declare" title="Create a linked incident from this investigation" ${can("declare") ? "" : "disabled"}>Declare incident ↗</button>`}
+            ${v.members.some(m=>m.verdict) ? `<button class="btn sec rail-advanced" data-act="clearverdict" title="Withdraw the verdicts on the alerts shown below; they leave the training export">Clear verdicts</button>` : ""}
+          </div>
+          <a class="rail-jump" href="#case-checklist">Review required checks ↓</a>
+          <p class="rail-help">Claim starts your investigation. Release returns unfinished work. Close with a reason, escalate to Tier 2, or declare an incident when the evidence meets incident criteria.</p>
+        </aside>
+      </div>`;
     tickSla();
   }
 
@@ -519,22 +606,37 @@
     const v = st.view; if (!v) return;
     const key = v.case.key;
     if (act === "claim"){
+      const takeover = v.case.owner && v.case.owner !== actor();
+      if (takeover && !window.confirm(`${v.case.owner} owns this case. Take it over? They lose ownership and the takeover is recorded in the audit log.`)) return;
       try {
         await post(`/api/triage/case/${key}/claim`, v.case.owner && v.case.owner !== actor() ? {force: true} : {});
-        toast("Claimed. The ack SLA clock has stopped; work the checklist next.");
+        toast("Claimed. Investigation started; review the evidence and checklist next.");
         refreshAll(); loadCase(key, true);
       } catch(e){ fail(e); }
+    } else if (act === "ackchange"){
+      st.changed = null; renderCase(v); $("qlist").focus();
+    } else if (act === "declare"){
+      $("d-title").value = `${v.case.label} on ${v.case.client}`;
+      $("d-severity").value = v.case.priority;
+      $("d-reason").value = ""; $("d-err").textContent = "";
+      $("dlg-declare").showModal();
+      $("d-reason").focus();
     } else if (act === "release"){
       $("r-next").value = v.case.next_step || "";
       $("dlg-release").showModal();
     } else if (act === "close"){
-      $("c-class").innerHTML = v.close_classes.map(k=>`<option value="${esc(k)}">${esc(CLASS_LABELS[k] || k)}</option>`).join("");
-      $("c-class").value = v.suggestion.action === "close" ? "fp_model_logic" : "undetermined";
+      // The classification is the training label for the next retraining, so the analyst must choose it;
+      // a pre-selected default would leak the suggestion into the labels (audit 2026-11-26, T4).
+      const hint = v.suggestion.action === "close" ? " (checks and ML suggest closing)" : "";
+      $("c-class").innerHTML = `<option value="" disabled selected>Choose a classification…${esc(hint)}</option>` +
+        v.close_classes.map(k=>`<option value="${esc(k)}">${esc(CLASS_LABELS[k] || k)}</option>`).join("");
       $("c-comment").value = ""; $("c-err").textContent = "";
       updateFpNote();
+      prepareManualChecks("c-manual", v);
       $("dlg-close").showModal();
-      $("c-comment").focus();
+      $("c-class").focus();
     } else if (act === "escalate"){
+      prepareManualChecks("e-manual", v);
       const ev = v.evidence;
       $("e-summary").value = `${v.case.label} on ${v.case.client}: ${v.case.members} alerts, priority ${v.case.priority}.`;
       $("e-evidence").value = [`${ev.total_queries} queries / ${ev.distinct_names} distinct names; busiest 5 min ${ev.max_5min_queries}`,
@@ -568,6 +670,28 @@
       } catch(e){ fail(e); }
     }
   }
+  function requiredManual(v){
+    return v.checklist.filter(item=>item.kind === "manual" && item.required);
+  }
+  function prepareManualChecks(target, v){
+    $(target).innerHTML = `<fieldset class="manual-confirm"><legend>Required verification</legend>
+      <p>Confirm the checks you actually performed. Text in the decision form does not mark the case checklist.</p>
+      ${requiredManual(v).map(item=>`<div class="manual-row">
+        <label><input type="checkbox" data-manual="${esc(item.id)}" ${item.checked ? "checked" : ""}> ${esc(item.label)}</label>
+        ${item.checked ? `<small>Recorded by ${esc(item.by || "an analyst")}</small>` : `<input type="text" data-manual-note="${esc(item.id)}" placeholder="Result or reference (optional)" maxlength="500">`}
+      </div>`).join("")}</fieldset>`;
+  }
+  function unconfirmedManual(target){
+    return [...$(target).querySelectorAll("[data-manual]")].filter(box=>!box.checked);
+  }
+  async function saveManualChecks(target, v){
+    for (const item of requiredManual(v)){
+      if (item.checked) continue;
+      const note = $(target).querySelector(`[data-manual-note="${CSS.escape(item.id)}"]`);
+      await post(`/api/triage/case/${v.case.key}/checklist`,
+        {item_id: item.id, checked: true, note: note ? note.value.trim() : ""});
+    }
+  }
   function updateFpNote(){
     const v = st.view;
     $("c-fp-note").hidden = !(v && v.allowed_actions.includes("fp_needs_approval") && FP_CLASSES.includes($("c-class").value));
@@ -576,8 +700,12 @@
   $("c-submit").addEventListener("click", async ()=>{
     const v = st.view; if (!v) return;
     const comment = $("c-comment").value.trim();
+    if (!$("c-class").value){ $("c-err").textContent = "Choose a classification."; $("c-class").focus(); return; }
     if (comment.length < 10){ $("c-err").textContent = "Write at least 10 characters explaining why."; return; }
+    const unchecked = unconfirmedManual("c-manual");
+    if (unchecked.length){ $("c-err").textContent = "Confirm both required checks before closing."; unchecked[0].focus(); return; }
     try {
+      await saveManualChecks("c-manual", v);
       const r = await post(`/api/triage/case/${v.case.key}/close`, {classification: $("c-class").value, comment});
       $("dlg-close").close();
       toast(r.pending_approval ? "Close request sent to Tier 2 for approval." : `Closed ${r.members.ok} alerts.`);
@@ -590,12 +718,26 @@
                   hypothesis: $("e-hyp").value, recommended_action: $("e-rec").value};
     const empty = Object.entries(body).filter(([,x])=>x.trim().length < 3).map(([k])=>k);
     if (empty.length){ $("e-err").textContent = "Fill in: " + empty.join(", "); return; }
+    const unchecked = unconfirmedManual("e-manual");
+    if (unchecked.length){ $("e-err").textContent = "Confirm both required checks before escalating."; unchecked[0].focus(); return; }
     try {
+      await saveManualChecks("e-manual", v);
       await post(`/api/triage/case/${v.case.key}/escalate`, body);
       $("dlg-esc").close();
       toast("Escalated to Tier 2. The case is back in the queue for Tier 2.");
       refreshAll(); loadCase(v.case.key, true);
     } catch(e){ $("e-err").textContent = e.message + (e.data && e.data.missing ? ": " + e.data.missing.map(m=>m.label).join("; ") : ""); }
+  });
+  $("d-submit").addEventListener("click", async ()=>{
+    const v = st.view; if (!v) return;
+    const title = $("d-title").value.trim(), reason = $("d-reason").value.trim();
+    if (title.length < 3){ $("d-err").textContent = "Give the incident a specific title."; $("d-title").focus(); return; }
+    if (reason.length < 10){ $("d-err").textContent = "Explain why this activity meets incident criteria (at least 10 characters)."; $("d-reason").focus(); return; }
+    try {
+      const r = await post(`/api/triage/case/${v.case.key}/declare`, {title, severity: $("d-severity").value, reason});
+      $("dlg-declare").close();
+      requestAnimationFrame(()=>{ window.location.href = `/incidents?id=${encodeURIComponent(r.record.id)}`; });
+    } catch(e){ $("d-err").textContent = e.message; }
   });
   $("r-submit").addEventListener("click", async ()=>{
     const v = st.view; if (!v) return;
